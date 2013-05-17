@@ -4,6 +4,8 @@ Module of functions that streamline HIT publishing and data collection from MTur
 import pymongo
 import urllib
 import os.path
+from hyperopt.base import SONify
+import json
 import numpy as np
 import boto.mturk
 from boto.mturk.connection import MTurkConnection
@@ -136,9 +138,6 @@ class experiment(object):
         """
         Takes a list of HIT IDs, gets data from MTurk, attaches metadata (if necessary) and puts results in dicarlo2 database.
         """
-        from hyperopt.base import SONify
-        import yamutils.fast
-        import json
         
         if self.sandbox:
             print('**WORKING IN SANDBOX MODE**')
@@ -242,6 +241,9 @@ class experiment(object):
                     dat.append(SONify(dict(zip(meta.dtype.names, meta[meta[lookup_field] == _id][0]))))
                 except IndexError:
                     #print('This object not found in metadata. Skipping to next...')
+                    #I'm assuming for now this error occurs because the ImgOrder format contains URLs for response images,
+                    #which have no metadata. However, this error might also occur if something is wrong with a URL or
+                    #the metadata file, in which case the error will be silent and that's not good.
                     continue
             return dat
         elif type(url) == str or type(url) == unicode:
@@ -254,6 +256,12 @@ class experiment(object):
         else:
             print(url)
             raise ValueError('Stimulus name not recognized. Is it a URL?')
+
+    def uploadHTML(self, filelist):
+        """
+        Not yet implemented.
+        """
+        pass
 
 #Some helper functions that are not a part of an experiment object.
 
@@ -287,3 +295,4 @@ def updateGeoData(collect):
                 workers_seen[c['WorkerID']] = response
                 col.update({'_id': c['_id']}, {'$set': workers_seen[c['WorkerID']]}, w=0)
                 print(str(c['WorkerID'])+': '+str(response['countryName']))
+
