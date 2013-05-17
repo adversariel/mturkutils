@@ -41,7 +41,10 @@ class experiment(object):
         self.comment = comment
 
         if type(meta) != dict:
+            self.meta = convertTabArrayToDict(meta)
+        else:
             self.meta = meta
+
 
         if len(self.comment) == 0 or self.comment == None:
             print('Must provide comment!')
