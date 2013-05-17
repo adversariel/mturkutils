@@ -2,6 +2,8 @@
 Module of functions that streamline HIT publishing and data collection from MTurk.
 """
 import pymongo
+import urllib
+import os.path
 import numpy as np
 import boto.mturk
 from boto.mturk.connection import MTurkConnection
@@ -41,6 +43,7 @@ class experiment(object):
         self.comment = comment
 
         if type(meta) != dict:
+            print('Converting tabarray to dictionary for speed. This may take a minute...')
             self.meta = convertTabArrayToDict(meta)
         else:
             self.meta = meta
@@ -212,7 +215,7 @@ class experiment(object):
         if type(url) == list:
             dat = []
             for u in url:
-                _id = u.split('/')[-1].split('.')[0]
+                _id = getidfromURL(u)
                 try:
                     dat.append(meta[_id])
                 except KeyError:
@@ -220,7 +223,7 @@ class experiment(object):
                     continue
             return dat
         elif type(url) == str or type(url) == unicode:
-            _id = url.split('/')[-1].split('.')[0]
+            _id = getidfromURL(url)
             try:
                 return meta[_id]
             except KeyError:
@@ -234,7 +237,7 @@ class experiment(object):
         if type(url) == list:
             dat = []
             for u in url:
-                _id = u.split('/')[-1].split('.')[0]
+                _id = getidfromURL(u)
                 try:
                     dat.append(SONify(dict(zip(meta.dtype.names, meta[meta[lookup_field] == _id][0]))))
                 except IndexError:
@@ -242,7 +245,7 @@ class experiment(object):
                     continue
             return dat
         elif type(url) == str or type(url) == unicode:
-            _id = url.split('/')[-1].split('.')[0]
+            _id = getidfromURL(url)
             try:
                 return SONify(dict(zip(meta.dtype.names, meta[meta[lookup_field] == _id][0])))
             except IndexError:
@@ -254,6 +257,11 @@ class experiment(object):
 
 #Some helper functions that are not a part of an experiment object.
 
+def getidfromURL(url):
+    u = urllib.url2pathname(url).split('/')[-1]
+    u = os.path.splitext(u)[0]
+    return u
+
 def convertTabArrayToDict(meta_tabarray, lookup_field = 'id'):
     meta_dict = {}
     for m in meta_tabarray:
@@ -261,7 +269,6 @@ def convertTabArrayToDict(meta_tabarray, lookup_field = 'id'):
     return meta_dict        
 
 def updateGeoData(collect):
-    import urllib
     conn = pymongo.Connection(port = 22334, host = 'localhost')
     db = conn.mturk
     col = db[collect]
