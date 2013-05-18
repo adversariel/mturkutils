@@ -62,7 +62,7 @@ class experiment(object):
         #Connect to pymongo database for MTurk results.
         self.mongo_conn = pymongo.Connection(port = 22334, host = 'localhost')
         self.db = self.mongo_conn.mturk
-        self.col = self.db[collection]
+        self.collection = self.db[collection]
 
     def connect(self):
         """
@@ -202,7 +202,7 @@ class experiment(object):
                 ansdat['Keywords'] = h.Keywords
                 ansdat['CreationTime'] = h.CreationTime
                 ansdat['AcceptTime'] = a.AcceptTime
-                qual = {}
+                qual = {} #Should see how this code works for multiple qual types.
                 qual['QualificationTypeId'] = h.QualificationTypeId
                 qual['IntegerValue'] = h.IntegerValue
                 qual['Comparator'] = h.Comparator
@@ -257,11 +257,39 @@ class experiment(object):
             print(url)
             raise ValueError('Stimulus name not recognized. Is it a URL?')
 
-    def uploadHTML(self, filelist):
+    def uploadHTML(self, filelist, bucket, verbose=True):
         """
-        Not yet implemented.
+        Pass a list of paths to the files you want to upload (or the filenames themselves in you're already
+        in the directory) and the name of a bucket as a string. If the bucket does not exist, a new one will be created.
+        This function uploads the files and sets their ACL to public-read, then returns a list of URLs.
+        
+        Sub-directories within the bucket are not yet supported.
         """
-        pass
+        from boto.s3.connection import S3Connection
+        from boto.s3.key import Key
+        try:
+            conn = S3Connection(self.access_key_id, self.secretkey)
+        except S3ResponseError:
+            print('Could not establish an S3 conection. Is your account properly configured?')
+            return
+        try:
+            bucket = conn.get_bucket(bucket)
+        except S3ResponseError:
+            print('Bucket does not exist, creating a new bucket...')
+            bucket = conn.create_bucket(bucket)
+        
+        urls = []
+        for idx, f in enumerate(filelist):
+            k = Key(bucket)
+            k.key = f.split('/')[-1]
+            k.set_contents_from_filename(f)
+            bucket.set_acl('public-read', k.key)
+            urls.append('http://s3.amazonaws.com/'+bucket+'/'+k.key)
+            if verbose:
+                print str(idx)+': '+f
+                
+        return urls    
+        
 
 #Some helper functions that are not a part of an experiment object.
 
