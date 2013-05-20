@@ -287,7 +287,8 @@ class experiment(object):
             urls.append('http://s3.amazonaws.com/'+bucket+'/'+k.key)
             if verbose:
                 print str(idx)+': '+f
-                
+        
+        self.URLs = urls        
         return urls    
         
 
