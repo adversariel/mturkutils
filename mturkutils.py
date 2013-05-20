@@ -11,6 +11,7 @@ import boto.mturk
 from boto.mturk.connection import MTurkConnection
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
+import boto
 
 class experiment(object):
 
@@ -138,7 +139,7 @@ class experiment(object):
         return self.hitids
 
 
-    def updateDBwithHITs(verbose=False):
+    def updateDBwithHITs(self, verbose=False):
         """
         - Takes a list of HIT IDs, gets data from MTurk, attaches metadata (if necessary) and puts results in dicarlo2 database.
         - Also stores data in object variable 'all_data' for immediate use.
@@ -158,7 +159,7 @@ class experiment(object):
         
         for hitid in self.hitids:
             #print('Getting HIT results...')
-            sdata = getHITdata(hitid)
+            sdata = self.getHITdata(hitid)
             self.all_data.extend(sdata)
         
             #print('Connecting to database...')
@@ -195,7 +196,7 @@ class experiment(object):
             print a.WorkerId
             for qfa in a.answers[0]:
                 ansdat = json.loads(qfa.fields[0][1:-1])
-            HITdat = conn.get_hit(hit_id = hitid)
+            HITdat = self.conn.get_hit(hit_id = hitid)
             for h in HITdat:
                 ansdat['HITid'] = h.HITId
                 ansdat['Title'] = h.Title
@@ -209,11 +210,11 @@ class experiment(object):
                 ansdat['Keywords'] = h.Keywords
                 ansdat['CreationTime'] = h.CreationTime
                 ansdat['AcceptTime'] = a.AcceptTime
-                qual = {} #Should see how this code works for multiple qual types.
-                qual['QualificationTypeId'] = h.QualificationTypeId
-                qual['IntegerValue'] = h.IntegerValue
-                qual['Comparator'] = h.Comparator
-                ansdat['Qualification'] = qual
+                #qual = {} #Should see how this code works for multiple qual types.
+                #qual['QualificationTypeId'] = h.QualificationTypeId
+                #qual['IntegerValue'] = h.IntegerValue
+                #qual['Comparator'] = h.Comparator
+                #ansdat['Qualification'] = qual
             subj_data.append(ansdat)
         return subj_data
 
@@ -264,7 +265,7 @@ class experiment(object):
             print(url)
             raise ValueError('Stimulus name not recognized. Is it a URL?')
 
-    def uploadHTML(self, filelist, bucket, verbose=True):
+    def uploadHTML(self, filelist, bucketname, verbose=True):
         """
         Pass a list of paths to the files you want to upload (or the filenames themselves in you're already
         in the directory) and the name of a bucket as a string. If the bucket does not exist, a new one will be created.
@@ -275,14 +276,14 @@ class experiment(object):
         """
         try:
             conn = S3Connection(self.access_key_id, self.secretkey)
-        except S3ResponseError:
+        except boto.exception.S3ResponseError:
             print('Could not establish an S3 conection. Is your account properly configured?')
             return
         try:
-            bucket = conn.get_bucket(bucket)
-        except S3ResponseError:
+            bucket = conn.get_bucket(bucketname)
+        except boto.exception.S3ResponseError:
             print('Bucket does not exist, creating a new bucket...')
-            bucket = conn.create_bucket(bucket)
+            bucket = conn.create_bucket(bucketname)
         
         urls = []
         for idx, f in enumerate(filelist):
@@ -290,7 +291,7 @@ class experiment(object):
             k.key = f.split('/')[-1]
             k.set_contents_from_filename(f)
             bucket.set_acl('public-read', k.key)
-            urls.append('http://s3.amazonaws.com/'+bucket+'/'+k.key)
+            urls.append('http://s3.amazonaws.com/'+bucketname+'/'+k.key)
             if verbose:
                 print str(idx)+': '+f
         
