@@ -9,6 +9,8 @@ import json
 import numpy as np
 import boto.mturk
 from boto.mturk.connection import MTurkConnection
+from boto.s3.connection import S3Connection
+from boto.s3.key import Key
 
 class experiment(object):
 
@@ -266,12 +268,11 @@ class experiment(object):
         """
         Pass a list of paths to the files you want to upload (or the filenames themselves in you're already
         in the directory) and the name of a bucket as a string. If the bucket does not exist, a new one will be created.
-        This function uploads the files and sets their ACL to public-read, then returns a list of URLs.
+        This function uploads the files and sets their ACL to public-read, then returns a list of URLs. This will also \
+        set self.URLs to that list of urls.
         
         Sub-directories within the bucket are not yet supported.
         """
-        from boto.s3.connection import S3Connection
-        from boto.s3.key import Key
         try:
             conn = S3Connection(self.access_key_id, self.secretkey)
         except S3ResponseError:
