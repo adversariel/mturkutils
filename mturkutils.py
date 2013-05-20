@@ -44,7 +44,9 @@ class experiment(object):
         self.collection = collection
         self.comment = comment
 
-        if type(meta) != dict:
+        if meta == None:
+            self.meta = meta
+        elif type(meta) != dict:
             print('Converting tabarray to dictionary for speed. This may take a minute...')
             self.meta = convertTabArrayToDict(meta)
         else:
@@ -56,7 +58,7 @@ class experiment(object):
             return
         
         if self.collection == None or self.collection == '':
-            print('Please provide a valid MTurk database collection name')
+            print('Please provide a valid MTurk database collection name.')
             return
 
         #Connect to pymongo database for MTurk results.
@@ -98,8 +100,8 @@ class experiment(object):
 
     def createHIT(self, URLlist, verbose=True):
         """
-        Pass a list of URLs (check that they work first!) for each one to be published as a HIT. 
-        This function returns a list of HIT IDs which can be used to collect data later.
+        - Pass a list of URLs (check that they work first!) for each one to be published as a HIT. 
+        - This function returns a list of HIT IDs which can be used to collect data later. Those IDs are stored in 'self.hitids'.
         """
         if self.sandbox:
             print('**WORKING IN SANDBOX MODE**')
@@ -136,9 +138,11 @@ class experiment(object):
 
     def updateDBwithHITs(verbose=False):
         """
-        Takes a list of HIT IDs, gets data from MTurk, attaches metadata (if necessary) and puts results in dicarlo2 database.
+        - Takes a list of HIT IDs, gets data from MTurk, attaches metadata (if necessary) and puts results in dicarlo2 database.
+        - Also stores data in object variable 'all_data' for immediate use.
+        - Even if you've already gotten some HITs, this will get them again anyway. Maybe later I'll fix this.
         """
-        
+        self.all_data = []
         if self.sandbox:
             print('**WORKING IN SANDBOX MODE**')
         
@@ -153,6 +157,7 @@ class experiment(object):
         for hitid in self.hitids:
             #print('Getting HIT results...')
             sdata = getHITdata(hitid)
+            self.all_data.extend(sdata)
         
             #print('Connecting to database...')
             col.ensure_index([('WorkerID', pymongo.ASCENDING), ('Timestamp', pymongo.ASCENDING)], unique=True)
