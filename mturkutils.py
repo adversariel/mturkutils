@@ -6,7 +6,9 @@ import urllib
 import os.path
 from hyperopt.base import SONify
 import json
+import datetime
 import numpy as np
+import cPickle as pk
 import boto.mturk
 from boto.mturk.connection import MTurkConnection
 from boto.s3.connection import S3Connection
@@ -17,7 +19,7 @@ class experiment(object):
 
     def __init__(self, sandbox = False, access_key_id = 'AKIAIVPHBWLGLGI5SYTQ', secretkey = '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', \
     keywords = [''], lifetime=1209600, max_assignments=1, title = '', reward=0.01, duration=1500, approval_delay=172800, \
-    description='', frame_height_pix=1000,):
+    description='', frame_height_pix=1000, comment = '', collection_name = '', meta = None, LOG_PREFIX = './'):
 
         self.sandbox = sandbox
         self.access_key_id = access_key_id
@@ -31,20 +33,22 @@ class experiment(object):
         self.approval_delay = approval_delay
         self.description = description
         self.frame_height_pix = frame_height_pix
-        self.qual = None
+        self.LOG_PREFIX = LOG_PREFIX
+        self.setQual(90)
 
+        self.setMongoVars(collection_name, comment, meta)
         self.conn = self.connect()
 
     def getBalance(self):
         return self.conn.get_account_balance()[0].amount   
 
-    def setMongoVars(self, collection = None, comment = None, meta = None):
+    def setMongoVars(self, collection_name, comment, meta):
         """
         Establishes connection to database on dicarlo2. You must specify a valid collection name. If it does not alreay exist, \
         a new collection with that name will be created in the mturk database. You can optionally provide a metadata object.
         """
 
-        self.collection = collection
+        self.collection_name = collection_name
         self.comment = comment
 
         if meta == None:
@@ -55,19 +59,17 @@ class experiment(object):
         else:
             self.meta = meta
 
-
         if len(self.comment) == 0 or self.comment == None:
-            print('Must provide comment!')
-            return
+            raise AttributeError('Must provide comment!')
         
-        if self.collection == None or self.collection == '':
-            print('Please provide a valid MTurk database collection name.')
-            return
+        if type(self.collection_name) != str or \
+        (len(self.collection_name) == 0 and type(self.collection_name) == str):
+            raise NameError('Please provide a valid MTurk database collection name.')
 
         #Connect to pymongo database for MTurk results.
         self.mongo_conn = pymongo.Connection(port = 22334, host = 'localhost')
         self.db = self.mongo_conn.mturk
-        self.collection = self.db[collection]
+        self.collection = self.db[collection_name]
 
     def connect(self):
         """
@@ -132,10 +134,13 @@ class experiment(object):
             for hit in create_hit_rs:
                 self.hitids.append(hit.HITId)
             assert create_hit_rs.status == True
-                
+            self.htypid = hit.HITTypeId
+
             if verbose == True:
                 print(str(urlnum)+': '+url+', '+self.hitids[-1])
-            
+        file_string = self.LOG_PREFIX+str(self.htypid)+'_'+str(datetime.datetime.now())+'.pkl'
+        file_string = file_string.replace(' ', '_')
+        pk.dump(self.hitids, file(file_string, 'wb'))   
         return self.hitids
 
 
@@ -150,12 +155,8 @@ class experiment(object):
             print('**WORKING IN SANDBOX MODE**')
         
         conn = self.conn
+        col = self.collection
         meta = self.meta
-        try: 
-            col = self.collection
-        except NameError:
-            print('You did not run setMongoVars!')
-            return
         
         for hitid in self.hitids:
             #print('Getting HIT results...')
@@ -210,11 +211,14 @@ class experiment(object):
                 ansdat['Keywords'] = h.Keywords
                 ansdat['CreationTime'] = h.CreationTime
                 ansdat['AcceptTime'] = a.AcceptTime
-                #qual = {} #Should see how this code works for multiple qual types.
-                #qual['QualificationTypeId'] = h.QualificationTypeId
-                #qual['IntegerValue'] = h.IntegerValue
-                #qual['Comparator'] = h.Comparator
-                #ansdat['Qualification'] = qual
+                try:
+                    qual = {} #Should see how this code works for multiple qual types.
+                    qual['QualificationTypeId'] = h.QualificationTypeId
+                    qual['IntegerValue'] = h.IntegerValue
+                    qual['Comparator'] = h.Comparator
+                    ansdat['Qualification'] = qual
+                except AttributeError:
+                    pass
             subj_data.append(ansdat)
         return subj_data
 
