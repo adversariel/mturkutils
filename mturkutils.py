@@ -172,14 +172,14 @@ class experiment(object):
                     if meta != None:
                         if type(meta) == dict:
                             #Assuming meta is a dict -- this should be much faster!
-                            m = [self.get_meta_fromdict(e, meta) for e in subj['ImgOrder']]
+                            m = [self.get_meta_fromdict(e, meta) for e in subj['StimShown']]
                             col.update({'_id': subj_id}, {'$set':{'ImgData': m}}, w=0)
                             if verbose:
                                 print(subj_id)
                                 print('------------')
                         else:
                             #Assuming meta is a tabarray
-                            m = [self.get_meta(e, meta) for e in subj['ImgOrder']]
+                            m = [self.get_meta(e, meta) for e in subj['StimShown']]
                             col.update({'_id': subj_id}, {'$set':{'ImgData': m}}, w=0)
                             if verbose:
                                 print(subj_id)
@@ -309,7 +309,7 @@ def getidfromURL(url):
 def convertTabArrayToDict(meta_tabarray, lookup_field = 'id'):
     meta_dict = {}
     for m in meta_tabarray:
-        meta_dict[m[lookup_field]] = SONify(dict(zip(meta.dtype.names, m)))
+        meta_dict[m[lookup_field]] = SONify(dict(zip(meta_tabarray.dtype.names, m)))
     return meta_dict        
 
 def updateGeoData(collect):
