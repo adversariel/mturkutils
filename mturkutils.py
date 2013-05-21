@@ -62,9 +62,13 @@ class experiment(object):
         if len(self.comment) == 0 or self.comment == None:
             raise AttributeError('Must provide comment!')
         
-        if type(self.collection_name) != str or \
+        if (type(self.collection_name) != str and type(self.collection_name) != None) or \
         (len(self.collection_name) == 0 and type(self.collection_name) == str):
             raise NameError('Please provide a valid MTurk database collection name.')
+        else:
+            print('Results will not be stored in a database until you set a proper collection name.')
+            self.collection = None
+            return
 
         #Connect to pymongo database for MTurk results.
         self.mongo_conn = pymongo.Connection(port = 22334, host = 'localhost')
@@ -162,7 +166,11 @@ class experiment(object):
             #print('Getting HIT results...')
             sdata = self.getHITdata(hitid)
             self.all_data.extend(sdata)
-        
+            if col == None:
+                continue
+            else:
+                pass
+            
             #print('Connecting to database...')
             col.ensure_index([('WorkerID', pymongo.ASCENDING), ('Timestamp', pymongo.ASCENDING)], unique=True)
         
