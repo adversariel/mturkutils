@@ -65,10 +65,6 @@ class experiment(object):
         if (type(self.collection_name) != str and type(self.collection_name) != None) or \
         (len(self.collection_name) == 0 and type(self.collection_name) == str):
             raise NameError('Please provide a valid MTurk database collection name.')
-        else:
-            print('Results will not be stored in a database until you set a proper collection name.')
-            self.collection = None
-            return
 
         #Connect to pymongo database for MTurk results.
         self.mongo_conn = pymongo.Connection(port = 22334, host = 'localhost')
@@ -202,32 +198,36 @@ class experiment(object):
         assignment = self.conn.get_assignments(hit_id = hitid)
         subj_data = []
         for a in assignment:
-            print a.WorkerId
-            for qfa in a.answers[0]:
-                ansdat = json.loads(qfa.fields[0][1:-1])
-            HITdat = self.conn.get_hit(hit_id = hitid)
-            for h in HITdat:
-                ansdat['HITid'] = h.HITId
-                ansdat['Title'] = h.Title
-                ansdat['Reward'] = h.FormattedPrice
-                ansdat['URL'] = h.RequesterAnnotation
-                ansdat['Duration'] = h.AssignmentDurationInSeconds
-                ansdat['AssignmentID'] = a.AssignmentId
-                ansdat['WorkerID'] = a.WorkerId
-                ansdat['HITTypeID'] = h.HITTypeId
-                ansdat['Timestamp'] = a.SubmitTime
-                ansdat['Keywords'] = h.Keywords
-                ansdat['CreationTime'] = h.CreationTime
-                ansdat['AcceptTime'] = a.AcceptTime
-                try:
-                    qual = {} #Should see how this code works for multiple qual types.
-                    qual['QualificationTypeId'] = h.QualificationTypeId
-                    qual['IntegerValue'] = h.IntegerValue
-                    qual['Comparator'] = h.Comparator
-                    ansdat['Qualification'] = qual
-                except AttributeError:
-                    pass
-            subj_data.append(ansdat)
+            try:
+                print a.WorkerId
+                for qfa in a.answers[0]:
+                    ansdat = json.loads(qfa.fields[0][1:-1])
+                HITdat = self.conn.get_hit(hit_id = hitid)
+                for h in HITdat:
+                    ansdat['HITid'] = h.HITId
+                    ansdat['Title'] = h.Title
+                    ansdat['Reward'] = h.FormattedPrice
+                    ansdat['URL'] = h.RequesterAnnotation
+                    ansdat['Duration'] = h.AssignmentDurationInSeconds
+                    ansdat['AssignmentID'] = a.AssignmentId
+                    ansdat['WorkerID'] = a.WorkerId
+                    ansdat['HITTypeID'] = h.HITTypeId
+                    ansdat['Timestamp'] = a.SubmitTime
+                    ansdat['Keywords'] = h.Keywords
+                    ansdat['CreationTime'] = h.CreationTime
+                    ansdat['AcceptTime'] = a.AcceptTime
+                    try:
+                        qual = {} #Should see how this code works for multiple qual types.
+                        qual['QualificationTypeId'] = h.QualificationTypeId
+                        qual['IntegerValue'] = h.IntegerValue
+                        qual['Comparator'] = h.Comparator
+                        ansdat['Qualification'] = qual
+                    except AttributeError:
+                        pass
+                subj_data.append(ansdat)
+            except ValueError:
+                print('Error in decoding JSON data. Skipping for now...')
+                continue
         return subj_data
 
     def get_meta_fromdict(self, url, meta):
