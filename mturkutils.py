@@ -14,6 +14,7 @@ from boto.mturk.connection import MTurkConnection
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 import boto
+import csv
 
 class experiment(object):
 
@@ -192,10 +193,58 @@ class experiment(object):
                 except pymongo.errors.DuplicateKeyError:
                     #print('Entry already exists, moving to next...')
                     continue    
+
+    def updateDBwithHITslocal(self, datafile, verbose=False):
+        """
+        - Takes data directly downloaded from MTurk in the form of csv file, attaches metadata (if necessary) and puts results in dicarlo2 database.
+        - Also stores data in object variable 'all_data' for immediate use.
+        - Even if you've already gotten some HITs, this will get them again anyway. Maybe later I'll fix this.
+        """
+        self.all_data = []
+        if self.sandbox:
+            print('**WORKING IN SANDBOX MODE**')
+        
+        conn = self.conn
+        col = self.collection
+        meta = self.meta
+        
+        for hitid in self.hitids:
+            #print('Getting HIT results...')
+            sdata = parse_human_data(datafile)
+            self.all_data.extend(sdata)
+            if col == None:
+                continue
+            else:
+                pass
             
+            #print('Connecting to database...')
+            col.ensure_index([('WorkerID', pymongo.ASCENDING), ('Timestamp', pymongo.ASCENDING)], unique=True) #bug
+        
+            #print('Updating database...')
+            for subj in sdata:
+                try:
+                    subj_id = col.insert(subj, safe = True)
+                    if meta != None:
+                        if type(meta) == dict:
+                            #Assuming meta is a dict -- this should be much faster!
+                            m = [self.get_meta_fromdict(e, meta) for e in subj['StimShown']]
+                            col.update({'_id': subj_id}, {'$set':{'ImgData': m}}, w=0)
+                            if verbose:
+                                print(subj_id)
+                                print('------------')
+                        else:
+                            #Assuming meta is a tabarray
+                            m = [self.get_meta(e, meta) for e in subj['StimShown']]
+                            col.update({'_id': subj_id}, {'$set':{'ImgData': m}}, w=0)
+                            if verbose:
+                                print(subj_id)
+                                print('------------')
+                except pymongo.errors.DuplicateKeyError:
+                    #print('Entry already exists, moving to next...')
+                    continue 
 
     def getHITdata(self, hitid):
-        assignment = self.conn.get_assignments(hit_id = hitid)
+        assignment = self.conn.get_assignments(hit_id = hitid, page_size=self.max_assignments)
         subj_data = []
         for a in assignment:
             try:
@@ -312,6 +361,37 @@ class experiment(object):
         
 
 #Some helper functions that are not a part of an experiment object.
+
+def parse_human_data(datafile): 
+    csv.field_size_limit(10000000000)
+    count = 0;
+    with open(datafile,'rb+') as csvfile:
+     
+        datareader = csv.reader(csvfile,delimiter='\t')                        
+        subj_data = []                  
+        for row in datareader:
+            if count == 0 and len(row) > 0 and row[0] == 'hitid':
+                count = count + 1
+                column_labels = row
+            
+            else:
+                try:
+                    subj_data.append(json.loads(row[-1][1:-1]))
+                except ValueError:
+                 #   print(row[-1])
+                    continue
+                subj_data[-1]['HITid'] = row[0]
+                subj_data[-1]['Title'] = row[2]
+                subj_data[-1]['Reward'] = row[5]
+                subj_data[-1]['URL'] = row[13]     
+                subj_data[-1]['Duration'] = row[14]
+                subj_data[-1]['ViewHIT'] = row[17]
+                subj_data[-1]['AssignmentID'] = row[18]
+                subj_data[-1]['WorkerID'] = row[19]
+                subj_data[-1]['Timestamp'] = row[23]
+            
+        csvfile.close()
+    return subj_data
 
 def getidfromURL(url):
     u = urllib.url2pathname(url).split('/')[-1]
