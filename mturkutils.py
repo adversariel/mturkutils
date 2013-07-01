@@ -216,6 +216,7 @@ class experiment(object):
                     ansdat['Keywords'] = h.Keywords
                     ansdat['CreationTime'] = h.CreationTime
                     ansdat['AcceptTime'] = a.AcceptTime
+                    ansdat['Comment'] = self.comment
                     try:
                         qual = {} #Should see how this code works for multiple qual types.
                         qual['QualificationTypeId'] = h.QualificationTypeId
