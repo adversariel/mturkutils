@@ -1,5 +1,5 @@
 """
-Module of functions that streamline HIT publishing and data collection from MTurk.
+Module of functions that streamline HIT publishing and data collection from MTurk. Contact Ethan Solomon (esolomon@mit.edu) for help!
 """
 import pymongo
 import urllib
@@ -17,6 +17,37 @@ import boto
 import csv
 
 class experiment(object):
+    """
+    An experiment object contains all the functions and data necessary for publishing a hit on MTurk. You must provide the following parameters, \
+    or just use the default values:
+    MTurk Parameters
+    - sandbox (default False): Publish to the MTurk Worker Sandbox if True (workersandbox.mturk.com). I recommend publishing to the sandbox first and checking that \
+    your HIT works properly.
+    - access_key_id, secretkey: These determine which MTurk account to use. The default values, for now, are Ethan's account credentials.
+    - keywords: A list of strings that show up as keywords for a HIT Type on the MTurk website. These come in to play when a worker uses the MTurk search box to find HITs.
+    - lifetime: Time, in seconds, for how long the HITs will stay active on Mechanical Turk. The default value is 2 weeks, which is fine for most purposes.
+    - max_assignments: How many Workers are allowed to complete each HIT. Remember that a given Worker cannot complete the same HIT twice\
+     (but they can complete as many HITs within the same HIT Type as they want).
+    - title: What shows up as the HIT Type header on the MTurk website.
+    - reward: In dollars, how much a Worker gets paid for completing 1 HIT.
+    - duration: Time, in seconds, that a worker has to complete a HIT aftering clicking "accept." I try to give them a comfortable margin beyond how\
+     long I actually expect the task to take. But don't make it too long or workers will be dissuaded from even trying it.
+    - approval_delay: Time, in seconds, until MTurk automatically approves HITs and pays workers. The default is 2 days.
+    - description: The text workers see on the MTurk website before previewing a HIT. Should be a short-and-sweet explanation of what the task is\
+     and how long it should take. Also include the experimental disclaimer.
+    - frame_height_pix: Size of the embedded frame that pulls in your external URL. 1000 should be fine for most purposes.
+
+    Non-MTurk Parameters
+    - comment: Explanation of the task and data format to be included in the database for this experiment. The description should be adequate for\
+     future investigators to understand what you did and what the data means.
+    - collection_name: String, name of collection within the 'mturk' dicarlo2 database.
+    - meta (optional): Tabarray or dictionary to link stimulus names with their metadata. There's some work to be done with this feature.\
+     Right now, mturkutils extracts image filenames from 'StimShown' and looks up metadata in meta by that filename.\
+      For speed, it re-sorts any tabarray into a dictionary indexed by the original 'id' field.\
+      Feel free to pass None and attach metadata yourself later, especially if your experiment isn't the usual recognition-style task.
+    - LOG_PREFIX: Where to save a pickle file with a list of published HIT IDs. You can retrieve data from any hit published in the past using these IDs\
+     (within the experiment object, the IDs are also saved in 'hitids').
+    """
 
     def __init__(self, sandbox = False, access_key_id = 'AKIAIVPHBWLGLGI5SYTQ', secretkey = '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', \
     keywords = [''], lifetime=1209600, max_assignments=1, title = '', reward=0.01, duration=1500, approval_delay=172800, \
@@ -41,12 +72,16 @@ class experiment(object):
         self.conn = self.connect()
 
     def getBalance(self):
+        """
+        Returns the amount of available funds. If you're in Sandbox mode, this will always return $10,000.
+        """
         return self.conn.get_account_balance()[0].amount   
 
     def setMongoVars(self, collection_name, comment, meta):
         """
         Establishes connection to database on dicarlo2. You must specify a valid collection name. If it does not alreay exist, \
-        a new collection with that name will be created in the mturk database. You can optionally provide a metadata object.
+        a new collection with that name will be created in the mturk database. You can optionally provide a metadata object, which \
+        will be converted into a dictionary indexed by the 'id' field (unless otherwise specified).
         """
 
         self.collection_name = collection_name
@@ -92,7 +127,7 @@ class experiment(object):
     def createQual(self, performance_thresh = 90):
         """
         Returns an MTurk Qualification object which can then be passed to a HIT object. For now, I've only implemented \
-        a prior HIT approval qualification, but more might be on the way.
+        a prior HIT approval qualification, but boto supports many more.
         """
         from boto.mturk.qualification import PercentAssignmentsApprovedRequirement
         from boto.mturk.qualification import Qualifications
@@ -104,10 +139,12 @@ class experiment(object):
         qual.add(req)
         return qual
 
-    def createHIT(self, URLlist, verbose=True):
+    def createHIT(self, URLlist = self.URLs, verbose=True):
         """
-        - Pass a list of URLs (check that they work first!) for each one to be published as a HIT. 
+        - Pass a list of URLs (check that they work first!) for each one to be published as a HIT. If you've mturkutils to upload HTML, \
+        those (self.URLs) will be used by default. 
         - This function returns a list of HIT IDs which can be used to collect data later. Those IDs are stored in 'self.hitids'.
+        - The HITids are also stored in a pickle file saved to LOG_PREFIX.
         """
         if self.sandbox:
             print('**WORKING IN SANDBOX MODE**')
@@ -148,8 +185,8 @@ class experiment(object):
     def updateDBwithHITs(self, verbose=False):
         """
         - Takes a list of HIT IDs, gets data from MTurk, attaches metadata (if necessary) and puts results in dicarlo2 database.
-        - Also stores data in object variable 'all_data' for immediate use.
-        - Even if you've already gotten some HITs, this will get them again anyway. Maybe later I'll fix this.
+        - Also stores data in object variable 'all_data' for immediate use. This might be dangerous for MH17's memory.
+        - Even if you've already gotten some HITs, this will try to get them again anyway. Maybe later I'll fix this.
         """
         self.all_data = []
         if self.sandbox:
@@ -266,6 +303,7 @@ class experiment(object):
                     ansdat['CreationTime'] = h.CreationTime
                     ansdat['AcceptTime'] = a.AcceptTime
                     ansdat['Comment'] = self.comment
+                    ansdat['Description'] = self.description
                     try:
                         qual = {} #Should see how this code works for multiple qual types.
                         qual['QualificationTypeId'] = h.QualificationTypeId
