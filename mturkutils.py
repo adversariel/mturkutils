@@ -139,13 +139,15 @@ class experiment(object):
         qual.add(req)
         return qual
 
-    def createHIT(self, URLlist = self.URLs, verbose=True):
+    def createHIT(self, URLlist = None, verbose=True):
         """
         - Pass a list of URLs (check that they work first!) for each one to be published as a HIT. If you've mturkutils to upload HTML, \
         those (self.URLs) will be used by default. 
         - This function returns a list of HIT IDs which can be used to collect data later. Those IDs are stored in 'self.hitids'.
         - The HITids are also stored in a pickle file saved to LOG_PREFIX.
         """
+        if URLlist is None:
+            URLlist = self.URLs
         if self.sandbox:
             print('**WORKING IN SANDBOX MODE**')
         
