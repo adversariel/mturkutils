@@ -16,6 +16,16 @@ from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 import boto
 import csv
+from boto.pyami.config import Config
+
+
+def parse_credentials_file(path=None, section_name='Credentials'):
+    if path is None:
+        path = os.path.expanduser('~/.boto')
+    config = Config(path)
+    assert config.has_section(section_name), \
+        'Field '+section_name+' not found in credentials file located at ' + path
+    return config.get(section_name, 'aws_access_key_id'), config.get(section_name, 'aws_secret_access_key')
 
 
 class experiment(object):
@@ -26,9 +36,6 @@ class experiment(object):
     Required:
     - sandbox (default True): Publish to the MTurk Worker Sandbox if True (workersandbox.mturk.com). I recommend
         publishing to the sandbox first and checking that  your HIT works properly.
-    - access_key_id, secretkey: These determine which MTurk account to use.
-    - keywords: A list of strings that show up as keywords for a HIT Type on the MTurk website. These come in to play
-        when a worker uses the MTurk search box to find HITs.
     - lifetime: Time, in seconds, for how long the HITs will stay active on Mechanical Turk. The default value is
         2 weeks, which is fine for most purposes.
     - max_assignments: How many Workers are allowed to complete each HIT. Remember that a given Worker cannot complete
@@ -59,23 +66,14 @@ class experiment(object):
         published in the past using these IDs (within the experiment object, the IDs are also saved in 'hitids').
     """
 
-    def __init__(self, sandbox=True, access_key_id=None, secretkey=None, keywords=None, lifetime=1209600,
+    def __init__(self, sandbox=True, keywords=None, lifetime=1209600,
                  max_assignments=1, title='TEST', reward=0.01, duration=1500, approval_delay=172800,
                  description='TEST', frame_height_pix=1000, comment='TEST', collection_name='TEST', meta=None,
                  LOG_PREFIX='./'):
         if keywords is None:
             keywords = ['']
         self.sandbox = sandbox
-        if access_key_id is None:
-            try:
-                boto_credentials_file = open(os.path.join(os.environ['HOME'], '.boto'), 'rb').readlines()
-                access_key_id = boto_credentials_file[1].split(' ')[2].rstrip()
-                secretkey = boto_credentials_file[2].split(' ')[2].rstrip()
-            except IOError:
-                print ("BOTO credentials not set. Please pass access_key_id and secretkey as arguments, "
-                       "or place a .boto credentials file in your home directory")
-        self.access_key_id = access_key_id
-        self.secretkey = secretkey
+        self.access_key_id, self.secretkey = parse_credentials_file(section_name='MTurkCredentials')
         self.keywords = keywords
         self.lifetime = lifetime
         self.max_assignments = max_assignments
@@ -406,7 +404,7 @@ class experiment(object):
         Sub-directories within the bucket are not yet supported.
         """
         try:
-            conn = S3Connection(self.access_key_id, self.secretkey)
+            conn = S3Connection()
         except boto.exception.S3ResponseError:
             print('Could not establish an S3 conection. Is your account properly configured?')
             return
