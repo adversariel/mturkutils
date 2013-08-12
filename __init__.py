@@ -1,6 +1,6 @@
 """
 Module of functions that streamline HIT publishing and data collection from MTurk. Contact Ethan Solomon
-(esolomon@mit.edu) for help!
+(esolomon@mit.edu) or Diego Ardila (ardila@mit.edu) for help!
 """
 import pymongo
 import urllib
