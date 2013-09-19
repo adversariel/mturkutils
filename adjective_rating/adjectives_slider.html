@@ -53,7 +53,7 @@
 <script type="text/javascript">
 
 shuffle = function(o) { 
-	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x = o[--i], o[i] = o[j], o[j] = x);
 	return o;
 };
 
@@ -89,17 +89,17 @@ function init_vars() {
 
 function familiar() {
 	did_famil = true;
-	$('#begintask').hide(), $('#_preload').hide(), $('#buttons').hide(), $('#startbuttons').hide();
-	$('.test').show(), $('#second_test').hide();
+	$('#begintask').hide(); $('#_preload').hide(); $('#buttons').hide(); $('#startbuttons').hide();
+	$('.test').show(); $('#second_test').hide();
 	$('#message').empty();
 	var i = 0;
 	var f = setInterval(function() {
-		console.log(i)
+		console.log(i);
 		$('#main_test').attr('src', unlabeled_prototypes[i]);
 		i++;
 		console.log('New image');
 		if (i == unlabeled_prototypes.length) {
-			$('#startbuttons p').remove()
+			$('#startbuttons p').remove();
 			$('#begintask2').hide();
 			$('.test').hide();
 			
@@ -112,8 +112,8 @@ function familiar() {
 			clearInterval(f);
 		}
 		else {}
-	}, 1000)
-	return
+	}, 1000);
+	return;
 }
 
 function end_familiarization() {
@@ -123,14 +123,14 @@ function end_familiarization() {
 	$('#begintask').show().click(function() {
 		beginExp();
 	}).html('Begin Experiment');
-	$('#startbuttons').show()
+	$('#startbuttons').show();
 	$('#buttons').show();
 }
 
 function beginExp() {
 	begin = true;
 	$('#sl0slider').hide();
-	$('#begintask').hide(), $('#_preload').hide(), $('#buttons').hide(), $('#begintask2').hide();
+	$('#begintask').hide(); $('#_preload').hide(); $('#buttons').hide(); $('#begintask2').hide();
 	$('#startbuttons').empty();
 	$('#message').empty();
 	$('.fixation').show();
@@ -159,7 +159,7 @@ function showResponse() {
 	sliderRef.f_setValue(0);
 	var myadj = imgFiles_new[trialNumber][1];
 	$('#adj_header').html(myadj+'<br><div style="font-size:75%; width:400px; font-weight:normal;"><i>'+adj_dict[myadj]+'</i></div>');
-	$('#adj_text').html('How '+myadj+'  was the object? (100 is very '+myadj+', 0 is not at all '+myadj+')');
+	$('#adj_text').html('How ' + myadj + '  was the object?');
 	$('#adj_text_bleft').html('Not ' + myadj);
 	$('#adj_text_bright').html('Very ' + myadj);
 	$('#buttons').show();
@@ -170,6 +170,8 @@ function showResponse() {
 		var stim1 = imgFiles_new[trialNumber+1][0]; 
 		$('#main_test').attr('src', stim1);
 	}
+	$('#nextTrial').hide();  // Hide the btn
+	$('#sl0base').mouseup(function() { $('#nextTrial').show(); } );   // undo hiding on user input.
 }
 
 function whitescreen() {
@@ -178,7 +180,8 @@ function whitescreen() {
 		$('#buttons').hide();
 		$('.fixation').show();
 		$('#main_test').show();
-		rating = parseInt($('#sliderValue').val());
+		$('#nextTrial').hide();
+		rating = parseInt($('#sliderValue').val(), 10);
 		pushData(rating);
 		endTrial();
 	}
@@ -205,8 +208,8 @@ function endTrial() {
 			WindowWidth:winW,
 			ScreenHeight:vertical,
 			ScreenWidth:horizontal
-		});	  
-	  
+		}); 
+
 		document.getElementById("assignmentId").value = aID;
 		document.getElementById("data").value = JSON.stringify(resultsobj);
 		document.getElementById("postdata").submit();	//Let's think about making this manual.
@@ -220,7 +223,7 @@ function endTrial() {
 }
 
 function pushData(rating) {
-	StimDone.push(imgFiles_new[trialNumber])
+	StimDone.push(imgFiles_new[trialNumber]);
 	response.push(rating);
 	trialDurations.push(trialEndTime - trialStartTime);
 }
@@ -229,7 +232,7 @@ function preload_resources() {
 	imgFiles_new = imgFiles.slice(startpoint*totalTrials, (startpoint+1)*totalTrials);
 	shuffle(imgFiles_new);
 
-	unlabeled_prototypes = ['http://s3.amazonaws.com/objectome32_final/nolabels/04_piano_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/22_acoustic_guitar_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/31_african_drums_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/antique_furniture_item_18_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/build51_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/bullfrog_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/calc01_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Colored_shirt_03M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Doctor_pose02_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/dromedary_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/face7_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/fast_food_23_1_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/flarenut_spanner_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/foreign_cat_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Hanger_02_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/household_aid_29_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_033_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_047_1_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_103_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_103_4_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_130_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/jewelry_29_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/kitchen_equipment_knife2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/laptop01_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/leaves16_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_ANT_RED_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_BEAR_BLK_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_CHICKDEE_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_DUCK_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_ELE_AS1_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_HRS_ARBN_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_RB_TROUT_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_RHINO_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TIGER_B_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TRANTULA_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TRTL_B_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB27346_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB27585_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB27780_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB28699_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB29346_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB29822_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB29874_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30071_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30203_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30758_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30798_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30850_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31015_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31188_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31405_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31620_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Nurse_pose01_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/pear_obj_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/pumpkin_3_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/single_pineapple_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Tie_06_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/trousers_03_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/weimaraner_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_halterneck_06_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_shorts_01M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_Skirt_02M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_stockings_01M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/zebra_nolabel.png']
+	unlabeled_prototypes = ['http://s3.amazonaws.com/objectome32_final/nolabels/04_piano_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/22_acoustic_guitar_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/31_african_drums_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/antique_furniture_item_18_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/build51_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/bullfrog_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/calc01_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Colored_shirt_03M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Doctor_pose02_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/dromedary_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/face7_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/fast_food_23_1_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/flarenut_spanner_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/foreign_cat_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Hanger_02_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/household_aid_29_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_033_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_047_1_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_103_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_103_4_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_130_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/jewelry_29_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/kitchen_equipment_knife2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/laptop01_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/leaves16_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_ANT_RED_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_BEAR_BLK_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_CHICKDEE_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_DUCK_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_ELE_AS1_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_HRS_ARBN_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_RB_TROUT_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_RHINO_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TIGER_B_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TRANTULA_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TRTL_B_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB27346_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB27585_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB27780_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB28699_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB29346_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB29822_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB29874_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30071_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30203_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30758_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30798_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30850_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31015_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31188_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31405_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31620_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Nurse_pose01_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/pear_obj_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/pumpkin_3_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/single_pineapple_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Tie_06_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/trousers_03_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/weimaraner_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_halterneck_06_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_shorts_01M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_Skirt_02M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_stockings_01M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/zebra_nolabel.png'];
 	shuffle(unlabeled_prototypes);
 
 	stimFiles = new Array();
@@ -241,7 +244,7 @@ function preload_resources() {
 
 $(document).ready(function() {
 	
-	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
+	$('#tutorial_original').hide(); $('#tutorial2').hide(); $('#tutorial3').hide();
 
 	$('.test').hide();
 	$('.fixation').hide();
@@ -253,7 +256,7 @@ $(document).ready(function() {
 		});
 		$('#begintask2').click(function() {
 			beginExp();
-		})
+		});
 	});
 
 	$("#tutorial").html($("#tutorial_original").html());
@@ -293,13 +296,13 @@ $(document).ready(function() {
 		<div align="center" id="buttons" name="buttons" style="position:relative; top:250px; z-index:3;">
 			<span id="adj_header" style="font-size:150%; font-weight:bold;"></span>
 			<p>
-			<span id="adj_text">How _____ was the object? (100 is very _____, 0 is not at all _____)</span>
+			<span id="adj_text">How _____ was the object?</span>
 			<br/>
 				<table align="center" border=0>
 					<tr>
 						<td>
 							<form id="sliderspace" style="visibility:visible;" method="get">
-							<div align="center" style="padding:5px; pointer-events:none;"><input style="visibility:visible;" id="sliderValue" type="Text" size="3" name="sliderValue" value="---"></div>
+							<div align="center" style="padding:5px; pointer-events:none;"><input style="visibility:visible;" id="sliderValue" type="Text" size="3" name="sliderValue"></div>
 							<script language="JavaScript">
 								var A_TPL = {
 									'b_vertical' : false,
@@ -314,7 +317,7 @@ $(document).ready(function() {
 									's_imgControl': 'https://s3.amazonaws.com/dlcommon/img/control_gray_500px.gif',
 									's_imgSlider': 'https://s3.amazonaws.com/dlcommon/img/sldr1v_sl_black.gif',
 									'n_zIndex': 1 
-								}
+								};
 								var A_INIT = {
 									's_form' : 0,
 									's_name': 'sliderValue',
@@ -322,7 +325,7 @@ $(document).ready(function() {
 									'n_maxValue' : 100,
 									'n_value' : 50,
 									'n_step' : 1
-								}
+								};
 								var sliderRef = new slider(A_INIT, A_TPL);
 							</script>
 							</form>
@@ -332,7 +335,7 @@ $(document).ready(function() {
 								&nbsp;
 							</div>
 							<div id="btnspace" align="center" style="padding:5px;">
-								<button id="nextTrial" onClick="whitescreen()" >Next Trial</button>
+								&nbsp;<button id="nextTrial" onClick="whitescreen()" >Next Trial</button>
 							</div>
 						</td>
 					</tr>
@@ -351,7 +354,7 @@ $(document).ready(function() {
 		</div>
 	</div>
 
-<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,							width:700,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
+<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,width:700,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
 <div id="tutorial" style="position:relative; z-index:-1"></div>
 <div id="tutorial_original" style="position:absolute; z-index:-1;">
 	<b>Please read these instructions carefully!</b>
