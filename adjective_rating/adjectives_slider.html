@@ -57,27 +57,26 @@ shuffle = function(o) {
 	return o;
 };
 
-function gup(name)
-{
-  name = name.replace(/[\[]/,"\[").replace(/[\]]/,"\]");
-  var regexS = "[\?&]"+name+"=([^&#]*)";
-  var regex = new RegExp( regexS );
-  var param = regex.exec( window.location.href );
-  if( param == null )
-    return "";
-  else
-    return param[1];
+function gup(name) {
+    name = name.replace(/[\[]/,"\\[").replace(/[\]]/,"\\]");
+    var regexS = "[\\?&]"+name+"=([^&#]*)";
+    var regex = new RegExp( regexS );
+    var results = regex.exec(window.location.href);
+    if (results === null)
+        return "";
+    else
+        return results[1];
 }
 
 function init_vars() {
 	begin = false;
 	zoom = DetectZoom.zoom();
 	aID = gup("assignmentId");
-	response = new Array();
-	trialDurations = new Array();
+	response = [];
+	trialDurations = [];
 	trialStartTime = new Date();
-	StimDone = new Array();
-	imgFiles_new = new Array();
+	StimDone = [];
+	imgFiles_new = [];
 	stimduration = 100;
 	ISI = 500;
 	trialNumber = 0;
@@ -235,7 +234,7 @@ function preload_resources() {
 	unlabeled_prototypes = ['http://s3.amazonaws.com/objectome32_final/nolabels/04_piano_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/22_acoustic_guitar_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/31_african_drums_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/antique_furniture_item_18_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/build51_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/bullfrog_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/calc01_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Colored_shirt_03M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Doctor_pose02_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/dromedary_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/face7_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/fast_food_23_1_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/flarenut_spanner_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/foreign_cat_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Hanger_02_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/household_aid_29_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_033_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_047_1_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_103_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_103_4_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_130_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/jewelry_29_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/kitchen_equipment_knife2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/laptop01_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/leaves16_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_ANT_RED_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_BEAR_BLK_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_CHICKDEE_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_DUCK_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_ELE_AS1_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_HRS_ARBN_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_RB_TROUT_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_RHINO_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TIGER_B_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TRANTULA_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TRTL_B_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB27346_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB27585_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB27780_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB28699_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB29346_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB29822_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB29874_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30071_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30203_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30758_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30798_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30850_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31015_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31188_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31405_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31620_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Nurse_pose01_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/pear_obj_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/pumpkin_3_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/single_pineapple_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Tie_06_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/trousers_03_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/weimaraner_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_halterneck_06_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_shorts_01M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_Skirt_02M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_stockings_01M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/zebra_nolabel.png'];
 	shuffle(unlabeled_prototypes);
 
-	stimFiles = new Array();
+	stimFiles = [];
 	for (i=0; i<imgFiles_new.length; i++) {
 		stimFiles.push(imgFiles_new[i][0]);
 	}
