@@ -132,6 +132,7 @@ function beginExp() {
 	$('#begintask').hide(); $('#_preload').hide(); $('#buttons').hide(); $('#begintask2').hide();
 	$('#startbuttons').empty();
 	$('#message').empty();
+	window.scrollTo(0, 0);   // hahong: make sure scroll to the top
 	$('.fixation').show();
 	var stim1 = imgFiles_new[trialNumber][0];
 	$('#main_test').attr('src', stim1);
@@ -176,6 +177,7 @@ function showResponse() {
 function whitescreen() {
 	if (begin) {
 		trialEndTime = new Date();
+		window.scrollTo(0, 0);   // hahong: make sure scroll to the top
 		$('#buttons').hide();
 		$('.fixation').show();
 		$('#main_test').show();
