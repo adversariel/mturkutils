@@ -18,13 +18,15 @@ import boto
 import csv
 from boto.pyami.config import Config
 
+MTURK_CRED_SECTION = 'MTurkCredentials'
+
 
 def parse_credentials_file(path=None, section_name='Credentials'):
     if path is None:
         path = os.path.expanduser('~/.boto')
     config = Config(path)
     assert config.has_section(section_name), \
-        'Field '+section_name+' not found in credentials file located at ' + path
+        'Field ' + section_name + ' not found in credentials file located at ' + path
     return config.get(section_name, 'aws_access_key_id'), config.get(section_name, 'aws_secret_access_key')
 
 
@@ -69,11 +71,11 @@ class experiment(object):
     def __init__(self, sandbox=True, keywords=None, lifetime=1209600,
                  max_assignments=1, title='TEST', reward=0.01, duration=1500, approval_delay=172800,
                  description='TEST', frame_height_pix=1000, comment='TEST', collection_name='TEST', meta=None,
-                 LOG_PREFIX='./'):
+                 LOG_PREFIX='./', section_name=MTURK_CRED_SECTION):
         if keywords is None:
             keywords = ['']
         self.sandbox = sandbox
-        self.access_key_id, self.secretkey = parse_credentials_file(section_name='MTurkCredentials')
+        self.access_key_id, self.secretkey = parse_credentials_file(section_name=section_name)
         self.keywords = keywords
         self.lifetime = lifetime
         self.max_assignments = max_assignments
@@ -84,6 +86,7 @@ class experiment(object):
         self.description = description
         self.frame_height_pix = frame_height_pix
         self.LOG_PREFIX = LOG_PREFIX
+        self.section_name = section_name
         self.setQual(90)
 
         self.setMongoVars(collection_name, comment, meta)
@@ -394,7 +397,7 @@ class experiment(object):
             print(url)
             raise ValueError('Stimulus name not recognized. Is it a URL?')
 
-    def uploadHTML(self, filelist, bucketname, verbose=True):
+    def uploadHTML(self, filelist, bucketname, verbose=True, section_name=None):
         """
         Pass a list of paths to the files you want to upload (or the filenames themselves in you're already
         in the directory) and the name of a bucket as a string. If the bucket does not exist, a new one will be created.
@@ -403,8 +406,16 @@ class experiment(object):
 
         Sub-directories within the bucket are not yet supported.
         """
+        if section_name is None:
+            # section_name is provided to give flexibility of
+            # using different accounts
+            section_name = self.section_name
+            accesskey, secretkey = self.access_key_id, self.secretkey
+        else:
+            accesskey, secretkey = parse_credentials_file(section_name=section_name)
+
         try:
-            conn = S3Connection()
+            conn = S3Connection(accesskey, secretkey)
         except boto.exception.S3ResponseError:
             print('Could not establish an S3 conection. Is your account properly configured?')
             return
@@ -532,3 +543,30 @@ def SONify(arg, memo=None):
         raise TypeError('SONify', arg)
     memo[id(rval)] = rval
     return rval
+
+
+def uploader(srcfiles, bucketname, dstprefix='', section_name=MTURK_CRED_SECTION,
+        test=True, verbose=False):
+    """Upload multiple files into a S3 bucket"""
+    accesskey, secretkey = parse_credentials_file(section_name=section_name)
+    conn = S3Connection(accesskey, secretkey)
+    bucket = conn.get_bucket(bucketname)
+    for i_fn, fn in enumerate(srcfiles):
+        # upload
+        key_dst = dstprefix + os.path.basename(fn)
+        k = Key(bucket)
+        k.key = key_dst
+        k.set_contents_from_filename(fn)
+        k.close()
+        bucket.set_acl('public-read', key_dst)
+
+        # download and check... although this is a bit redundant
+        if test:
+            k = Key(bucket)
+            k.key = key_dst
+            s = k.get_contents_as_string()
+            k.close()
+            assert s == open(fn).read()
+
+        if verbose and i_fn % verbose == 0:
+            print 'At:', i_fn, 'out of', len(srcfiles)
