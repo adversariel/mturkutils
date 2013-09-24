@@ -58,7 +58,8 @@ class experiment(object):
     Non-MTurk Parameters
     - comment: Explanation of the task and data format to be included in the database for this experiment. The
         description should be adequate for future investigators to understand what you did and what the data means.
-    - collection_name: String, name of collection within the 'mturk' dicarlo2 database.
+    - collection_name: String, name of collection within the 'mturk' dicarlo2 database.  If `None`, no DB connection
+        will be made.
     - meta (optional): Tabarray or dictionary to link stimulus names with their metadata. There's some work to be done
         with this feature. Right now, mturkutils extracts image filenames from 'StimShown' and looks up metadata in meta
         by that filename. For speed, it re-sorts any tabarray into a dictionary indexed by the original 'id' field.
@@ -103,7 +104,8 @@ class experiment(object):
         Establishes connection to database on dicarlo2.
 
         :param collection_name: You must specify a valid collection name. If it does not already exist, a new collection
-            with that name will be created in the mturk database.
+            with that name will be created in the mturk database.  If `None` is given, the actual db coonection will
+            be bypassed, and all db-related functions will not work.
         :param comment: Explanation of the task and data format to be included in the database for this experiment. The
             description should be adequate for future investigators to understand what you did and what the data means.
         :param meta: You can optionally provide a metadata object, which will be converted into a dictionary indexed by
@@ -113,9 +115,7 @@ class experiment(object):
         self.collection_name = collection_name
         self.comment = comment
 
-        if meta is None:
-            self.meta = meta
-        elif type(meta) != dict:
+        if 'tabarray' in type(meta).__name__:
             print('Converting tabarray to dictionary for speed. This may take a minute...')
             self.meta = convertTabArrayToDict(meta)
         else:
@@ -124,13 +124,21 @@ class experiment(object):
         if len(self.comment) == 0 or self.comment is None:
             raise AttributeError('Must provide comment!')
 
+        # if no db connection is requested, bypass the rest
+        if collection_name is None:
+            self.mongo_conn = None
+            self.db = None
+            self.collection = None
+            return
+
+        # make db connection and create collection
         if (type(self.collection_name) != str and type(self.collection_name) is not None) or \
                 (len(self.collection_name) == 0 and type(self.collection_name) == str):
             raise NameError('Please provide a valid MTurk database collection name.')
 
         #Connect to pymongo database for MTurk results.
         self.mongo_conn = pymongo.Connection(port=22334, host='localhost')
-        self.db = self.mongo_conn.mturk
+        self.db = self.mongo_conn['mturk']
         self.collection = self.db[collection_name]
 
     def connect(self):
@@ -165,13 +173,13 @@ class experiment(object):
         qual.add(req)
         return qual
 
-    def createHIT(self, URLlist=None, verbose=True):
+    def createHIT(self, URLlist=None, verbose=True, hitidslog=None):
         """
         - Pass a list of URLs (check that they work first!) for each one to be published as a HIT. If you've used
             mturkutils to upload HTML, those (self.URLs) will be used by default.
         - This function returns a list of HIT IDs which can be used to collect data later. Those IDs are stored in
             'self.hitids'.
-        - The HITids are also stored in a pickle file saved to LOG_PREFIX.
+        - The HITids are also stored in a pickle file saved to LOG_PREFIXi or, if given, `hitidslog`.
         """
         if URLlist is None:
             URLlist = self.URLs
@@ -211,8 +219,11 @@ class experiment(object):
 
             if verbose:
                 print(str(urlnum) + ': ' + url + ', ' + self.hitids[-1])
-        file_string = self.LOG_PREFIX + str(self.htypid) + '_' + str(datetime.datetime.now()) + '.pkl'
-        file_string = file_string.replace(' ', '_')
+        if hitidslog is None:
+            file_string = self.LOG_PREFIX + str(self.htypid) + '_' + str(datetime.datetime.now()) + '.pkl'
+            file_string = file_string.replace(' ', '_')
+        else:
+            file_string = hitidslog
         pk.dump(self.hitids, file(file_string, 'wb'))
         return self.hitids
 
@@ -223,6 +234,10 @@ class experiment(object):
         - Also stores data in object variable 'all_data' for immediate use. This might be dangerous for MH17's memory.
         - Even if you've already gotten some HITs, this will try to get them again anyway. Maybe later I'll fix this.
         """
+        if self.mongo_conn is None:
+            print('**NO DB CONNECTION**')
+            return 
+
         self.all_data = []
         if self.sandbox:
             print('**WORKING IN SANDBOX MODE**')
@@ -272,6 +287,10 @@ class experiment(object):
         - Also stores data in object variable 'all_data' for immediate use.
         - Even if you've already gotten some HITs, this will get them again anyway. Maybe later I'll fix this.
         """
+        if self.mongo_conn is None:
+            print('**NO DB CONNECTION**')
+            return 
+
         self.all_data = []
         if self.sandbox:
             print('**WORKING IN SANDBOX MODE**')
