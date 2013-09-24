@@ -397,7 +397,7 @@ class experiment(object):
             print(url)
             raise ValueError('Stimulus name not recognized. Is it a URL?')
 
-    def uploadHTML(self, filelist, bucketname, verbose=True, section_name=None):
+    def uploadHTML(self, filelist, bucketname, dstprefix='', verbose=10, section_name=None, test=True):
         """
         Pass a list of paths to the files you want to upload (or the filenames themselves in you're already
         in the directory) and the name of a bucket as a string. If the bucket does not exist, a new one will be created.
@@ -410,38 +410,20 @@ class experiment(object):
             # section_name is provided to give flexibility of
             # using different accounts
             section_name = self.section_name
-            accesskey, secretkey = self.access_key_id, self.secretkey
-        else:
-            accesskey, secretkey = parse_credentials_file(section_name=section_name)
 
-        try:
-            conn = S3Connection(accesskey, secretkey)
-        except boto.exception.S3ResponseError:
-            print('Could not establish an S3 conection. Is your account properly configured?')
-            return
-        try:
-            bucket = conn.get_bucket(bucketname)
-        except boto.exception.S3ResponseError:
-            print('Bucket does not exist, creating a new bucket...')
-            bucket = conn.create_bucket(bucketname)
+        keys = uploader(filelist, bucketname, dstprefix=dstprefix,
+                section_name=section_name, test=test, verbose=verbose)
 
         urls = []
-        for idx, f in enumerate(filelist):
-            k = Key(bucket)
-            k.key = f.split('/')[-1]
-            k.set_contents_from_filename(f)
-            bucket.set_acl('public-read', k.key)
-            urls.append('http://s3.amazonaws.com/' + bucketname + '/' + k.key)
-            if verbose:
+        for idx, (k, f) in enumerate(zip(keys, filelist)):
+            urls.append('http://s3.amazonaws.com/' + bucketname + '/' + k)
+            if verbose > 0:
                 print str(idx) + ': ' + f
-
         self.URLs = urls
         return urls
 
 
-        #Some helper functions that are not a part of an experiment object.
-
-
+# -- Some helper functions that are not a part of an experiment object.
 def parse_human_data(datafile):
     csv.field_size_limit(10000000000)
     count = 0
@@ -546,11 +528,24 @@ def SONify(arg, memo=None):
 
 
 def uploader(srcfiles, bucketname, dstprefix='', section_name=MTURK_CRED_SECTION,
-        test=True, verbose=False):
+        test=True, verbose=False, accesskey=None, secretkey=None):
     """Upload multiple files into a S3 bucket"""
-    accesskey, secretkey = parse_credentials_file(section_name=section_name)
-    conn = S3Connection(accesskey, secretkey)
-    bucket = conn.get_bucket(bucketname)
+    if accesskey is None or secretkey is None:
+        accesskey, secretkey = parse_credentials_file(section_name=section_name)
+
+    # -- establish connections
+    try:
+        conn = S3Connection(accesskey, secretkey)
+    except boto.exception.S3ResponseError:
+        raise ValueError('Could not establish an S3 conection. Is your account properly configured?')
+    try:
+        bucket = conn.get_bucket(bucketname)
+    except boto.exception.S3ResponseError:
+        print('Bucket does not exist, creating a new bucket...')
+        bucket = conn.create_bucket(bucketname)
+
+    # -- upload files
+    keys = []
     for i_fn, fn in enumerate(srcfiles):
         # upload
         key_dst = dstprefix + os.path.basename(fn)
@@ -567,6 +562,9 @@ def uploader(srcfiles, bucketname, dstprefix='', section_name=MTURK_CRED_SECTION
             s = k.get_contents_as_string()
             k.close()
             assert s == open(fn).read()
+        keys.append(key_dst)
 
         if verbose and i_fn % verbose == 0:
             print 'At:', i_fn, 'out of', len(srcfiles)
+
+    return keys
