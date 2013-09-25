@@ -6,6 +6,7 @@ TSPREP=timestamp_prep.log
 TSTEST=timestamp_test.log
 TSUPLOAD=timestamp_upload.log
 TSSANDBOX=timestamp_sandbox.log
+TSPRODUCT=timestamp_production.log
 DEPSCRIPT=
 
 ifeq ($(CHKSCRIPT), 1)
@@ -29,6 +30,10 @@ upload: $(TMPDIR)/$(TSUPLOAD)
 $(TMPDIR)/$(TSSANDBOX): $(DEPSCRIPT) $(TMPDIR)/$(TSUPLOAD)
 	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSSANDBOX) $(PYTHON) $(SCRIPT) sandbox
 sandbox: $(TMPDIR)/$(TSSANDBOX)
+	
+$(TMPDIR)/$(TSPRODUCT): $(DEPSCRIPT) $(TMPDIR)/$(TSUPLOAD)
+	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSPRODUCT) $(PYTHON) $(SCRIPT) production
+production: $(TMPDIR)/$(TSPRODUCT)
 	
 clean:
 	rm -rf tmp/
