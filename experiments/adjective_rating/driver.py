@@ -127,7 +127,7 @@ def publish(sandbox=True):
         max_assignments=1,
         title='Visual judgment',
         reward=0.35, duration=1500,
-        description="***You may complete as many HITs in this group as you want.*** Complete an visual object judgment task where you report the amount of certain properties of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment.",  # noqa
+        description="***You may complete as many HITs in this group as you want.*** Complete a visual object judgment task where you report the amount of certain properties of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment.",  # noqa
         comment="objectome_adj_slider task.  For each object (64 total) and selected adjective (13 total), there are 50 reps where subjects report 1 to 100 ratings.",  # noqa
         collection_name=None,   # disables db connection
         meta=None,
