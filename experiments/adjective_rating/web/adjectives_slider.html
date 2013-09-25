@@ -270,7 +270,7 @@ $(document).ready(function() {
 	$("#tutorial").html($("#tutorial_original").html());
 	$("#tutorial").dialog({height:700,
 		width:700,
-		position:"center",
+		position: ['middle', 20], //"center", hahong: no center to hide all buttons
 		title:"Instructions"
 	});
 
@@ -297,7 +297,7 @@ $(document).ready(function() {
 		</div>
 		<div style="position:absolute; top:160px; left:50%">
 			<div align="center" id="message" style="position:relative; left:-50%; width:450px;">
-				Hello MTurk workers! If you've done my object recognition HITs before, <u><span onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700, width:700, position:'center',title:'Instructions'})" style="cursor:pointer;">be sure to read the instructions here carefully</span></u>. This is a *new* HIT with *different* instructions. If you don't read them, you may do the task improperly and your work will be rejected.
+				Hello MTurk workers! If you've done my object recognition HITs before, <u><span onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700, width:700, position:['middle', 20],title:'Instructions'})" style="cursor:pointer;">be sure to read the instructions here carefully</span></u>. This is a *new* HIT with *different* instructions. If you don't read them, you may do the task improperly and your work will be rejected.
 			</div>
 		</div>
 		<div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
@@ -363,7 +363,7 @@ $(document).ready(function() {
 		</div>
 	</div>
 
-<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,width:700,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
+<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,width:700,position:['middle', 20],title:'Instructions'})"><u>View Instructions</u></div>
 <div id="tutorial" style="position:relative; z-index:-1"></div>
 <div id="tutorial_original" style="position:absolute; z-index:-1;">
 	<b>Please read these instructions carefully!</b>

@@ -228,6 +228,13 @@ class experiment(object):
         pk.dump(self.hitids, file(file_string, 'wb'))
         return self.hitids
 
+    def disableHIT(self, hitids=None):
+        """Disable published HITs"""
+        if hitids is None:
+            hitids = self.hitids
+        for hitid in hitids:
+            self.conn.disable_hit(hitid)
+
     def updateDBcore(self, datafile=None, verbose=False):
         """See the documentation of updateDBwithHITs() and updateDBwithHITslocal()"""
         # XXX: hahong: is the support for datafile implemented correctly??
