@@ -1,11 +1,10 @@
 import mturkutils as mt
+import mturkutils.utils as ut
 import cPickle as pk
 import numpy as np
 import sys
 import os
 import dldata.human_data.roschlib as rl
-import json
-import shutil as sh
 import time
 import glob
 
@@ -22,12 +21,7 @@ TMPDIR_SANDBOX = os.path.join(TMPDIR, SANDBOXPATH)
 # patterns for string manipulation
 HTMLSRC = 'web/adjectives_slider.html'
 HTMLDST = 'adjectives_slider_n%04d.html'
-REPLSRC = 'imgFiles = [];'
-REPLDST = 'imgFiles = %s;'
-TESTPATT = 'imgFiles = '
 OTHERSRC = ['web/adj_dict.js']
-SUBMITURL = 'https://www.mturk.com/mturk/externalSubmit'
-SANDBOXURL = 'https://workersandbox.mturk.com/mturk/externalSubmit'
 
 # other constants
 ADJS = ['light', 'bulbous', 'boxy', 'curly', 'globular', 'disc-like',
@@ -45,7 +39,7 @@ def prep(n_reps=50, n_trials_per_chunk=100, with_repl=False, same_across=True,
     models64 = rl.ps64_models
     assert len(models64) == nc_objs
 
-    # -- prep trias
+    # -- make trials
     print '* Creating trials...'
     rng = np.random.RandomState(rseed)
     trials = []
@@ -76,67 +70,41 @@ def prep(n_reps=50, n_trials_per_chunk=100, with_repl=False, same_across=True,
                 trials.append([imgurl, adj])
     assert len(trials) % n_trials_per_chunk == 0
 
-    # -- main work
+    # -- prep files
     print '* Writing files...'
     rng = np.random.RandomState(rseed + 1)
     rng.shuffle(trials)
 
-    # process html first
-    mkdirs(TMPDIR_PRODUCTION)
-    mkdirs(TMPDIR_SANDBOX)
+    for label, rules, dstdir in [
+            ('sandbox', ut.PREP_RULE_SIMPLE_RSVP_SANDBOX, TMPDIR_SANDBOX),
+            ('production', ut.PREP_RULE_SIMPLE_RSVP_PRODUCTION,
+                TMPDIR_PRODUCTION)]:
+        print '  ->', label
+        ut.prep_web_simple(trials, HTMLSRC, dstdir, dstpatt=HTMLDST,
+                rules=rules, auxfns=OTHERSRC,
+                n_per_file=100, verbose=True)
 
-    html_src = open(HTMLSRC, 'rt').read()   # entire file content
-    assert html_src.count(REPLSRC) == 1
-    assert html_src.count(SUBMITURL) == 1
-
-    for i_chunk, chunk in enumerate(chunker(trials, n_trials_per_chunk)):
-        if i_chunk % 100 == 0:
-            print '    At:', i_chunk
-
-        html_dst = html_src.replace(REPLSRC, REPLDST % json.dumps(chunk))
-        dst_fn = HTMLDST % i_chunk
-        open(os.path.join(TMPDIR_PRODUCTION, dst_fn), 'wt').write(html_dst)
-        html_dst = html_dst.replace(SUBMITURL, SANDBOXURL)
-        open(os.path.join(TMPDIR_SANDBOX, dst_fn), 'wt').write(html_dst)
-
-    # -- done main work
-    # copy all necessary files
-    for fn in OTHERSRC:
-        sh.copy(fn, TMPDIR_PRODUCTION)
-        sh.copy(fn, TMPDIR_SANDBOX)
-
-    # save the trials and put the timestamp
+    # save trials for future reference
     pk.dump(trials, open(os.path.join(TMPDIR, TRIALS), 'wb'))
-    timestamp()
 
 
 def test():
     """Test and validates the written html files"""
     trials_org = pk.load(open(os.path.join(TMPDIR, TRIALS)))
 
-    def test_core(pth, assert_occurances=None):
-        trials = []
-        for fn in sorted(glob.glob(os.path.join(pth, '*.html'))):
-            # pass 1
-            html = open(fn).read()
-            if assert_occurances is not None:
-                for patt in assert_occurances:
-                    assert html.count(patt) == assert_occurances[patt]
-            # pass 2
-            html = open(fn).readlines()
-            html = [e for e in html if TESTPATT in e]
-            assert len(html) == 1
-            html = html[0]
-            trials0 = html.split(TESTPATT)[-1].split(';')[0]
-            trials0 = json.loads(trials0)
-            trials.extend(trials0)
-        assert trials_org == trials
+    fns_sandbox = sorted(glob.glob(os.path.join(
+        TMPDIR_SANDBOX, '*.html')))
+    fns_production = sorted(glob.glob(os.path.join(
+        TMPDIR_PRODUCTION, '*.html')))
 
     print '* Testing sandbox...'
-    test_core(TMPDIR_SANDBOX, {SANDBOXURL: 1})
+    ut.validate_html_files(fns_sandbox,
+            rules=ut.PREP_RULE_SIMPLE_RSVP_SANDBOX,
+            trials_org=trials_org)
     print '* Testing production...'
-    test_core(TMPDIR_PRODUCTION, {SUBMITURL: 1})
-    timestamp()
+    ut.validate_html_files(fns_production,
+            rules=ut.PREP_RULE_SIMPLE_RSVP_PRODUCTION,
+            trials_org=trials_org)
 
 
 def upload():
@@ -150,22 +118,26 @@ def upload():
     fns = glob.glob(os.path.join(TMPDIR_PRODUCTION, '*.*'))
     mt.uploader(fns, S3BUCKET, dstprefix=PRODUCTIONPATH + '/', test=True,
             verbose=10)
-    timestamp()
+
+
+def sandbox():
+    """Publish to the sandbox"""
+    exp = mt.experiment(sandbox=True, keywords=['neuroscience', 'psychology',
+        'experiment', 'object recognition'], max_assignments=1,
+        title='Visual judgment',
+        reward=0.35, duration=1500,
+        description="***You may complete as many HITs in this group as you want.*** Complete an object recognition task where you report the categories of objects you see. We expect this HIT to take about 5 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment.",  # noqa
+        comment="ImageNet16 task. Same as the original objectome64 task, except now stimulus images are from 16 ImageNet categories. For each of 16 choose 2 pairs there are 500 presentations (250 per object).",  # noqa
+        collection_name=None,   # disables db connection
+        meta=None,
+        )
 
 
 # -- helper funcs
-def chunker(seq, size):
-    return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
-
-
 def timestamp(tsvar=TSTAMP):
+    """Put a time stamp.  Mainly for Makefile support."""
     if tsvar is not None:
         open(os.path.join(TMPDIR, tsvar), 'wt').write(str(time.time()))
-
-
-def mkdirs(pth):
-    if not os.path.exists(pth):
-        os.makedirs(pth)
 
 
 def main(argv):
@@ -183,6 +155,7 @@ def main(argv):
         print 'Bad arguments'
         return 1
 
+    timestamp()
     print '* Done.'
     return 0
 
