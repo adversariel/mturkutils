@@ -247,7 +247,7 @@ class experiment(object):
             if datafile is None:
                 sdata = self.getHITdata(hitid)
             else:
-                sdata = parse_human_data(datafile)
+                sdata = parse_human_data(datafile)   # XXX: hahong: seems that this part is broken (Issue #1)
             self.all_data.extend(sdata)
             if col is None:
                 continue
