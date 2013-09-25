@@ -1,0 +1,34 @@
+PYTHON=python
+TMPDIR=tmp
+WEBDIR=web
+SCRIPT=driver.py
+TSPREP=timestamp_prep.log
+TSTEST=timestamp_test.log
+TSUPLOAD=timestamp_upload.log
+TSSANDBOX=timestamp_sandbox.log
+DEPSCRIPT=
+
+ifeq ($(CHKSCRIPT), 1)
+	DEPSCRIPT=$(SCRIPT)
+endif
+
+all: prep test upload
+	
+$(TMPDIR)/$(TSPREP): $(DEPSCRIPT) $(WEBDIR)/adjectives_slider.html
+	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSPREP) $(PYTHON) $(SCRIPT) prep
+prep: $(TMPDIR)/$(TSPREP)
+	
+$(TMPDIR)/$(TSTEST): $(DEPSCRIPT) $(TMPDIR)/$(TSPREP)
+	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSTEST) $(PYTHON) $(SCRIPT) test
+test: $(TMPDIR)/$(TSTEST)
+	
+$(TMPDIR)/$(TSUPLOAD): $(DEPSCRIPT) $(TMPDIR)/$(TSTEST)
+	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSUPLOAD) $(PYTHON) $(SCRIPT) upload
+upload: $(TMPDIR)/$(TSUPLOAD)
+	
+$(TMPDIR)/$(TSSANDBOX): $(DEPSCRIPT) $(TMPDIR)/$(TSUPLOAD)
+	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSSANDBOX) $(PYTHON) $(SCRIPT) sandbox
+sandbox: $(TMPDIR)/$(TSSANDBOX)
+	
+clean:
+	rm -rf tmp/

@@ -38,7 +38,7 @@
 	}
 </style>
 
-<link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+<link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css" />
 <script type="text/javascript" src="http://code.jquery.com/jquery-1.8.0.min.js"></script>
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="http://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
@@ -47,10 +47,10 @@
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/slider-1.0.2.js"></script>
 
-<script type="text/javascript" src="https://s3.amazonaws.com/objectome_adjectives/pilot_slider_list.js"></script>
 <script type="text/javascript" src="adj_dict.js"></script>
-
 <script type="text/javascript">
+
+imgFiles = [];
 
 shuffle = function(o) { 
 	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x = o[--i], o[i] = o[j], o[j] = x);
@@ -80,7 +80,7 @@ function init_vars() {
 	stimduration = 100;
 	ISI = 500;
 	trialNumber = 0;
-	totalTrials = 100;
+	totalTrials = imgFiles.length;  // 100;
 	startpoint = 0;
 	exp_type = "adjectives_slider";
 	did_famil = false;
@@ -89,28 +89,34 @@ function init_vars() {
 function familiar() {
 	did_famil = true;
 	$('#begintask').hide(); $('#_preload').hide(); $('#buttons').hide(); $('#startbuttons').hide();
-	$('.test').show(); $('#second_test').hide();
+	$('.test').show();
 	$('#message').empty();
-	var i = 0;
-	var f = setInterval(function() {
-		console.log(i);
-		$('#main_test').attr('src', unlabeled_prototypes[i]);
-		i++;
-		console.log('New image');
-		if (i == unlabeled_prototypes.length) {
+	$('#main_test').show();
+	var ii = 0;
+	var id_familar = setInterval(function() {
+		console.log(ii);
+		if (ii < unlabeled_prototypes.length) {
+			console.log(unlabeled_prototypes[ii]);
+			$('#main_test').attr('src', unlabeled_prototypes[ii]);
+			console.log('New image');
+			ii++;
+			$('#img_caption').html(ii.toString() + ' / ' + unlabeled_prototypes.length.toString());
+		}
+		else {
+			clearInterval(id_familar);
+
 			$('#startbuttons p').remove();
 			$('#begintask2').hide();
+			$('#img_caption').html('');
 			$('.test').hide();
 			
-			for (i=0; i < unlabeled_prototypes.length; i++) {
-				$('#main').append('<a href="'+unlabeled_prototypes[i]+'" class="preview"><img src="'+unlabeled_prototypes[i]+'" style="float:none; padding:10px; height:100px; width:100px;" /></a>');	
+			for (ii=0; ii < unlabeled_prototypes.length; ii++) {
+				$('#main').append('<a href="'+unlabeled_prototypes[ii]+'" class="preview"><img src="'+unlabeled_prototypes[ii]+'" style="float:none; padding:10px; height:100px; width:100px;" /></a>');	
 			}
 			$('#main').append('<div id="dvi" style="position:absolute; top:5px; left:50%;""><button style="position:relative; left:-50%;" onclick="end_familiarization()">Done Viewing Images</button></div>');
 			$.getScript('http://s3.amazonaws.com/objectome_html/subj_similarity_tooltip.js');
 			$('.preview').click(function(event) {event.preventDefault();});
-			clearInterval(f);
 		}
-		else {}
 	}, 1000);
 	return;
 }
@@ -123,6 +129,7 @@ function end_familiarization() {
 		beginExp();
 	}).html('Begin Experiment');
 	$('#startbuttons').show();
+	totalTrials = 100;
 	$('#buttons').show();
 }
 
@@ -230,7 +237,7 @@ function pushData(rating) {
 }
 
 function preload_resources() {
-	imgFiles_new = imgFiles.slice(startpoint*totalTrials, (startpoint+1)*totalTrials);
+	imgFiles_new = imgFiles;
 	shuffle(imgFiles_new);
 
 	unlabeled_prototypes = ['http://s3.amazonaws.com/objectome32_final/nolabels/04_piano_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/22_acoustic_guitar_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/31_african_drums_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/antique_furniture_item_18_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/build51_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/bullfrog_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/calc01_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Colored_shirt_03M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Doctor_pose02_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/dromedary_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/face7_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/fast_food_23_1_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/flarenut_spanner_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/foreign_cat_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Hanger_02_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/household_aid_29_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_033_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_047_1_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_103_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_103_4_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/interior_details_130_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/jewelry_29_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/kitchen_equipment_knife2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/laptop01_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/leaves16_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_ANT_RED_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_BEAR_BLK_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_CHICKDEE_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_DUCK_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_ELE_AS1_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_HRS_ARBN_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_RB_TROUT_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_RHINO_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TIGER_B_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TRANTULA_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TRTL_B_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB27346_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB27585_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB27780_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB28699_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB29346_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB29822_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB29874_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30071_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30203_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30758_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30798_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB30850_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31015_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31188_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31405_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/MB31620_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Nurse_pose01_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/pear_obj_2_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/pumpkin_3_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/single_pineapple_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/Tie_06_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/trousers_03_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/weimaraner_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_halterneck_06_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_shorts_01M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_Skirt_02M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/womens_stockings_01M_nolabel.png', 'http://s3.amazonaws.com/objectome32_final/nolabels/zebra_nolabel.png'];
@@ -298,7 +305,7 @@ $(document).ready(function() {
 			<span id="adj_header" style="font-size:150%; font-weight:bold;"></span>
 			<p>
 			<span id="adj_text">How _____ was the object?</span>
-			<br/>
+			<br />
 				<table align="center" border=0>
 					<tr>
 						<td>
@@ -341,14 +348,15 @@ $(document).ready(function() {
 						</td>
 					</tr>
 				</table>
-			<br/><span id="trialCounter"></span>
+			<br /><span id="trialCounter"></span>
 		</div>
 		<div class="fixation" align="center" style="position:relative; z-index:2; top:225px; left:0px;">
 			<img id="fixation_dot" src="http://s3.amazonaws.com/human_training/fixation.png" />
 		</div>
 		<div class="test" align="center" style="position:relative; z-index:1; top:200px; left:0px;">
 			<div style="position:relative; top:0px; left:0px; z-index:1;">
-				<img id="main_test" src="" height=360 width=360  border=0/>
+				<img id="main_test" src="" height=360 width=360  border=0 />
+				<p><span id="img_caption"> </span></p>
 			</div>
 			<div style="position:relative; top:0px; left:0px; z-index:-1;">
 			</div>

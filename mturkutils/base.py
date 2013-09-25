@@ -18,13 +18,16 @@ import boto
 import csv
 from boto.pyami.config import Config
 
+MTURK_CRED_SECTION = 'MTurkCredentials'
+BOTO_CRED_FILE = os.path.expanduser('~/.boto')
+
 
 def parse_credentials_file(path=None, section_name='Credentials'):
     if path is None:
-        path = os.path.expanduser('~/.boto')
+        path = BOTO_CRED_FILE
     config = Config(path)
     assert config.has_section(section_name), \
-        'Field '+section_name+' not found in credentials file located at ' + path
+        'Field ' + section_name + ' not found in credentials file located at ' + path
     return config.get(section_name, 'aws_access_key_id'), config.get(section_name, 'aws_secret_access_key')
 
 
@@ -56,7 +59,8 @@ class experiment(object):
     Non-MTurk Parameters
     - comment: Explanation of the task and data format to be included in the database for this experiment. The
         description should be adequate for future investigators to understand what you did and what the data means.
-    - collection_name: String, name of collection within the 'mturk' dicarlo2 database.
+    - collection_name: String, name of collection within the 'mturk' dicarlo2 database.  If `None`, no DB connection
+        will be made.
     - meta (optional): Tabarray or dictionary to link stimulus names with their metadata. There's some work to be done
         with this feature. Right now, mturkutils extracts image filenames from 'StimShown' and looks up metadata in meta
         by that filename. For speed, it re-sorts any tabarray into a dictionary indexed by the original 'id' field.
@@ -69,11 +73,11 @@ class experiment(object):
     def __init__(self, sandbox=True, keywords=None, lifetime=1209600,
                  max_assignments=1, title='TEST', reward=0.01, duration=1500, approval_delay=172800,
                  description='TEST', frame_height_pix=1000, comment='TEST', collection_name='TEST', meta=None,
-                 LOG_PREFIX='./'):
+                 LOG_PREFIX='./', section_name=MTURK_CRED_SECTION):
         if keywords is None:
             keywords = ['']
         self.sandbox = sandbox
-        self.access_key_id, self.secretkey = parse_credentials_file(section_name='MTurkCredentials')
+        self.access_key_id, self.secretkey = parse_credentials_file(section_name=section_name)
         self.keywords = keywords
         self.lifetime = lifetime
         self.max_assignments = max_assignments
@@ -84,6 +88,7 @@ class experiment(object):
         self.description = description
         self.frame_height_pix = frame_height_pix
         self.LOG_PREFIX = LOG_PREFIX
+        self.section_name = section_name
         self.setQual(90)
 
         self.setMongoVars(collection_name, comment, meta)
@@ -100,7 +105,8 @@ class experiment(object):
         Establishes connection to database on dicarlo2.
 
         :param collection_name: You must specify a valid collection name. If it does not already exist, a new collection
-            with that name will be created in the mturk database.
+            with that name will be created in the mturk database.  If `None` is given, the actual db coonection will
+            be bypassed, and all db-related functions will not work.
         :param comment: Explanation of the task and data format to be included in the database for this experiment. The
             description should be adequate for future investigators to understand what you did and what the data means.
         :param meta: You can optionally provide a metadata object, which will be converted into a dictionary indexed by
@@ -110,9 +116,7 @@ class experiment(object):
         self.collection_name = collection_name
         self.comment = comment
 
-        if meta is None:
-            self.meta = meta
-        elif type(meta) != dict:
+        if 'tabarray' in type(meta).__name__:
             print('Converting tabarray to dictionary for speed. This may take a minute...')
             self.meta = convertTabArrayToDict(meta)
         else:
@@ -121,13 +125,21 @@ class experiment(object):
         if len(self.comment) == 0 or self.comment is None:
             raise AttributeError('Must provide comment!')
 
+        # if no db connection is requested, bypass the rest
+        if collection_name is None:
+            self.mongo_conn = None
+            self.db = None
+            self.collection = None
+            return
+
+        # make db connection and create collection
         if (type(self.collection_name) != str and type(self.collection_name) is not None) or \
                 (len(self.collection_name) == 0 and type(self.collection_name) == str):
             raise NameError('Please provide a valid MTurk database collection name.')
 
         #Connect to pymongo database for MTurk results.
         self.mongo_conn = pymongo.Connection(port=22334, host='localhost')
-        self.db = self.mongo_conn.mturk
+        self.db = self.mongo_conn['mturk']
         self.collection = self.db[collection_name]
 
     def connect(self):
@@ -162,13 +174,13 @@ class experiment(object):
         qual.add(req)
         return qual
 
-    def createHIT(self, URLlist=None, verbose=True):
+    def createHIT(self, URLlist=None, verbose=True, hitidslog=None):
         """
         - Pass a list of URLs (check that they work first!) for each one to be published as a HIT. If you've used
             mturkutils to upload HTML, those (self.URLs) will be used by default.
         - This function returns a list of HIT IDs which can be used to collect data later. Those IDs are stored in
             'self.hitids'.
-        - The HITids are also stored in a pickle file saved to LOG_PREFIX.
+        - The HITids are also stored in a pickle file saved to LOG_PREFIXi or, if given, `hitidslog`.
         """
         if URLlist is None:
             URLlist = self.URLs
@@ -208,10 +220,65 @@ class experiment(object):
 
             if verbose:
                 print(str(urlnum) + ': ' + url + ', ' + self.hitids[-1])
-        file_string = self.LOG_PREFIX + str(self.htypid) + '_' + str(datetime.datetime.now()) + '.pkl'
-        file_string = file_string.replace(' ', '_')
+        if hitidslog is None:
+            file_string = self.LOG_PREFIX + str(self.htypid) + '_' + str(datetime.datetime.now()) + '.pkl'
+            file_string = file_string.replace(' ', '_')
+        else:
+            file_string = hitidslog
         pk.dump(self.hitids, file(file_string, 'wb'))
         return self.hitids
+
+    def updateDBcore(self, datafile=None, verbose=False):
+        """See the documentation of updateDBwithHITs() and updateDBwithHITslocal()"""
+        # XXX: hahong: is the support for datafile implemented correctly??
+        if self.mongo_conn is None:
+            print('**NO DB CONNECTION**')
+            return 
+
+        self.all_data = []
+        if self.sandbox:
+            print('**WORKING IN SANDBOX MODE**')
+
+        col = self.collection
+        meta = self.meta
+
+        for hitid in self.hitids:
+            #print('Getting HIT results...')
+            if datafile is None:
+                sdata = self.getHITdata(hitid)
+            else:
+                sdata = parse_human_data(datafile)   # XXX: hahong: seems that this part is broken (Issue #1)
+            self.all_data.extend(sdata)
+            if col is None:
+                continue
+            else:
+                pass
+
+            #print('Connecting to database...')
+            col.ensure_index([('WorkerID', pymongo.ASCENDING), ('Timestamp', pymongo.ASCENDING)], unique=True)  # bug (hahong: marked as bug, but for what??)
+
+            #print('Updating database...')
+            for subj in sdata:
+                try:
+                    subj_id = col.insert(subj, safe=True)
+                    if meta is not None:
+                        if type(meta) == dict:
+                            #Assuming meta is a dict -- this should be much faster!
+                            m = [self.get_meta_fromdict(e, meta) for e in subj['StimShown']]
+                            col.update({'_id': subj_id}, {'$set': {'ImgData': m}}, w=0)
+                            if verbose:
+                                print(subj_id)
+                                print('------------')
+                        else:
+                            #Assuming meta is a tabarray
+                            m = [self.get_meta(e, meta) for e in subj['StimShown']]
+                            col.update({'_id': subj_id}, {'$set': {'ImgData': m}}, w=0)
+                            if verbose:
+                                print(subj_id)
+                                print('------------')
+                except pymongo.errors.DuplicateKeyError:
+                    #print('Entry already exists, moving to next...')
+                    continue
 
     def updateDBwithHITs(self, verbose=False):
         """
@@ -220,47 +287,7 @@ class experiment(object):
         - Also stores data in object variable 'all_data' for immediate use. This might be dangerous for MH17's memory.
         - Even if you've already gotten some HITs, this will try to get them again anyway. Maybe later I'll fix this.
         """
-        self.all_data = []
-        if self.sandbox:
-            print('**WORKING IN SANDBOX MODE**')
-
-        col = self.collection
-        meta = self.meta
-
-        for hitid in self.hitids:
-            #print('Getting HIT results...')
-            sdata = self.getHITdata(hitid)
-            self.all_data.extend(sdata)
-            if col is None:
-                continue
-            else:
-                pass
-
-            #print('Connecting to database...')
-            col.ensure_index([('WorkerID', pymongo.ASCENDING), ('Timestamp', pymongo.ASCENDING)], unique=True)
-
-            #print('Updating database...')
-            for subj in sdata:
-                try:
-                    subj_id = col.insert(subj, safe=True)
-                    if meta is not None:
-                        if type(meta) == dict:
-                            #Assuming meta is a dict -- this should be much faster!
-                            m = [self.get_meta_fromdict(e, meta) for e in subj['StimShown']]
-                            col.update({'_id': subj_id}, {'$set': {'ImgData': m}}, w=0)
-                            if verbose:
-                                print(subj_id)
-                                print('------------')
-                        else:
-                            #Assuming meta is a tabarray
-                            m = [self.get_meta(e, meta) for e in subj['StimShown']]
-                            col.update({'_id': subj_id}, {'$set': {'ImgData': m}}, w=0)
-                            if verbose:
-                                print(subj_id)
-                                print('------------')
-                except pymongo.errors.DuplicateKeyError:
-                    #print('Entry already exists, moving to next...')
-                    continue
+        self.updateDBcore(self, verbose=verbose)
 
     def updateDBwithHITslocal(self, datafile, verbose=False):
         """
@@ -269,47 +296,8 @@ class experiment(object):
         - Also stores data in object variable 'all_data' for immediate use.
         - Even if you've already gotten some HITs, this will get them again anyway. Maybe later I'll fix this.
         """
-        self.all_data = []
-        if self.sandbox:
-            print('**WORKING IN SANDBOX MODE**')
-
-        col = self.collection
-        meta = self.meta
-
-        for hitid in self.hitids:
-            #print('Getting HIT results...')
-            sdata = parse_human_data(datafile)
-            self.all_data.extend(sdata)
-            if col is None:
-                continue
-            else:
-                pass
-
-            #print('Connecting to database...')
-            col.ensure_index([('WorkerID', pymongo.ASCENDING), ('Timestamp', pymongo.ASCENDING)], unique=True)  # bug
-
-            #print('Updating database...')
-            for subj in sdata:
-                try:
-                    subj_id = col.insert(subj, safe=True)
-                    if meta is not None:
-                        if type(meta) == dict:
-                            #Assuming meta is a dict -- this should be much faster!
-                            m = [self.get_meta_fromdict(e, meta) for e in subj['StimShown']]
-                            col.update({'_id': subj_id}, {'$set': {'ImgData': m}}, w=0)
-                            if verbose:
-                                print(subj_id)
-                                print('------------')
-                        else:
-                            #Assuming meta is a tabarray
-                            m = [self.get_meta(e, meta) for e in subj['StimShown']]
-                            col.update({'_id': subj_id}, {'$set': {'ImgData': m}}, w=0)
-                            if verbose:
-                                print(subj_id)
-                                print('------------')
-                except pymongo.errors.DuplicateKeyError:
-                    #print('Entry already exists, moving to next...')
-                    continue
+        # XXX: hahong: is this implemented correctly???
+        self.updateDBcore(self, datafile=datafile, verbose=verbose)
 
     def getHITdata(self, hitid):
         assignment = self.conn.get_assignments(hit_id=hitid, page_size=self.max_assignments)
@@ -394,7 +382,7 @@ class experiment(object):
             print(url)
             raise ValueError('Stimulus name not recognized. Is it a URL?')
 
-    def uploadHTML(self, filelist, bucketname, verbose=True):
+    def uploadHTML(self, filelist, bucketname, dstprefix='', verbose=10, section_name=None, test=True):
         """
         Pass a list of paths to the files you want to upload (or the filenames themselves in you're already
         in the directory) and the name of a bucket as a string. If the bucket does not exist, a new one will be created.
@@ -403,34 +391,24 @@ class experiment(object):
 
         Sub-directories within the bucket are not yet supported.
         """
-        try:
-            conn = S3Connection()
-        except boto.exception.S3ResponseError:
-            print('Could not establish an S3 conection. Is your account properly configured?')
-            return
-        try:
-            bucket = conn.get_bucket(bucketname)
-        except boto.exception.S3ResponseError:
-            print('Bucket does not exist, creating a new bucket...')
-            bucket = conn.create_bucket(bucketname)
+        if section_name is None:
+            # section_name is provided to give flexibility of
+            # using different accounts
+            section_name = self.section_name
+
+        keys = uploader(filelist, bucketname, dstprefix=dstprefix,
+                section_name=section_name, test=test, verbose=verbose)
 
         urls = []
-        for idx, f in enumerate(filelist):
-            k = Key(bucket)
-            k.key = f.split('/')[-1]
-            k.set_contents_from_filename(f)
-            bucket.set_acl('public-read', k.key)
-            urls.append('http://s3.amazonaws.com/' + bucketname + '/' + k.key)
-            if verbose:
+        for idx, (k, f) in enumerate(zip(keys, filelist)):
+            urls.append('http://s3.amazonaws.com/' + bucketname + '/' + k)
+            if verbose > 0:
                 print str(idx) + ': ' + f
-
         self.URLs = urls
         return urls
 
 
-        #Some helper functions that are not a part of an experiment object.
-
-
+# -- Some helper functions that are not a part of an experiment object.
 def parse_human_data(datafile):
     csv.field_size_limit(10000000000)
     count = 0
@@ -532,3 +510,46 @@ def SONify(arg, memo=None):
         raise TypeError('SONify', arg)
     memo[id(rval)] = rval
     return rval
+
+
+def uploader(srcfiles, bucketname, dstprefix='', section_name=MTURK_CRED_SECTION,
+        test=True, verbose=False, accesskey=None, secretkey=None):
+    """Upload multiple files into a S3 bucket"""
+    if accesskey is None or secretkey is None:
+        accesskey, secretkey = parse_credentials_file(section_name=section_name)
+
+    # -- establish connections
+    try:
+        conn = S3Connection(accesskey, secretkey)
+    except boto.exception.S3ResponseError:
+        raise ValueError('Could not establish an S3 conection. Is your account properly configured?')
+    try:
+        bucket = conn.get_bucket(bucketname)
+    except boto.exception.S3ResponseError:
+        print('Bucket does not exist, creating a new bucket...')
+        bucket = conn.create_bucket(bucketname)
+
+    # -- upload files
+    keys = []
+    for i_fn, fn in enumerate(srcfiles):
+        # upload
+        key_dst = dstprefix + os.path.basename(fn)
+        k = Key(bucket)
+        k.key = key_dst
+        k.set_contents_from_filename(fn)
+        k.close()
+        bucket.set_acl('public-read', key_dst)
+
+        # download and check... although this is a bit redundant
+        if test:
+            k = Key(bucket)
+            k.key = key_dst
+            s = k.get_contents_as_string()
+            k.close()
+            assert s == open(fn).read()
+        keys.append(key_dst)
+
+        if verbose and i_fn % verbose == 0:
+            print 'At:', i_fn, 'out of', len(srcfiles)
+
+    return keys
