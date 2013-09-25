@@ -19,11 +19,12 @@ import csv
 from boto.pyami.config import Config
 
 MTURK_CRED_SECTION = 'MTurkCredentials'
+BOTO_CRED_FILE = os.path.expanduser('~/.boto')
 
 
 def parse_credentials_file(path=None, section_name='Credentials'):
     if path is None:
-        path = os.path.expanduser('~/.boto')
+        path = BOTO_CRED_FILE
     config = Config(path)
     assert config.has_section(section_name), \
         'Field ' + section_name + ' not found in credentials file located at ' + path
