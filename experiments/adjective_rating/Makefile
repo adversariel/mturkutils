@@ -14,7 +14,9 @@ ifeq ($(CHKSCRIPT), 1)
 endif
 
 all: prep test upload
-	
+	@echo Finished all preliminary steps.
+	@echo 'Type "make sandbox" to publish to the sandbox.'
+	@echo 'Type "make production" to publish to the actual MTurk worker space.'
 $(TMPDIR)/$(TSPREP): $(DEPSCRIPT) $(WEBDIR)/adjectives_slider.html
 	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSPREP) $(PYTHON) $(SCRIPT) prep
 prep: $(TMPDIR)/$(TSPREP)

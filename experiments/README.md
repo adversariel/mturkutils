@@ -7,4 +7,4 @@ The following is a minimal implementation guildline for each experiment:
 Optional Makefile sections can include:
   * "make prep" prepares all necessary stuffs prior to publishing.
   * "make sandbox" publishes HITs into the sandbox.
-  * "make remove" removes all the web-published files.
+  * "make remove" removes all the published HITs.
