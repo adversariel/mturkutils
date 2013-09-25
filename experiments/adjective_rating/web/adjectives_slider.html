@@ -171,7 +171,7 @@ function showResponse() {
 	$('#adj_text_bright').html('Very ' + myadj);
 	$('#buttons').show();
 	trialStartTime = new Date();
-	$('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials);
+	$('#trialCounter').html('Progress: '+ (trialNumber + 1) +' of '+totalTrials);
 	if (trialNumber+1 == totalTrials) { }  //Do nothing, skip to submit data func.
 	else {
 		var stim1 = imgFiles_new[trialNumber+1][0]; 
