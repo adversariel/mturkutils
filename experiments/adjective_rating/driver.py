@@ -120,17 +120,32 @@ def upload():
             verbose=10)
 
 
-def sandbox():
+def publish(sandbox=True):
     """Publish to the sandbox"""
-    exp = mt.experiment(sandbox=True, keywords=['neuroscience', 'psychology',
-        'experiment', 'object recognition'], max_assignments=1,
+    exp = mt.experiment(sandbox=sandbox,
+        keywords=['neuroscience', 'psychology', 'experiment', 'object recognition'],  # noqa
+        max_assignments=1,
         title='Visual judgment',
         reward=0.35, duration=1500,
-        description="***You may complete as many HITs in this group as you want.*** Complete an object recognition task where you report the categories of objects you see. We expect this HIT to take about 5 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment.",  # noqa
-        comment="ImageNet16 task. Same as the original objectome64 task, except now stimulus images are from 16 ImageNet categories. For each of 16 choose 2 pairs there are 500 presentations (250 per object).",  # noqa
+        description="***You may complete as many HITs in this group as you want.*** Complete an visual object judgment task where you report the amount of certain properties of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment.",  # noqa
+        comment="objectome_adj_slider task.  For each object (64 total) and selected adjective (13 total), there are 50 reps where subjects report 1 to 100 ratings.",  # noqa
         collection_name=None,   # disables db connection
         meta=None,
         )
+
+    if sandbox:
+        fns = sorted(glob.glob(os.path.join(
+            TMPDIR_SANDBOX, '*.html')))
+    else:
+        fns = sorted(glob.glob(os.path.join(
+            TMPDIR_PRODUCTION, '*.html')))
+
+    hitidslog = os.path.join(TMPDIR, 'hitidslog_' +
+            ('sandbox' if sandbox else 'production') + '_' +
+            str(int(time.time())) + '.pkl')
+    exp.URLs = ['http://s3.amazonaws.com/' + S3BUCKET +
+            e.split(TMPDIR)[-1] for e in fns]
+    exp.createHIT(verbose=True, hitidslog=hitidslog)
 
 
 # -- helper funcs
@@ -151,6 +166,8 @@ def main(argv):
         test()
     elif argv[1] == 'upload':
         upload()
+    elif argv[1] == 'sandbox':
+        publish(sandbox=True)
     else:
         print 'Bad arguments'
         return 1
