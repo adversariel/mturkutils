@@ -228,13 +228,9 @@ class experiment(object):
         pk.dump(self.hitids, file(file_string, 'wb'))
         return self.hitids
 
-    def updateDBwithHITs(self, verbose=False):
-        """
-        - Takes a list of HIT IDs, gets data from MTurk, attaches metadata (if necessary) and puts results in dicarlo2
-            database.
-        - Also stores data in object variable 'all_data' for immediate use. This might be dangerous for MH17's memory.
-        - Even if you've already gotten some HITs, this will try to get them again anyway. Maybe later I'll fix this.
-        """
+    def updateDBcore(self, datafile=None, verbose=False):
+        """See the documentation of updateDBwithHITs() and updateDBwithHITslocal()"""
+        # XXX: hahong: is the support for datafile implemented correctly??
         if self.mongo_conn is None:
             print('**NO DB CONNECTION**')
             return 
@@ -248,7 +244,10 @@ class experiment(object):
 
         for hitid in self.hitids:
             #print('Getting HIT results...')
-            sdata = self.getHITdata(hitid)
+            if datafile is None:
+                sdata = self.getHITdata(hitid)
+            else:
+                sdata = parse_human_data(datafile)
             self.all_data.extend(sdata)
             if col is None:
                 continue
@@ -256,7 +255,7 @@ class experiment(object):
                 pass
 
             #print('Connecting to database...')
-            col.ensure_index([('WorkerID', pymongo.ASCENDING), ('Timestamp', pymongo.ASCENDING)], unique=True)
+            col.ensure_index([('WorkerID', pymongo.ASCENDING), ('Timestamp', pymongo.ASCENDING)], unique=True)  # bug (hahong: marked as bug, but for what??)
 
             #print('Updating database...')
             for subj in sdata:
@@ -280,6 +279,15 @@ class experiment(object):
                 except pymongo.errors.DuplicateKeyError:
                     #print('Entry already exists, moving to next...')
                     continue
+
+    def updateDBwithHITs(self, verbose=False):
+        """
+        - Takes a list of HIT IDs, gets data from MTurk, attaches metadata (if necessary) and puts results in dicarlo2
+            database.
+        - Also stores data in object variable 'all_data' for immediate use. This might be dangerous for MH17's memory.
+        - Even if you've already gotten some HITs, this will try to get them again anyway. Maybe later I'll fix this.
+        """
+        self.updateDBcore(self, verbose=verbose)
 
     def updateDBwithHITslocal(self, datafile, verbose=False):
         """
@@ -288,51 +296,8 @@ class experiment(object):
         - Also stores data in object variable 'all_data' for immediate use.
         - Even if you've already gotten some HITs, this will get them again anyway. Maybe later I'll fix this.
         """
-        if self.mongo_conn is None:
-            print('**NO DB CONNECTION**')
-            return 
-
-        self.all_data = []
-        if self.sandbox:
-            print('**WORKING IN SANDBOX MODE**')
-
-        col = self.collection
-        meta = self.meta
-
-        for hitid in self.hitids:
-            #print('Getting HIT results...')
-            sdata = parse_human_data(datafile)
-            self.all_data.extend(sdata)
-            if col is None:
-                continue
-            else:
-                pass
-
-            #print('Connecting to database...')
-            col.ensure_index([('WorkerID', pymongo.ASCENDING), ('Timestamp', pymongo.ASCENDING)], unique=True)  # bug
-
-            #print('Updating database...')
-            for subj in sdata:
-                try:
-                    subj_id = col.insert(subj, safe=True)
-                    if meta is not None:
-                        if type(meta) == dict:
-                            #Assuming meta is a dict -- this should be much faster!
-                            m = [self.get_meta_fromdict(e, meta) for e in subj['StimShown']]
-                            col.update({'_id': subj_id}, {'$set': {'ImgData': m}}, w=0)
-                            if verbose:
-                                print(subj_id)
-                                print('------------')
-                        else:
-                            #Assuming meta is a tabarray
-                            m = [self.get_meta(e, meta) for e in subj['StimShown']]
-                            col.update({'_id': subj_id}, {'$set': {'ImgData': m}}, w=0)
-                            if verbose:
-                                print(subj_id)
-                                print('------------')
-                except pymongo.errors.DuplicateKeyError:
-                    #print('Entry already exists, moving to next...')
-                    continue
+        # XXX: hahong: is this implemented correctly???
+        self.updateDBcore(self, datafile=datafile, verbose=verbose)
 
     def getHITdata(self, hitid):
         assignment = self.conn.get_assignments(hit_id=hitid, page_size=self.max_assignments)
