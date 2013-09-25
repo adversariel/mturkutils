@@ -28,7 +28,7 @@ ADJS = ['light', 'bulbous', 'boxy', 'curly', 'globular', 'disc-like',
     'pointy', 'bumpy', 'rectangular', 'striped', 'spotted', 'juicy',
     'cuddly']
 S3PREFIX_SUBJSIM = 'http://s3.amazonaws.com/subjsimilarity/'
-S3BUCKET = 'objectome_adjectives'
+S3BUCKET = 'objectome_adjectives_slider'
 
 
 # -- main funcs
