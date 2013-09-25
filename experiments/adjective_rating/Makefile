@@ -1,21 +1,28 @@
+PYTHON=python
 TMPDIR=tmp
 WEBDIR=web
+SCRIPT=driver.py
 TSPREP=timestamp_prep.log
 TSTEST=timestamp_test.log
 TSUPLOAD=timestamp_upload.log
+DEPSCRIPT=
+
+ifeq ($(CHKSCRIPT), 1)
+	DEPSCRIPT=$(SCRIPT)
+endif
 
 all: prep test upload
 	
-$(TMPDIR)/$(TSPREP): $(WEBDIR)/adjectives_slider.html
-	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSPREP) python driver.py prep
+$(TMPDIR)/$(TSPREP): $(DEPSCRIPT) $(WEBDIR)/adjectives_slider.html
+	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSPREP) $(PYTHON) $(SCRIPT) prep
 prep: $(TMPDIR)/$(TSPREP)
 	
-$(TMPDIR)/$(TSTEST): $(TMPDIR)/$(TSPREP)
-	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSTEST) python driver.py test
+$(TMPDIR)/$(TSTEST): $(DEPSCRIPT) $(TMPDIR)/$(TSPREP)
+	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSTEST) $(PYTHON) $(SCRIPT) test
 test: $(TMPDIR)/$(TSTEST)
 	
-$(TMPDIR)/$(TSUPLOAD): $(TMPDIR)/$(TSTEST)
-	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSUPLOAD) python driver.py upload
+$(TMPDIR)/$(TSUPLOAD): $(DEPSCRIPT) $(TMPDIR)/$(TSTEST)
+	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSUPLOAD) $(PYTHON) $(SCRIPT) upload
 upload: $(TMPDIR)/$(TSUPLOAD)
 	
 clean:

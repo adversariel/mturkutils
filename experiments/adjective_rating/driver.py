@@ -8,14 +8,16 @@ import json
 import shutil as sh
 import time
 import glob
-from boto.s3.connection import S3Connection
-from boto.s3.key import Key
 
 # various
-METAPTH = 'references/meta64_rotonly_graybg.pkl'
-TMPDIR = os.environ.get('DRIVER_TMPDIR', 'tmp')
+METAPATH = 'references/meta64_rotonly_graybg.pkl'
+PRODUCTIONPATH = 'html'          # make sure there's no trailing /
+SANDBOXPATH = 'html_sandbox'     # same: no trailing /
 TSTAMP = os.environ.get('DRIVER_TSTAMP')     # timestamp
 TRIALS = os.environ.get('DRIVER_TRIALS', 'trials.pkl')
+TMPDIR = os.environ.get('DRIVER_TMPDIR', 'tmp')
+TMPDIR_PRODUCTION = os.path.join(TMPDIR, PRODUCTIONPATH)
+TMPDIR_SANDBOX = os.path.join(TMPDIR, SANDBOXPATH)
 
 # patterns for string manipulation
 HTMLSRC = 'web/adjectives_slider.html'
@@ -24,24 +26,22 @@ REPLSRC = 'imgFiles = [];'
 REPLDST = 'imgFiles = %s;'
 TESTPATT = 'imgFiles = '
 OTHERSRC = ['web/adj_dict.js']
-
-# credential and other stuffs
-ACCESSKEY = 'AKIAIVPHBWLGLGI5SYTQ'
-SECRETKEY = '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'
-S3BUCKET = 'objectome_adjectives'
+SUBMITURL = 'https://www.mturk.com/mturk/externalSubmit'
+SANDBOXURL = 'https://workersandbox.mturk.com/mturk/externalSubmit'
 
 # other constants
 ADJS = ['light', 'bulbous', 'boxy', 'curly', 'globular', 'disc-like',
     'pointy', 'bumpy', 'rectangular', 'striped', 'spotted', 'juicy',
     'cuddly']
 S3PREFIX_SUBJSIM = 'http://s3.amazonaws.com/subjsimilarity/'
+S3BUCKET = 'objectome_adjectives'
 
 
 # -- main funcs
 def prep(n_reps=50, n_trials_per_chunk=100, with_repl=False, same_across=True,
         rseed=0, nc_objs=64, nc_imgs=100):
     """Prepare web files for publishing"""
-    meta = pk.load(open(METAPTH))
+    meta = pk.load(open(METAPATH))
     models64 = rl.ps64_models
     assert len(models64) == nc_objs
 
@@ -82,22 +82,28 @@ def prep(n_reps=50, n_trials_per_chunk=100, with_repl=False, same_across=True,
     rng.shuffle(trials)
 
     # process html first
-    if not os.path.exists(TMPDIR):
-        os.makedirs(TMPDIR)
+    mkdirs(TMPDIR_PRODUCTION)
+    mkdirs(TMPDIR_SANDBOX)
+
     html_src = open(HTMLSRC, 'rt').read()   # entire file content
     assert html_src.count(REPLSRC) == 1
+    assert html_src.count(SUBMITURL) == 1
 
     for i_chunk, chunk in enumerate(chunker(trials, n_trials_per_chunk)):
         if i_chunk % 100 == 0:
             print '    At:', i_chunk
 
         html_dst = html_src.replace(REPLSRC, REPLDST % json.dumps(chunk))
-        open(os.path.join(TMPDIR, HTMLDST % i_chunk), 'wt').write(html_dst)
+        dst_fn = HTMLDST % i_chunk
+        open(os.path.join(TMPDIR_PRODUCTION, dst_fn), 'wt').write(html_dst)
+        html_dst = html_dst.replace(SUBMITURL, SANDBOXURL)
+        open(os.path.join(TMPDIR_SANDBOX, dst_fn), 'wt').write(html_dst)
 
     # -- done main work
     # copy all necessary files
     for fn in OTHERSRC:
-        sh.copy(fn, TMPDIR)
+        sh.copy(fn, TMPDIR_PRODUCTION)
+        sh.copy(fn, TMPDIR_SANDBOX)
 
     # save the trials and put the timestamp
     pk.dump(trials, open(os.path.join(TMPDIR, TRIALS), 'wb'))
@@ -107,42 +113,43 @@ def prep(n_reps=50, n_trials_per_chunk=100, with_repl=False, same_across=True,
 def test():
     """Test and validates the written html files"""
     trials_org = pk.load(open(os.path.join(TMPDIR, TRIALS)))
-    trials = []
-    for fn in sorted(glob.glob(os.path.join(TMPDIR, '*.html'))):
-        html = open(fn).readlines()
-        html = [e for e in html if TESTPATT in e]
-        assert len(html) == 1
-        html = html[0]
-        trials0 = html.split(TESTPATT)[-1].split(';')[0]
-        trials0 = json.loads(trials0)
-        trials.extend(trials0)
-    assert trials_org == trials
+
+    def test_core(pth, assert_occurances=None):
+        trials = []
+        for fn in sorted(glob.glob(os.path.join(pth, '*.html'))):
+            # pass 1
+            html = open(fn).read()
+            if assert_occurances is not None:
+                for patt in assert_occurances:
+                    assert html.count(patt) == assert_occurances[patt]
+            # pass 2
+            html = open(fn).readlines()
+            html = [e for e in html if TESTPATT in e]
+            assert len(html) == 1
+            html = html[0]
+            trials0 = html.split(TESTPATT)[-1].split(';')[0]
+            trials0 = json.loads(trials0)
+            trials.extend(trials0)
+        assert trials_org == trials
+
+    print '* Testing sandbox...'
+    test_core(TMPDIR_SANDBOX, {SANDBOXURL: 1})
+    print '* Testing production...'
+    test_core(TMPDIR_PRODUCTION, {SUBMITURL: 1})
     timestamp()
 
 
 def upload():
     """Upload generated web files into S3"""
-    conn = S3Connection(ACCESSKEY, SECRETKEY)
-    bucket = conn.get_bucket(S3BUCKET)
-    fns = glob.glob(os.path.join(TMPDIR, '*.*'))
-    for i_fn, fn in enumerate(fns):
-        # upload
-        key_dst = 'html/' + os.path.basename(fn)
-        k = Key(bucket)
-        k.key = key_dst
-        k.set_contents_from_filename(fn)
-        k.close()
-        bucket.set_acl('public-read', key_dst)
+    print '* Uploading sandbox...'
+    fns = glob.glob(os.path.join(TMPDIR_SANDBOX, '*.*'))
+    mt.uploader(fns, S3BUCKET, dstprefix=SANDBOXPATH + '/', test=True,
+            verbose=10)
 
-        # download and check... although this is a bit redundant
-        k = Key(bucket)
-        k.key = key_dst
-        s = k.get_contents_as_string()
-        k.close()
-        assert s == open(fn).read()
-
-        if i_fn % 10 == 0:
-            print 'At:', i_fn, 'out of', len(fns)
+    print '* Uploading production...'
+    fns = glob.glob(os.path.join(TMPDIR_PRODUCTION, '*.*'))
+    mt.uploader(fns, S3BUCKET, dstprefix=PRODUCTIONPATH + '/', test=True,
+            verbose=10)
     timestamp()
 
 
@@ -154,6 +161,11 @@ def chunker(seq, size):
 def timestamp(tsvar=TSTAMP):
     if tsvar is not None:
         open(os.path.join(TMPDIR, tsvar), 'wt').write(str(time.time()))
+
+
+def mkdirs(pth):
+    if not os.path.exists(pth):
+        os.makedirs(pth)
 
 
 def main(argv):
