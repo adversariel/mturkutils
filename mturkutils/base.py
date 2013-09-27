@@ -31,9 +31,9 @@ def parse_credentials_file(path=None, section_name='Credentials'):
     return config.get(section_name, 'aws_access_key_id'), config.get(section_name, 'aws_secret_access_key')
 
 
-class experiment(object):
+class Experiment(object):
     """
-    An experiment object contains all the functions and data necessary for publishing a hit on MTurk.
+    An Experiment object contains all the functions and data necessary for publishing a hit on MTurk.
 
     MTurk Parameters
     Required:
@@ -67,7 +67,7 @@ class experiment(object):
         Feel free to pass None and attach metadata yourself later, especially if your experiment isn't the usual
         recognition-style task.
     - LOG_PREFIX: Where to save a pickle file with a list of published HIT IDs. You can retrieve data from any hit
-        published in the past using these IDs (within the experiment object, the IDs are also saved in 'hitids').
+        published in the past using these IDs (within the Experiment object, the IDs are also saved in 'hitids').
     """
 
     def __init__(self, sandbox=True, keywords=None, lifetime=1209600,
@@ -414,8 +414,10 @@ class experiment(object):
         self.URLs = urls
         return urls
 
+experiment = Experiment   # for backward compatibility
 
-# -- Some helper functions that are not a part of an experiment object.
+
+# -- Some helper functions that are not a part of an Experiment object.
 def parse_human_data(datafile):
     csv.field_size_limit(10000000000)
     count = 0
