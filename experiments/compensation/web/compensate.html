@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<title>Face Identification</title>
+<title>Compensation</title>
 
 <style>
 body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana; }
@@ -22,22 +22,33 @@ padding: 10px;
 
 </style>
 
-<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
-<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
-<script type="text/javascript" language="JavaScript" src="http://web.mit.edu/esolomon/www/browserdetect.js"></script>
-<script type="text/javascript" src="http://web.mit.edu/esolomon/www/javascripts/jQueryRotate.2.2.js"></script>
-<script type="text/javascript" src="http://web.mit.edu/esolomon/www/javascripts/jquery.zoom-min.js"></script>
-<script type="text/javascript" src="http://web.mit.edu/esolomon/www/zen.js"></script>
-<script type="text/javascript" src="http://esolomon.scripts.mit.edu/ip.php"></script>
-<script src="http://web.mit.edu/esolomon/www/javascripts/detect-zoom.js" type="text/javascript"></script>
-<link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+<link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script type="text/javascript" src="http://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
 
 <script type="text/javascript">
 
+acceptID = [];
+
 shuffle = function(o) { 
-	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x = o[--i], o[i] = o[j], o[j] = x);
 	return o;
-  };
+};
+
+function gup(name) {
+    name = name.replace(/[\[]/,"\\[").replace(/[\]]/,"\\]");
+    var regexS = "[\\?&]"+name+"=([^&#]*)";
+    var regex = new RegExp( regexS );
+    var results = regex.exec(window.location.href);
+    if (results === null)
+        return "";
+    else
+        return results[1];
+}
   
 Array.prototype.flatten = function flatten(){
    var flat = [];
@@ -68,11 +79,10 @@ function beginExp() {
 
 
 function endTrial() {
-  if (trialNumber == 1) 
-  {	
-  	console.log('End');
-	resultsobj = [];
-	resultsobj.push({
+	if (trialNumber == 1) {	
+		console.log('End');
+		resultsobj = [];
+		resultsobj.push({
 					WorkerID:wID,
 					Zoom:zoom,
 					IPaddress:user_IP,
@@ -85,72 +95,47 @@ function endTrial() {
 					ScreenWidth:horizontal
 					});	 
 
-	document.getElementById("assignmentId").value = aID;
-	document.getElementById("data").value = JSON.stringify(resultsobj);
-	document.getElementById("postdata").submit();
-	
+		document.getElementById("assignmentId").value = aID;
+		document.getElementById("data").value = JSON.stringify(resultsobj);
+		document.getElementById("postdata").submit();
 	}	
-  
-  else 
-  {
-    console.log(trialNumber)
-    console.log('Not clicked');
-  }
+	else {
+		console.log(trialNumber);
+		console.log('Not clicked');
+	}
 }
 
 //!!==END DYNAMIC TRIAL CODE==!!//
 
-function gup( name )
-{
-  name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
-  var regexS = "[\\?&]"+name+"=([^&#]*)";
-  var regex = new RegExp( regexS );
-  var param = regex.exec( window.location.href );
-  if( param == null )
-    return "";
-  else
-    return param[1];
-}
-
 function init_vars() {
 	zoom = DetectZoom.zoom();
-	wID = gup("workerId")
+	wID = gup("workerId");
 	aID = gup("assignmentId");  
 	trialNumber = 0;
 	exp_type = 'compensate';
-	acceptID = ['A1HXHFX54MRHBZ'];
-	//first ID is xiaoxuan's test workerID: 'A2VF81K6ZUB6J0',
 }
 
 $(document).ready(function() {
-	$("#rejectworker").hide()
-	$("#generaltext").show()
+	$("#generaltext").show();
 	init_vars();
 
-	if (jQuery.inArray(wID,acceptID) > -1){  
-				$("#generaltext").hide()
-				$("#begintask").click(function(){
-												beginExp();
-												});	
-	  
-  	}
-	else{
+	if (jQuery.inArray(wID, acceptID) > -1){  
+				$("#generaltext").hide();
+				$("#begintask").click(function() {
+					beginExp();
+					});	
+	}
+	else {
 		console.log('reject');
-	    $("#begintask").hide()
-	    $("#generaltext").show()
-	    $("#rejectworker").hide()
-	    $("#instruction").hide();
+		$("#begintask").hide();
+		$("#generaltext").show();
+		$("#instruction").hide();
 	}	
-		
 	$('#warning').hide();
-
 	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE"){
 		$('#warning').show();
-		$('#warning').html("<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>")
+		$('#warning').html("<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>");
 	}
-	
-	//updateProgress();
-		
 });
 
 </script>
@@ -160,21 +145,15 @@ $(document).ready(function() {
 <body bgcolor="#7F7F7F">
 <div style="height:1000px; width:auto;">
 <div align="center" id="warning"></div>
-<div align="center"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
+<div align="center"><button id="begintask" value="Get Compensation" style="height:35px; width:170px;" >Get Compensation</button></div>
 <div id="general" align="center" style="position:relative; top:100px;">
-	<p id="generaltext"><font color=#9e1316><b>This HIT is specifically designed for workerIDs: A1HXHFX54MRHBZ.</font> </br></br></br>If you are NOT the above worker, you will NOT be able to begin the HIT. Please DON'T accept this HIT. </br></br></br>However, you are welcome to accept other HITs from the same requester. </b></p>
+	<p id="generaltext"><font color=#9e1316><b>This HIT is for invited workers only.</font> <br /><br /><br />If you are not invited, you will NOT be able to begin this or get compensated, so please do not accept this HIT.<br /><br /><br />You are, however, welcome to accept other HITs from the same requester.</b></p>
 </div>
-<div id="rejectworker" align="center" style="position:relative; top:100px;">
-	<p id="rejecttext"><font color=#9e1316><b>Sorry! You cannot begin this HIT, because this HIT is designed for a specific group of workers.</font> </br></br></br>However, you are welcome to accept other HITs from the same requester.</b></p>
-</div>
-<div id="instruction" align="center" style="position:relative; top:200px;"><font color=#9e1316><b>This is for compensation!</font> Please click the 'Begin' button at the top. </br></br></br> This hit will submit itself after you click the button, and you will get reimbursement within 30 minutes! </br></br></br>If you have other questions, please contact the requester. </b></div>
-
-
+<div id="instruction" align="center" style="position:relative; top:200px;">Please click on the "Get Compensation" button at the top. <br /><br /><br /> This HIT will submit itself, and you will get compensated shortly.<br /><br /><br />If you have other questions, please contact the requester.</b></div>
 	<form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
 	<input type="text" name="data" id="data" value="">
     <input type="text" name="assignmentId" id="assignmentId" value="">
 	</form>
-
 </body>
 </html>
 
