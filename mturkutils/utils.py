@@ -63,6 +63,7 @@ Parameters
 * n_per_file: the number of presentations per one final html file
 """
     # process html first
+    dst_fns = []
     mkdirs(dstdir)
     html_src = open(src, 'rt').read()   # entire file content
     for rule in rules:
@@ -83,12 +84,16 @@ Parameters
             html_dst = html_dst.replace(sold, snew)
 
         dst_fn = dstpatt % i_chunk
-        open(os.path.join(dstdir, dst_fn), 'wt').write(html_dst)
+        dst_fn = os.path.join(dstdir, dst_fn)
+        open(dst_fn, 'wt').write(html_dst)
+        dst_fns.append(dst_fn)
 
     # -- done main work: copy all aux files
     if auxfns is not None:
         for fn in auxfns:
             sh.copy(fn, dstdir)
+
+    return dst_fns
 
 
 def validate_html_files(filenames, rules=PREP_RULE_SIMPLE_RSVP_SANDBOX,

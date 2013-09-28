@@ -122,7 +122,7 @@ def upload():
 
 def publish(sandbox=True):
     """Publish to the sandbox"""
-    exp = mt.experiment(sandbox=sandbox,
+    exp = mt.Experiment(sandbox=sandbox,
         keywords=['neuroscience', 'psychology', 'experiment', 'object recognition'],  # noqa
         max_assignments=1,
         title='Visual judgment',
