@@ -295,6 +295,7 @@ def bonus(sandbox=True):
     k.key = pref + fn_hs
     hitids = pk.loads(k.get_contents_as_string())
     bonuses = states['bonuses']
+    unbonused = bonuses.keys()
 
     exp = mt.Experiment(sandbox=sandbox,
         max_assignments=MAX_PAGE_SIZE,
@@ -313,6 +314,7 @@ def bonus(sandbox=True):
 
         k.key = pref + w + '.pkl'
         if k.exists():
+            unbonused.pop(w)
             continue  # already gave a bonus
 
         aid = r['AssignmentID']
@@ -326,7 +328,14 @@ def bonus(sandbox=True):
 
         pkl = pk.dumps(r)
         k.set_contents_from_string(pkl)
+
+        unbonused.pop(w)
         print '* Granting $%4.2f bonus to %s' % (bonuses[w], w0)
+
+    if len(unbonused) > 0:
+        print '* Not yet bonused:', unbonused
+    else:
+        print '* All invited workers got bonuses.'
 
 
 # -- helper funcs
