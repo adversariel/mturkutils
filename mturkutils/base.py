@@ -522,7 +522,8 @@ def SONify(arg, memo=None):
 
 
 def uploader(srcfiles, bucketname, dstprefix='', section_name=MTURK_CRED_SECTION,
-        test=True, verbose=False, accesskey=None, secretkey=None):
+        test=True, verbose=False, accesskey=None, secretkey=None,
+        dstfiles=None, acl='public-read'):
     """Upload multiple files into a S3 bucket"""
     if accesskey is None or secretkey is None:
         accesskey, secretkey = parse_credentials_file(section_name=section_name)
@@ -538,16 +539,22 @@ def uploader(srcfiles, bucketname, dstprefix='', section_name=MTURK_CRED_SECTION
         print('Bucket does not exist, creating a new bucket...')
         bucket = conn.create_bucket(bucketname)
 
+    if dstfiles is None:
+        dstfiles = [None] * len(srcfiles)
+
     # -- upload files
     keys = []
-    for i_fn, fn in enumerate(srcfiles):
+    for i_fn, (fn, dfn) in enumerate(zip(srcfiles, dstfiles)):
+        if dfn is None:
+            dfn = fn
         # upload
-        key_dst = dstprefix + os.path.basename(fn)
+        key_dst = dstprefix + os.path.basename(dfn)
         k = Key(bucket)
         k.key = key_dst
         k.set_contents_from_filename(fn)
         k.close()
-        bucket.set_acl('public-read', key_dst)
+        if acl is not None:
+            bucket.set_acl(acl, key_dst)
 
         # download and check... although this is a bit redundant
         if test:
