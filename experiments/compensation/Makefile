@@ -16,6 +16,7 @@ all: prep upload
 	@echo 'Finished all preliminary steps (or everything is up to date).'
 	@echo 'Type "make sandbox" to publish to the sandbox.'
 	@echo 'Type "make production" to publish to the actual MTurk worker space.'
+	@echo 'Type "make bonus" to grant bonuses.'
 	@echo 'Otherwise, type "make clean" to clean up the local workspace.'
 $(TMPDIR)/$(TSPREP): $(DEPSCRIPT) $(WEBDIR)/compensate.html
 	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSPREP) $(PYTHON) $(SCRIPT) prep
@@ -33,5 +34,9 @@ $(TMPDIR)/$(TSPRODUCT): $(DEPSCRIPT) $(TMPDIR)/$(TSUPLOAD)
 	DRIVER_TMPDIR=$(TMPDIR) DRIVER_TSTAMP=$(TSPRODUCT) $(PYTHON) $(SCRIPT) production
 production: $(TMPDIR)/$(TSPRODUCT)
 	
+bonus-sandbox:
+	DRIVER_TMPDIR=$(TMPDIR) $(PYTHON) $(SCRIPT) bonus-sandbox
+bonus:
+	DRIVER_TMPDIR=$(TMPDIR) $(PYTHON) $(SCRIPT) bonus
 clean:
 	rm -rf tmp/
