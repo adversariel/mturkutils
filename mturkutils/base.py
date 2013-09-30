@@ -529,10 +529,7 @@ def uploader(srcfiles, bucketname, dstprefix='', section_name=MTURK_CRED_SECTION
         accesskey, secretkey = parse_credentials_file(section_name=section_name)
 
     # -- establish connections
-    try:
-        conn = S3Connection(accesskey, secretkey)
-    except boto.exception.S3ResponseError:
-        raise ValueError('Could not establish an S3 conection. Is your account properly configured?')
+    conn = get_s3_conn(section_name=section_name, accesskey=accesskey, secretkey=secretkey)
     try:
         bucket = conn.get_bucket(bucketname)
     except boto.exception.S3ResponseError:
@@ -569,3 +566,17 @@ def uploader(srcfiles, bucketname, dstprefix='', section_name=MTURK_CRED_SECTION
             print 'At:', i_fn, 'out of', len(srcfiles)
 
     return keys
+
+
+def get_s3_conn(section_name=MTURK_CRED_SECTION, accesskey=None, secretkey=None):
+    """Get a S3 connection"""
+    if accesskey is None or secretkey is None:
+        accesskey, secretkey = parse_credentials_file(section_name=section_name)
+
+    # -- establish connections
+    try:
+        conn = S3Connection(accesskey, secretkey)
+    except boto.exception.S3ResponseError:
+        raise ValueError('Could not establish an S3 conection. Is your account properly configured?')
+
+    return conn
