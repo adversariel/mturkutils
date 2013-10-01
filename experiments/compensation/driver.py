@@ -320,7 +320,7 @@ def bonus(sandbox=True):
 
         k.key = pref + w + '.pkl'
         if k.exists():
-            unbonused.pop(w)
+            unbonused.remove(w)
             continue  # already gave a bonus
 
         aid = r['AssignmentID']
@@ -335,7 +335,7 @@ def bonus(sandbox=True):
         pkl = pk.dumps(r)
         k.set_contents_from_string(pkl)
 
-        unbonused.pop(w)
+        unbonused.remove(w)
         print '* Granting $%4.2f bonus to %s' % (bonuses[w], w0)
 
     if len(unbonused) > 0:
