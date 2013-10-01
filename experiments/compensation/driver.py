@@ -15,9 +15,10 @@ PRODUCTIONPATH = 'html'          # make sure there's no trailing /
 SANDBOXPATH = 'html_sandbox'     # same: no trailing /
 DATAPATH = 'data'                # same: no trailing /
 STATES = 'states.pkl'
-TSTAMP = os.environ.get('DRIVER_TSTAMP')     # timestamp
+TSTAMP = os.environ.get('DRIVER_TSTAMP')        # timestamp
 TMPDIR = os.environ.get('DRIVER_TMPDIR', 'tmp')
-BONUST0 = os.environ.get('DRIVER_BONUST0')   # t0 for bonus
+EXTKWD = os.environ.get('DRIVER_EXTKWD', '')    # comma-sep extra keywords
+BONUST0 = os.environ.get('DRIVER_BONUST0')      # t0 for bonus
 TMPDIR_PRODUCTION = os.path.join(TMPDIR, PRODUCTIONPATH)
 TMPDIR_SANDBOX = os.path.join(TMPDIR, SANDBOXPATH)
 DATAFNPREFIX = DATAPATH + '/t0_%s__'
@@ -236,9 +237,10 @@ def publish(sandbox=True):
     """Publish to the sandbox"""
     states = pk.load(open(os.path.join(TMPDIR, STATES)))
     s_t0 = str(states['t0'])
+    extkwd = EXTKWD.split(',')
 
     exp = mt.Experiment(sandbox=sandbox,
-        keywords=['compensation', 'reimbursement', s_t0],
+        keywords=['compensation', 'reimbursement', s_t0] + extkwd,
         max_assignments=states['n_assignments'],
         title=states['title'],
         reward=states['compamt'],
