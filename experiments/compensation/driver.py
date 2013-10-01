@@ -185,9 +185,9 @@ def prep(l_wid_min=11):
 
     for label, rules, dstdir, dstfns in [
             ('sandbox', PREP_RULE_SIMPLE_SANDBOX,
-                TMPDIR_SANDBOX, dstfns_production),
+                TMPDIR_SANDBOX, dstfns_sandbox),
             ('production', PREP_RULE_SIMPLE_PRODUCTION,
-                TMPDIR_PRODUCTION, dstfns_sandbox)]:
+                TMPDIR_PRODUCTION, dstfns_production)]:
         print '  ->', label
         ds = ut.prep_web_simple(workers, HTMLSRC, dstdir, dstpatt=htmldst,
                 rules=rules, auxfns=OTHERSRC,

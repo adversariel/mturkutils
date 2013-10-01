@@ -170,8 +170,8 @@ $(document).ready(function() {
 </div>
 <div id="instruction" align="center" style="position:relative; top:200px;">Please click on the "Get Compensation" button at the top. <br /><br /><br /> This HIT will submit itself, and you will get compensated shortly.<br /><br /><br />If you have other questions, please contact the requester.</b></div>
 	<form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
-	<input type="text" name="data" id="data" value="">
-    <input type="text" name="assignmentId" id="assignmentId" value="">
+	<input type="hidden" name="data" id="data" value="" />
+    	<input type="hidden" name="assignmentId" id="assignmentId" value="" />
 	</form>
 </body>
 </html>
