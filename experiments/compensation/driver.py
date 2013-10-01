@@ -237,12 +237,14 @@ def publish(sandbox=True):
     """Publish to the sandbox"""
     states = pk.load(open(os.path.join(TMPDIR, STATES)))
     s_t0 = str(states['t0'])
+    kwd = ['compensation', 'reimbursement', s_t0]
     extkwd = EXTKWD.split(',')
     if len(extkwd) > 0:
         print '* Extra keywords:', extkwd
+        kwd += extkwd
 
     exp = mt.Experiment(sandbox=sandbox,
-        keywords=['compensation', 'reimbursement', s_t0] + extkwd,
+        keywords=kwd,
         max_assignments=states['n_assignments'],
         title=states['title'],
         reward=states['compamt'],
