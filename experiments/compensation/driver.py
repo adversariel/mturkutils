@@ -257,7 +257,7 @@ def publish(sandbox=True):
     hitidslog = os.path.join(TMPDIR, 'hitidslog_' +
             ('sandbox' if sandbox else 'production') + '_' +
             s_t0 + '.pkl')
-    exp.URLs = ['http://s3.amazonaws.com/' + S3BUCKET +
+    exp.URLs = ['https://s3.amazonaws.com/' + S3BUCKET +
             e.split(TMPDIR)[-1] for e in fns]
     exp.createHIT(verbose=True, hitidslog=hitidslog)
 
