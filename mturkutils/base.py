@@ -30,6 +30,8 @@ MONGO_DBNAME = 'mturk'
 IPINFODB_PATT = 'http://api.ipinfodb.com/v3/ip-city/' \
     '?key=8ee1f67f03db64c9d69c0ff899ee36348c3122d1a3e38f5cfaf1ec80ff269ee5' \
     '&ip=%s&format=json'
+S3HTTPBASE = 'http://s3.amazonaws.com/'
+S3HTTPSBASE = 'https://s3.amazonaws.com/'
 
 
 class Experiment(object):
@@ -436,7 +438,7 @@ class Experiment(object):
             raise ValueError('Stimulus name not recognized. Is it a URL?')
 
     def uploadHTML(self, filelist, bucketname, dstprefix='', verbose=10,
-            section_name=None, test=True):
+            section_name=None, test=True, https=False):
         """
         Pass a list of paths to the files you want to upload (or the filenames
         themselves in you're already in the directory) and the name of a bucket
@@ -456,8 +458,23 @@ class Experiment(object):
                 section_name=section_name, test=test, verbose=verbose)
 
         urls = []
+        if not https:
+            print '********************** WARNING **************************'
+            print 'Using http instead https: this may cause externalQuestion'
+            print 'submit failures depending on the setting of turkers.'
+            print 'Consider using `https=False` in the future.'
+            print '*********************************************************'
+            s3base = S3HTTPBASE
+        else:
+            print '************************ NOTE ***************************'
+            print 'While `https=True` is highly recommended, you must double'
+            print 'check your html and js files to get rid of all statements'
+            print 'that fetch external files (especially js files) via http.'
+            print '*********************************************************'
+            s3base = S3HTTPSBASE
+
         for idx, (k, f) in enumerate(zip(keys, filelist)):
-            urls.append('http://s3.amazonaws.com/' + bucketname + '/' + k)
+            urls.append(s3base + bucketname + '/' + k)
             if verbose > 0:
                 print str(idx) + ': ' + f
         self.URLs = urls
