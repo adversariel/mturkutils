@@ -27,7 +27,7 @@ OTHERSRC = ['web/adj_dict.js']
 ADJS = ['light', 'bulbous', 'boxy', 'curly', 'globular', 'disc-like',
     'pointy', 'bumpy', 'rectangular', 'striped', 'spotted', 'juicy',
     'cuddly']
-S3PREFIX_SUBJSIM = 'http://s3.amazonaws.com/subjsimilarity/'
+S3PREFIX_SUBJSIM = 'https://s3.amazonaws.com/subjsimilarity/'
 S3BUCKET = 'objectome_adjectives_slider'
 
 
@@ -143,7 +143,7 @@ def publish(sandbox=True):
     hitidslog = os.path.join(TMPDIR, 'hitidslog_' +
             ('sandbox' if sandbox else 'production') + '_' +
             str(int(time.time())) + '.pkl')
-    exp.URLs = ['http://s3.amazonaws.com/' + S3BUCKET +
+    exp.URLs = ['https://s3.amazonaws.com/' + S3BUCKET +
             e.split(TMPDIR)[-1] for e in fns]
     exp.createHIT(verbose=True, hitidslog=hitidslog)
 
