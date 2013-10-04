@@ -313,6 +313,11 @@ class Experiment(object):
         return self._updateDBcore(self, datafiles, mode, verbose=verbose)
 
     def getHITdataraw(self, hitid):
+        """Get the human data as raw boto objects for the given `hitid`"""
+        # NOTE: be extra careful when modify this function.
+        # especially utils.download_results() and cli.make_backup()
+        # depends on this.  In short: avoid modification of this func
+        # as much as possible, especially the returned data.
         assignments = self.conn.get_assignments(hit_id=hitid,
                 page_size=min(self.max_assignments, MTURK_PAGE_SIZE_LIMIT))
         HITdata = self.conn.get_hit(hit_id=hitid)
