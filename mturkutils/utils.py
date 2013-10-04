@@ -2,6 +2,9 @@
 import os
 import json
 import shutil as sh
+import cPickle as pk
+from boto import __version__ as boto_version
+from . import base
 
 # -- example rules for prep_web_simple()
 PREP_RULE_SIMPLE_RSVP_SANDBOX = [
@@ -34,34 +37,36 @@ PREP_RULE_SIMPLE_RSVP_PRODUCTION = [
         },
     ]
 
+BACKUP_ALGO_VER = 1
+
 
 def prep_web_simple(trials, src, dstdir, dstpatt='output_n%04d.html',
         rules=PREP_RULE_SIMPLE_RSVP_SANDBOX, auxfns=None,
         n_per_file=100, verbose=False):
     """Prepare web files for publishing.
 
-This function does the following things:
-* Do simple string manipulations and prepare html files for publishing.
-* Copy associated web files (e.g., javascripts, images, etc.).
+    This function does the following things:
+    * Do simple string manipulations and prepare html files for publishing.
+    * Copy associated web files (e.g., javascripts, images, etc.).
 
-Parameters
-----------
-* trials: list of trials to be distributed across multiple (html) files.
-  Note that no randomization is done in this function.
-* src: path to the source html file
-* dstdir: dirname for the output web files
-* dstpatt: output file name pattern.  Should contain a formating string
-  (e.g., %d) for numbering
-* rules: a list of dictionaries that specifies string manipulations needed.
-  Each element dictionary should have keys "old" and "new", which
-  mean the old string to be replaced and the new string, respectively.
-  If "n" is in the dictionary, the number will be used to assert
-  the number of occurances of "old".  "${CHUNK}" in "new" will be
-  replaced with the actual trials for the file.  See
-  `PREP_RULE_SIMPLE_RSVP_SANDBOX` for example.
-* auxfns: list of aux file names to be copied into `dstdir`
-* n_per_file: the number of presentations per one final html file
-"""
+    Parameters
+    ----------
+    * trials: list of trials to be distributed across multiple (html) files.
+      Note that no randomization is done in this function.
+    * src: path to the source html file
+    * dstdir: dirname for the output web files
+    * dstpatt: output file name pattern.  Should contain a formating string
+      (e.g., %d) for numbering
+    * rules: a list of dictionaries that specifies string manipulations needed.
+      Each element dictionary should have keys "old" and "new", which
+      mean the old string to be replaced and the new string, respectively.
+      If "n" is in the dictionary, the number will be used to assert
+      the number of occurances of "old".  "${CHUNK}" in "new" will be
+      replaced with the actual trials for the file.  See
+      `PREP_RULE_SIMPLE_RSVP_SANDBOX` for example.
+    * auxfns: list of aux file names to be copied into `dstdir`
+    * n_per_file: the number of presentations per one final html file
+    """
     # process html first
     dst_fns = []
     mkdirs(dstdir)
@@ -100,15 +105,15 @@ def validate_html_files(filenames, rules=PREP_RULE_SIMPLE_RSVP_SANDBOX,
         trials_org=None):
     """Validates `filenames` by running simple tests
 
-Parameters
-----------
-* filenames: list of target file names (useually html files)
-* rules: list of testing rules.  See prep_web_simple() for the element
-  structure.  Only the keys "new" and "n" are used.  If "new" contains
-  "${CHUNK}", the portion in all `filenames` will be concatenated and
-  compared against `trials_org` (if given).
-* trials_org: the original entire trials.
-"""
+    Parameters
+    ----------
+    * filenames: list of target file names (useually html files)
+    * rules: list of testing rules.  See prep_web_simple() for the element
+      structure.  Only the keys "new" and "n" are used.  If "new" contains
+      "${CHUNK}", the portion in all `filenames` will be concatenated and
+      compared against `trials_org` (if given).
+    * trials_org: the original entire trials.
+    """
     trials = []
     sep_begin = None
     sep_end = None
@@ -143,6 +148,50 @@ Parameters
 
     if trials_org is not None:
         assert trials_org == trials
+
+
+def download_results(hitids, dstprefix=None, sandbox=True,
+        replstr='${HIT_ID}', verbose=False, full=False):
+    """Download all assignment results in `hittids` and save one pickle file
+    per HIT with `dstprefix` if it is not `None`.  If `dstprefix` is `None`,
+    the downloaded info will be returned without saving files."""
+    exp = base.Experiment(sandbox=sandbox,
+        max_assignments=base.MTURK_PAGE_SIZE_LIMIT,
+        reward=0.,
+        collection_name=None,   # disables db connection
+        meta=None,
+        )
+
+    res = []
+    n_total = len(hitids)
+    n_hits = 0
+    n_assgns = 0
+    meta = {'boto_version': boto_version,
+            'backup_algo_version': BACKUP_ALGO_VER}
+
+    for hitid in hitids:
+        if verbose:
+            print 'At (%d/%d):' % (n_hits + 1, n_total), hitid
+
+        assignments, HITdata = exp.getHITdataraw(hitid)
+        n_hits += 1
+        n_assgns += len(assignments)
+
+        if dstprefix is None:
+            res.append((assignments, HITdata))
+            continue
+
+        # save files otherwise
+        if replstr in dstprefix:
+            dst = dstprefix.replace(replstr, str(hitid))
+        else:
+            dst = dstprefix + str(hitid) + '.pkl'
+        pk.dump((assignments, HITdata, meta), open(dst, 'wb'))
+
+    if full:
+        return res, n_hits, n_assgns
+    if dstprefix is None:
+        return res
 
 
 def mkdirs(pth):

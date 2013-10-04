@@ -111,12 +111,12 @@ def upload():
     """Upload generated web files into S3"""
     print '* Uploading sandbox...'
     fns = glob.glob(os.path.join(TMPDIR_SANDBOX, '*.*'))
-    mt.uploader(fns, S3BUCKET, dstprefix=SANDBOXPATH + '/', test=True,
+    mt.upload_files(fns, S3BUCKET, dstprefix=SANDBOXPATH + '/', test=True,
             verbose=10)
 
     print '* Uploading production...'
     fns = glob.glob(os.path.join(TMPDIR_PRODUCTION, '*.*'))
-    mt.uploader(fns, S3BUCKET, dstprefix=PRODUCTIONPATH + '/', test=True,
+    mt.upload_files(fns, S3BUCKET, dstprefix=PRODUCTIONPATH + '/', test=True,
             verbose=10)
 
 

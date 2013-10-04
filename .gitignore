@@ -7,3 +7,4 @@
 .*swp
 papers/*/output
 tmp/
+tmp.?/
