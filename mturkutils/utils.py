@@ -3,6 +3,7 @@ import os
 import json
 import shutil as sh
 import cPickle as pk
+from boto import __version__ as boto_version
 from . import base
 
 # -- example rules for prep_web_simple()
@@ -35,6 +36,8 @@ PREP_RULE_SIMPLE_RSVP_PRODUCTION = [
             'n': 1
         },
     ]
+
+BACKUP_ALGO_VER = 1
 
 
 def prep_web_simple(trials, src, dstdir, dstpatt='output_n%04d.html',
@@ -148,7 +151,7 @@ def validate_html_files(filenames, rules=PREP_RULE_SIMPLE_RSVP_SANDBOX,
 
 
 def download_results(hitids, dstprefix=None, sandbox=True,
-        replstr='${HIT_ID}'):
+        replstr='${HIT_ID}', verbose=False, full=False):
     """Download all assignment results in `hittids` and save one pickle file
     per HIT with `dstprefix` if it is not `None`.  If `dstprefix` is `None`,
     the downloaded info will be returned without saving files."""
@@ -160,8 +163,20 @@ def download_results(hitids, dstprefix=None, sandbox=True,
         )
 
     res = []
+    n_total = len(hitids)
+    n_hits = 0
+    n_assgns = 0
+    meta = {'boto_version': boto_version,
+            'backup_algo_version': BACKUP_ALGO_VER}
+
     for hitid in hitids:
+        if verbose:
+            print 'At (%d/%d):' % (n_hits + 1, n_total), hitid
+
         assignments, HITdata = exp.getHITdataraw(hitid)
+        n_hits += 1
+        n_assgns += len(assignments)
+
         if dstprefix is None:
             res.append((assignments, HITdata))
             continue
@@ -171,8 +186,10 @@ def download_results(hitids, dstprefix=None, sandbox=True,
             dst = dstprefix.replace(replstr, str(hitid))
         else:
             dst = dstprefix + str(hitid) + '.pkl'
-        pk.dump((assignments, HITdata), open(dst, 'wb'))
+        pk.dump((assignments, HITdata, meta), open(dst, 'wb'))
 
+    if full:
+        return res, n_hits, n_assgns
     if dstprefix is None:
         return res
 
