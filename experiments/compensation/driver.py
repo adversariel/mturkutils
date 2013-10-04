@@ -219,17 +219,17 @@ def upload():
 
     print '* Uploading sandbox...'
     fns = glob.glob(os.path.join(TMPDIR_SANDBOX, '*.*'))
-    mt.uploader(fns, S3BUCKET, dstprefix=SANDBOXPATH + '/', test=True,
+    mt.upload_files(fns, S3BUCKET, dstprefix=SANDBOXPATH + '/', test=True,
             verbose=10)
 
     print '* Uploading production...'
     fns = glob.glob(os.path.join(TMPDIR_PRODUCTION, '*.*'))
-    mt.uploader(fns, S3BUCKET, dstprefix=PRODUCTIONPATH + '/', test=True,
+    mt.upload_files(fns, S3BUCKET, dstprefix=PRODUCTIONPATH + '/', test=True,
             verbose=10)
 
     print '* Uploading data...'
     fns = [os.path.join(TMPDIR, STATES)]
-    mt.uploader(fns, S3BUCKET, dstprefix=DATAFNPREFIX % s_t0,
+    mt.upload_files(fns, S3BUCKET, dstprefix=DATAFNPREFIX % s_t0,
             test=True, verbose=10, acl=None)
 
 
@@ -269,7 +269,7 @@ def publish(sandbox=True):
 
     fns = [hitidslog]
     dfns = ['hitidslog_' + 'sandbox.pkl' if sandbox else 'production.pkl']
-    mt.uploader(fns, S3BUCKET, dstprefix=DATAFNPREFIX % s_t0,
+    mt.upload_files(fns, S3BUCKET, dstprefix=DATAFNPREFIX % s_t0,
             test=True, verbose=10, acl=None, dstfiles=dfns)
 
     print '* t0 was:', s_t0
