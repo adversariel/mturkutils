@@ -13,6 +13,8 @@ import cPickle as pk
 import csv
 import boto
 import boto.mturk
+from warnings import warn
+from tabular.tab import tabarray
 from bson.objectid import ObjectId
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
@@ -22,7 +24,9 @@ from boto.mturk.qualification import Qualifications
 from boto.mturk.question import ExternalQuestion
 from boto.pyami.config import Config
 
+MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'
 MTURK_CRED_SECTION = 'MTurkCredentials'
+MTURK_PAGE_SIZE_LIMIT = 100    # imposed by Amazon
 BOTO_CRED_FILE = os.path.expanduser('~/.boto')
 MONGO_PORT = 22334
 MONGO_HOST = 'localhost'
@@ -32,6 +36,8 @@ IPINFODB_PATT = 'http://api.ipinfodb.com/v3/ip-city/' \
     '&ip=%s&format=json'
 S3HTTPBASE = 'http://s3.amazonaws.com/'
 S3HTTPSBASE = 'https://s3.amazonaws.com/'
+LOG_PREFIX = './'
+LOOKUP_FIELD = 'id'
 
 
 class Experiment(object):
@@ -39,7 +45,7 @@ class Experiment(object):
     for publishing a hit on MTurk.
 
     MTurk Parameters
-    Required:
+    ----------------
     - sandbox (default True): Publish to the MTurk Worker Sandbox if True
         (workersandbox.mturk.com). I recommend publishing to the sandbox
         first and checking that  your HIT works properly.
@@ -65,6 +71,7 @@ class Experiment(object):
         URL. 1000 should be fine for most purposes.
 
     Non-MTurk Parameters
+    --------------------
     - collection_name: String, name of collection within the 'mturk'
         database.  If `None`, no DB connection will be made.
     - comment: Explanation of the task and data format to be included in the
@@ -78,7 +85,7 @@ class Experiment(object):
         into a dictionary indexed by the original 'id' field.  Feel free to
         pass None and attach metadata yourself later, especially if your
         experiment isn't the usual recognition-style task.
-    - LOG_PREFIX: Where to save a pickle file with a list of published HIT IDs.
+    - log_prefix: Where to save a pickle file with a list of published HIT IDs.
         You can retrieve data from any hit published in the past using these
         IDs (within the Experiment object, the IDs are also saved in 'hitids').
     """
@@ -86,8 +93,8 @@ class Experiment(object):
     def __init__(self, sandbox=True, keywords=None, lifetime=1209600,
             max_assignments=1, title='TEST', reward=0.01, duration=1500,
             approval_delay=172800, description='TEST', frame_height_pix=1000,
-            comment='TEST', collection_name='TEST', meta=None, LOG_PREFIX='./',
-            section_name=MTURK_CRED_SECTION):
+            comment='TEST', collection_name='TEST', meta=None,
+            log_prefix=LOG_PREFIX, section_name=MTURK_CRED_SECTION):
         if keywords is None:
             keywords = ['']
         self.sandbox = sandbox
@@ -102,7 +109,7 @@ class Experiment(object):
         self.approval_delay = approval_delay
         self.description = description
         self.frame_height_pix = frame_height_pix
-        self.LOG_PREFIX = LOG_PREFIX
+        self.log_prefix = log_prefix
         self.section_name = section_name
         self.setQual(90)
 
@@ -134,29 +141,27 @@ class Experiment(object):
 
         self.collection_name = collection_name
         self.comment = comment
+        self.mongo_conn = None
+        self.db = None
+        self.collection = None
 
-        if 'tabarray' in type(meta).__name__:
+        if isinstance(meta, tabarray):
             print('Converting tabarray to dictionary for speed. '
                     'This may take a minute...')
             self.meta = convertTabArrayToDict(meta)
         else:
             self.meta = meta
 
-        if len(self.comment) == 0 or self.comment is None:
-            raise AttributeError('Must provide comment!')
-
         # if no db connection is requested, bypass the rest
         if collection_name is None:
-            self.mongo_conn = None
-            self.db = None
-            self.collection = None
             return
 
+        if self.comment is None or len(self.comment) == 0:
+            raise AttributeError('Must provide comment!')
+
         # make db connection and create collection
-        if (type(self.collection_name) != str and
-                type(self.collection_name) is not None) or \
-                (len(self.collection_name) == 0 and
-                type(self.collection_name) == str):
+        if not isinstance(self.collection_name, (str, unicode)) or \
+                len(self.collection_name) == 0:
             raise NameError('Please provide a valid MTurk'
                     'database collection name.')
 
@@ -175,24 +180,11 @@ class Experiment(object):
         else:
             conn = MTurkConnection(aws_access_key_id=self.access_key_id,
                                    aws_secret_access_key=self.secretkey,
-                                   host='mechanicalturk.sandbox.amazonaws.com')
+                                   host=MTURK_SANDBOX_HOST)
         return conn
 
     def setQual(self, performance_thresh=90):
-        self.qual = self.createQual(performance_thresh)
-
-    def createQual(self, performance_thresh=90):
-        """Returns an MTurk Qualification object which can then be passed to
-        a HIT object. For now, I've only implemented a prior HIT approval
-        qualification, but boto supports many more.
-        """
-        if type(performance_thresh) != int:
-            raise ValueError('Performance threshold must be an integer')
-        req = PercentAssignmentsApprovedRequirement(comparator='GreaterThan',
-                integer_value=performance_thresh)
-        qual = Qualifications()
-        qual.add(req)
-        return qual
+        self.qual = create_qual(performance_thresh)
 
     def createHIT(self, URLlist=None, verbose=True, hitidslog=None):
         """
@@ -244,7 +236,7 @@ class Experiment(object):
             if verbose:
                 print(str(urlnum) + ': ' + url + ', ' + self.hitids[-1])
         if hitidslog is None:
-            file_string = self.LOG_PREFIX + str(self.htypid) + '_' + \
+            file_string = self.log_prefix + str(self.htypid) + '_' + \
                     str(datetime.datetime.now()) + '.pkl'
             file_string = file_string.replace(' ', '_')
         else:
@@ -259,66 +251,44 @@ class Experiment(object):
         for hitid in hitids:
             self.conn.disable_hit(hitid)
 
-    def updateDBcore(self, datafile=None, verbose=False):
+    def _updateDBcore(self, srcs, mode, verbose=False):
         """See the documentation of updateDBwithHITs() and
         updateDBwithHITslocal()"""
-        # XXX: hahong: is the support for datafile implemented correctly??
-        if self.mongo_conn is None:
+        coll = self.collection
+        meta = self.meta
+
+        if coll is None:
             print('**NO DB CONNECTION**')
             return
 
-        self.all_data = []
+        if mode in ['files', 'pkls', 'csvs']:
+            # make sure all the files exist.
+            assert all([os.path.exists(src) for src in srcs])
+
         if self.sandbox:
             print('**WORKING IN SANDBOX MODE**')
 
-        col = self.collection
-        meta = self.meta
-
-        for hitid in self.hitids:
-            #print('Getting HIT results...')
-            if datafile is None:
-                sdata = self.getHITdata(hitid)
+        all_data = []
+        for src in srcs:
+            if mode == 'hitids':
+                sdata = self.getHITdata(src, full=False)
+            elif mode in ['files', 'pkls', 'csvs']:
+                if mode == 'csvs' or (mode == 'files' and 'csv' in
+                        src.lower()):
+                    sdata = parse_human_data(src)
+                else:
+                    assgns, hd = pk.load(open(src))
+                    sdata = parse_human_data_from_HITdata(assgns, HITdata=hd,
+                            comment=self.comment, description=self.description,
+                            full=False)
             else:
-                # XXX: hahong: seems that this part is broken (Issue #1)
-                sdata = parse_human_data(datafile)
-            self.all_data.extend(sdata)
-            if col is None:
-                continue
-            else:
-                pass
+                raise ValueError('Invalid "mode".')
 
-            #print('Connecting to database...')
-            col.ensure_index([('WorkerID', pymongo.ASCENDING), ('Timestamp',
-                pymongo.ASCENDING)], unique=True)  # bug
-            # ^ hahong: marked as bug, but for what??)
+            update_mongodb_once(coll, sdata, meta, verbose=verbose)
+            all_data.extend(sdata)
 
-            #print('Updating database...')
-            for subj in sdata:
-                try:
-                    subj_id = col.insert(subj, safe=True)
-                    if meta is not None:
-                        if type(meta) == dict:
-                            #Assuming meta is a dict -- this should be
-                            # much faster!
-                            m = [self.get_meta_fromdict(e, meta) for e in
-                                    subj['StimShown']]
-                            col.update({'_id': subj_id}, {'$set': {'ImgData':
-                                m}}, w=0)
-                            if verbose:
-                                print(subj_id)
-                                print('------------')
-                        else:
-                            #Assuming meta is a tabarray
-                            m = [self.get_meta(e, meta) for e in
-                                    subj['StimShown']]
-                            col.update({'_id': subj_id}, {'$set': {'ImgData':
-                                m}}, w=0)
-                            if verbose:
-                                print(subj_id)
-                                print('------------')
-                except pymongo.errors.DuplicateKeyError:
-                    #print('Entry already exists, moving to next...')
-                    continue
+        self.all_data = all_data
+        return all_data
 
     def updateDBwithHITs(self, verbose=False):
         """
@@ -329,113 +299,30 @@ class Experiment(object):
         - Even if you've already gotten some HITs, this will try to get them
           again anyway. Maybe later I'll fix this.
         """
-        self.updateDBcore(self, verbose=verbose)
+        return self._updateDBcore(self, self.hitids, 'hitids', verbose=verbose)
 
-    def updateDBwithHITslocal(self, datafile, verbose=False):
+    def updateDBwithHITslocal(self, datafiles, verbose=False, mode='files'):
         """
-        - Takes data directly downloaded from MTurk in the form of csv file,
-          attaches metadata (if necessary) and puts results in dicarlo2
-          database.
+        - Takes data directly downloaded from MTurk in the form of csv or
+          pickle files, attaches metadata (if necessary) and puts results in
+          dicarlo2 database.
         - Also stores data in object variable 'all_data' for immediate use.
         - Even if you've already gotten some HITs, this will get them again
           anyway. Maybe later I'll fix this.
         """
-        # XXX: hahong: is this implemented correctly???
-        self.updateDBcore(self, datafile=datafile, verbose=verbose)
+        return self._updateDBcore(self, datafiles, mode, verbose=verbose)
 
-    def getHITdata(self, hitid):
-        assignment = self.conn.get_assignments(hit_id=hitid,
-                page_size=self.max_assignments)
-        subj_data = []
-        for a in assignment:
-            try:
-                print a.WorkerId
-                for qfa in a.answers[0]:
-                    ansdat = json.loads(qfa.fields[0][1:-1])
-                HITdat = self.conn.get_hit(hit_id=hitid)
-                for h in HITdat:
-                    ansdat['HITid'] = h.HITId
-                    ansdat['Title'] = h.Title
-                    ansdat['Reward'] = h.FormattedPrice
-                    ansdat['URL'] = h.RequesterAnnotation
-                    ansdat['Duration'] = h.AssignmentDurationInSeconds
-                    ansdat['AssignmentID'] = a.AssignmentId
-                    ansdat['WorkerID'] = a.WorkerId
-                    ansdat['HITTypeID'] = h.HITTypeId
-                    ansdat['Timestamp'] = a.SubmitTime
-                    ansdat['Keywords'] = h.Keywords
-                    ansdat['CreationTime'] = h.CreationTime
-                    ansdat['AcceptTime'] = a.AcceptTime
-                    ansdat['Comment'] = self.comment
-                    ansdat['Description'] = self.description
-                    try:
-                        # Should see how this code works for
-                        # multiple qual types.
-                        qual = {'QualificationTypeId': h.QualificationTypeId,
-                                'IntegerValue': h.IntegerValue,
-                                'Comparator': h.Comparator}
-                        ansdat['Qualification'] = qual
-                    except AttributeError:
-                        pass
-                subj_data.append(ansdat)
-            except ValueError:
-                print('Error in decoding JSON data. Skipping for now...')
-                continue
-        return subj_data
+    def getHITdataraw(self, hitid):
+        assignments = self.conn.get_assignments(hit_id=hitid,
+                page_size=min(self.max_assignments, MTURK_PAGE_SIZE_LIMIT))
+        HITdata = self.conn.get_hit(hit_id=hitid)
+        return assignments, HITdata
 
-    def get_meta_fromdict(self, url, meta):
-        if type(url) == list:
-            dat = []
-            for u in url:
-                _id = getidfromURL(u)
-                try:
-                    dat.append(meta[_id])
-                except KeyError:
-                    #Object not found in metadata. Skip to next
-                    continue
-            return dat
-        elif type(url) == str or type(url) == unicode:
-            _id = getidfromURL(url)
-            try:
-                return meta[_id]
-            except KeyError:
-                #Object not found in metadata. Return empty dict.
-                return {}
-        else:
-            print(url)
-            raise ValueError('Stimulus name not recognized. '
-                    'Is it a URL or metadata id?')
-
-    def get_meta(self, url, meta, lookup_field='id'):
-        if type(url) == list:
-            dat = []
-            for u in url:
-                _id = getidfromURL(u)
-                try:
-                    dat.append(SONify(dict(zip(meta.dtype.names,
-                        meta[meta[lookup_field] == _id][0]))))
-                except IndexError:
-                    #print('This object not found in metadata.'
-                    #       'Skipping to next...')
-                    #I'm assuming for now this error occurs because the
-                    #ImgOrder format contains URLs for response images, which
-                    #have no metadata. However, this error might also occur if
-                    #something is wrong with a URL or the metadata file, in
-                    #which case the error will be silent and that's not good.
-                    continue
-            return dat
-        elif type(url) == str or type(url) == unicode:
-            _id = getidfromURL(url)
-            try:
-                return SONify(dict(zip(meta.dtype.names,
-                    meta[meta[lookup_field] == _id][0])))
-            except IndexError:
-                print('This object not found in metadata.'
-                        'Returning empty dict.')
-                return {}
-        else:
-            print(url)
-            raise ValueError('Stimulus name not recognized. Is it a URL?')
+    def getHITdata(self, hitid, verbose=True, full=False):
+        assignments, HITdata = self.getHITdataraw(hitid)
+        return parse_human_data_from_HITdata(assignments, HITdata,
+                comment=self.comment, description=self.description, full=full,
+                verbose=verbose)
 
     def uploadHTML(self, filelist, bucketname, dstprefix='', verbose=10,
             section_name=None, test=True, https=False):
@@ -454,7 +341,7 @@ class Experiment(object):
             # using different accounts
             section_name = self.section_name
 
-        keys = uploader(filelist, bucketname, dstprefix=dstprefix,
+        keys = upload_files(filelist, bucketname, dstprefix=dstprefix,
                 section_name=section_name, test=test, verbose=verbose)
 
         urls = []
@@ -495,7 +382,21 @@ def parse_credentials_file(path=None, section_name='Credentials'):
             config.get(section_name, 'aws_secret_access_key')
 
 
+def create_qual(performance_thresh=90):
+    """Returns an MTurk Qualification object which can then be passed to
+    a HIT object. For now, I've only implemented a prior HIT approval
+    qualification, but boto supports many more.
+    """
+    performance_thresh = int(performance_thresh)
+    req = PercentAssignmentsApprovedRequirement(comparator='GreaterThan',
+            integer_value=performance_thresh)
+    qual = Qualifications()
+    qual.add(req)
+    return qual
+
+
 def parse_human_data(datafile):
+    warn('Use of parse_human_data() is deprecated.')
     csv.field_size_limit(10000000000)
     count = 0
     with open(datafile, 'rb+') as csvfile:
@@ -527,13 +428,155 @@ def parse_human_data(datafile):
     return subj_data
 
 
+def parse_human_data_from_HITdata(assignments, HITdata=None, comment='',
+        description='', full=False, verbose=False):
+    """Parse human response data from boto HIT data objects.  This only
+    supports external questions for now"""
+    fields = ['HITid', 'Title', 'Reward', 'URL', 'Duration', 'HITTypeID',
+            'Keywords', 'CreationTime', 'Qualification']
+
+    if HITdata is None:
+        HITdata = {}
+
+    # -- sanitize HITdata
+    hitdat = {}   # sanitized HITdata
+    if isinstance(HITdata, dict):
+        for field in zip(fields):
+            hitdat[field] = HITdata.get(field)
+    elif isinstance(HITdata, (list, boto.resultset.ResultSet)):
+        # list of boto.mturk.connection.HIT
+        assert len(HITdata) == 1
+        h = HITdata[0]
+        assert isinstance(h, boto.mturk.connection.HIT)
+
+        # this MUST match the order of `fields` above.
+        attrs = ['HITId', 'Title', 'FormattedPrice', 'RequesterAnnotation',
+                'AssignmentDurationInSeconds', 'HITTypeId', 'Keywords',
+                'CreationTime', ('QualificationTypeId', 'IntegerValue',
+                    'Comparator')]
+        assert len(fields) == len(attrs)
+
+        for field, attr in zip(fields, attrs):
+            if type(attr) is not tuple:
+                # regular attribs
+                hitdat[field] = getattr(h, attr)
+            else:
+                hd = {}
+                try:
+                    # Should see how this code works for
+                    # multiple qual types.
+                    for ae in attr:
+                        hd[ae] = getattr(h, ae)
+                    hitdat[field] = hd
+                except AttributeError:
+                    continue
+    else:
+        raise ValueError('Unknown type of HITdata')
+
+    # -- get all assignments
+    subj_data = []
+    for a in assignments:
+        try:
+            if verbose:
+                print a.WorkerId
+            assert len(a.answers) == 1      # must be
+            assert len(a.answers[0]) == 1   # multiple ans not supported
+            qfa = a.answers[0][0]
+            assert len(qfa.fields) == 1     # must be...?
+            ansdat = json.loads(qfa.fields[0])
+            assert len(ansdat) == 1         # only this format is supported
+            ansdat = ansdat[0]
+            ansdat['AssignmentID'] = a.AssignmentId
+            ansdat['WorkerID'] = a.WorkerId
+            ansdat['Timestamp'] = a.SubmitTime
+            ansdat['AcceptTime'] = a.AcceptTime
+            ansdat['Comment'] = comment
+            ansdat['Description'] = description
+            ansdat.update(hitdat)
+            subj_data.append(ansdat)
+        except ValueError:
+            print('Error in decoding JSON data. Skipping for now...')
+            continue
+
+    if full:
+        return subj_data, hitdat
+    return subj_data
+
+
+def update_mongodb_once(coll, subj_data, meta, verbose=False):
+    """Update mongodb with the human data for a single HIT
+
+    Parameters
+    ----------
+    coll : string
+        Name of mongodb collection
+    subj_data : list
+        Human data for a single HIT.  This must be `subj_data` returned from
+        `parse_human_data_from_HITdata()` (or `parse_human_data()`, although
+        this is outdataed) and can contain multiple subjects.
+    meta : dict or tabarray
+        The object that contains the stimuli information.
+    """
+    if coll is None:
+        raise ValueError('`coll` is `None`: no db connection?')
+
+    coll.ensure_index([
+        ('WorkerID', pymongo.ASCENDING),
+        ('Timestamp', pymongo.ASCENDING)],
+        unique=True)
+
+    for subj in subj_data:
+        try:
+            subj_id = coll.insert(subj, safe=True)
+            if verbose:
+                print 'Added:', subj_id
+
+            if meta is None:
+                continue
+
+            # handle ImgData
+            m = [search_meta(getidfromURL(e), meta) for e in subj['StimShown']]
+            coll.update({'_id': subj_id}, {
+                '$set': {'ImgData': m}
+                }, w=0)
+
+        except pymongo.errors.DuplicateKeyError:
+            warn('Entry already exists, moving to next...')
+            continue
+
+
+def search_meta(needles, meta, lookup_field=LOOKUP_FIELD):
+    """Search `needles` in `meta` and returns the corresponding records.
+    This replaces old `get_meta()` and `get_meta_fromtabarray()`."""
+    single = False
+    if isinstance(needles, (str, unicode)):
+        single = True
+        needles = [needles]
+
+    dat = []
+    if isinstance(meta, dict):
+        # this should be much faster!
+        for n in needles:
+            dat.append(meta[n])
+    else:
+        # Assuming meta is a tabarray
+        for n in needles:
+            si = meta[lookup_field] == n
+            assert np.sum(si) == 1         # must unique
+            meta0 = convertTabArrayToDict(meta[si])
+            dat.append(meta0[n])
+
+    return dat if not single else dat[0]
+
+
 def getidfromURL(url):
+    """Extract the id from the URL"""
     u = urllib.url2pathname(url).split('/')[-1]
-    u = os.path.splitext(u)[0]
+    u = u.split('.')[0]   # to handle something like: THIS_IS_ID.png.jpg
     return u
 
 
-def convertTabArrayToDict(meta_tabarray, lookup_field='id'):
+def convertTabArrayToDict(meta_tabarray, lookup_field=LOOKUP_FIELD):
     meta_dict = {}
     for m in meta_tabarray:
         meta_dict[m[lookup_field]] = SONify(dict(zip(meta_tabarray.dtype.names,
@@ -600,7 +643,7 @@ def SONify(arg, memo=None):
     return rval
 
 
-def uploader(srcfiles, bucketname, dstprefix='',
+def upload_files(srcfiles, bucketname, dstprefix='',
         section_name=MTURK_CRED_SECTION, test=True, verbose=False,
         accesskey=None, secretkey=None, dstfiles=None, acl='public-read'):
     """Upload multiple files into a S3 bucket"""
