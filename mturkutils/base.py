@@ -277,7 +277,7 @@ class Experiment(object):
                         src.lower()):
                     sdata = parse_human_data(src)
                 else:
-                    assgns, hd = pk.load(open(src))
+                    assgns, hd = pk.load(open(src))[:2]
                     sdata = parse_human_data_from_HITdata(assgns, HITdata=hd,
                             comment=self.comment, description=self.description,
                             full=False)
