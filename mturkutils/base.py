@@ -560,6 +560,10 @@ def update_mongodb_once(coll, subj_data, meta, verbose=False, overwrite=False):
             doc = coll.find_one(spec)
             assert doc is not None
             doc_id = doc['_id']
+            if '_id' in subj:
+                _id = subj.pop('_id')
+                if verbose:
+                    print 'Dangling _id:', _id
             coll.update({'_id': doc_id}, {
                 '$set': subj
                 }, w=0)
