@@ -8,7 +8,7 @@ def make_backup(full_argv):
     """Download and make a backup of HITs"""
     args, opts = parse_opts2(full_argv[1:])
 
-    if len(args) != 2:
+    if len(args) < 2:
         usage = """\
 Make a local backup of assignment results of the given HITs.  Use of this
 utility should be TEMPORARY BACKUP PURPOSES ONLY; this stores raw boto objects
@@ -19,6 +19,7 @@ ananlysis by using the database if possible.
 
 Usage:
 $EXEC [options] <HIT_ID_list.pkl> <output path prefix>
+$EXEC [options] <HIT_ID 1> [HIT ID 2] ... <output path prefix>
 
 Options:
 --sandbox       Operate in the sandbox
@@ -28,7 +29,8 @@ Options:
         return 1
 
     # -- do work
-    hitids, outp = args
+    outp = args[-1]
+    hitids = args[:-1]
     sandbox = False
 
     print '* Using HIT IDs in:', hitids
@@ -36,7 +38,8 @@ Options:
         print '* Sandbox mode.'
         sandbox = True
 
-    hitids = pk.load(open(hitids))
+    if len(hitids) == 1 and os.path.exists(hitids[0]):
+    	hitids = pk.load(open(hitids[0]))
     print '* Total %d hits' % len(hitids)
 
     _, n_hits, n_assgns = ut.download_results(hitids, dstprefix=outp,
