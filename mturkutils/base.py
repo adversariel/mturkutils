@@ -574,11 +574,15 @@ def search_meta(needles, meta, lookup_field=LOOKUP_FIELD):
     return dat if not single else dat[0]
 
 
-def getidfromURL(url):
-    """Extract the id from the URL"""
-    u = urllib.url2pathname(url).split('/')[-1]
-    u = u.split('.')[0]   # to handle something like: THIS_IS_ID.png.jpg
-    return u
+def getidfromURL(urls):
+    """Extract the id from the URL or list of URLs"""
+    single = False
+    if not isinstance(urls, list):
+        single = True
+        urls = [urls]
+
+    ids = [urllib.url2pathname(u).split('/')[-1].split('.')[0] for u in urls]
+    return ids if not single else ids[0]
 
 
 def convertTabArrayToDict(meta_tabarray, lookup_field=LOOKUP_FIELD):
