@@ -299,7 +299,7 @@ class Experiment(object):
         - Even if you've already gotten some HITs, this will try to get them
           again anyway. Maybe later I'll fix this.
         """
-        return self._updateDBcore(self, self.hitids, 'hitids', verbose=verbose)
+        return self._updateDBcore(self.hitids, 'hitids', verbose=verbose)
 
     def updateDBwithHITslocal(self, datafiles, verbose=False, mode='files'):
         """
@@ -310,7 +310,7 @@ class Experiment(object):
         - Even if you've already gotten some HITs, this will get them again
           anyway. Maybe later I'll fix this.
         """
-        return self._updateDBcore(self, datafiles, mode, verbose=verbose)
+        return self._updateDBcore(datafiles, mode, verbose=verbose)
 
     def getHITdataraw(self, hitid):
         """Get the human data as raw boto objects for the given `hitid`"""
