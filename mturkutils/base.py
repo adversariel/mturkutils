@@ -562,7 +562,8 @@ def update_mongodb_once(coll, subj_data, meta, verbose=False, overwrite=False):
             doc_id = doc['_id']
             if '_id' in subj:
                 _id = subj.pop('_id')
-                if verbose:
+                if verbose and str(_id) not in str(doc_id) \
+                        and str(doc_id) not in str(_id):
                     print 'Dangling _id:', _id
             coll.update({'_id': doc_id}, {
                 '$set': subj
