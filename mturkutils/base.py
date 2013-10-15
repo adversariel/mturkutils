@@ -251,7 +251,7 @@ class Experiment(object):
         for hitid in hitids:
             self.conn.disable_hit(hitid)
 
-    def _updateDBcore(self, srcs, mode, verbose=False):
+    def _updateDBcore(self, srcs, mode, **kwargs):
         """See the documentation of updateDBwithHITs() and
         updateDBwithHITslocal()"""
         coll = self.collection
@@ -284,13 +284,14 @@ class Experiment(object):
             else:
                 raise ValueError('Invalid "mode".')
 
-            update_mongodb_once(coll, sdata, meta, verbose=verbose)
+            update_mongodb_once(coll, sdata, meta,
+                    **kwargs)
             all_data.extend(sdata)
 
         self.all_data = all_data
         return all_data
 
-    def updateDBwithHITs(self, verbose=False):
+    def updateDBwithHITs(self, **kwargs):
         """
         - Takes a list of HIT IDs, gets data from MTurk, attaches metadata (if
           necessary) and puts results in dicarlo2 database.
@@ -298,10 +299,13 @@ class Experiment(object):
           This might be dangerous for MH17's memory.
         - Even if you've already gotten some HITs, this will try to get them
           again anyway. Maybe later I'll fix this.
+        - With `kwargs`, you can specify the followings:
+          - verbose: show the progress of db update
+          - overwrite: if True, the existing records will be overwritten.
         """
-        return self._updateDBcore(self.hitids, 'hitids', verbose=verbose)
+        return self._updateDBcore(self.hitids, 'hitids', **kwargs)
 
-    def updateDBwithHITslocal(self, datafiles, verbose=False, mode='files'):
+    def updateDBwithHITslocal(self, datafiles, mode='files', **kwargs):
         """
         - Takes data directly downloaded from MTurk in the form of csv or
           pickle files, attaches metadata (if necessary) and puts results in
@@ -309,8 +313,11 @@ class Experiment(object):
         - Also stores data in object variable 'all_data' for immediate use.
         - Even if you've already gotten some HITs, this will get them again
           anyway. Maybe later I'll fix this.
+        - With `kwargs`, you can specify the followings:
+          - verbose: show the progress of db update
+          - overwrite: if True, the existing records will be overwritten.
         """
-        return self._updateDBcore(datafiles, mode, verbose=verbose)
+        return self._updateDBcore(datafiles, mode, **kwargs)
 
     def getHITdataraw(self, hitid):
         """Get the human data as raw boto objects for the given `hitid`"""
@@ -330,7 +337,7 @@ class Experiment(object):
                 verbose=verbose)
 
     def uploadHTML(self, filelist, bucketname, dstprefix='', verbose=10,
-            section_name=None, test=True, https=False):
+            section_name=None, test=True, https=True):
         """
         Pass a list of paths to the files you want to upload (or the filenames
         themselves in you're already in the directory) and the name of a bucket
@@ -352,9 +359,10 @@ class Experiment(object):
         urls = []
         if not https:
             print '********************** WARNING **************************'
-            print 'Using http instead https: this may cause externalQuestion'
-            print 'submit failures depending on the setting of turkers.'
-            print 'Consider using `https=False` in the future.'
+            print 'You are using http instead of https: this may cause the'
+            print 'failure in submitting external question depending on the'
+            print 'browser setting of turkers.  Consider using `https=False`'
+            print 'in the future.'
             print '*********************************************************'
             s3base = S3HTTPBASE
         else:
@@ -508,7 +516,7 @@ def parse_human_data_from_HITdata(assignments, HITdata=None, comment='',
     return subj_data
 
 
-def update_mongodb_once(coll, subj_data, meta, verbose=False):
+def update_mongodb_once(coll, subj_data, meta, verbose=False, overwrite=False):
     """Update mongodb with the human data for a single HIT
 
     Parameters
@@ -521,6 +529,11 @@ def update_mongodb_once(coll, subj_data, meta, verbose=False):
         this is outdataed) and can contain multiple subjects.
     meta : dict or tabarray
         The object that contains the stimuli information.
+    verbose : bool
+        If True (False by default), show the progress.
+    overwrite : bool
+        If True (False by default), the contents in the database will be
+        overwritten.
     """
     if coll is None:
         raise ValueError('`coll` is `None`: no db connection?')
@@ -531,23 +544,37 @@ def update_mongodb_once(coll, subj_data, meta, verbose=False):
         unique=True)
 
     for subj in subj_data:
+        assert isinstance(subj, dict)
         try:
-            subj_id = coll.insert(subj, safe=True)
-            if verbose:
-                print 'Added:', subj_id
-
-            if meta is None:
+            doc_id = coll.insert(subj, safe=True)
+        except pymongo.errors.DuplicateKeyError:
+            if not overwrite:
+                warn('Entry already exists, moving to next...')
                 continue
-
-            # handle ImgData
-            m = [search_meta(getidfromURL(e), meta) for e in subj['StimShown']]
-            coll.update({'_id': subj_id}, {
-                '$set': {'ImgData': m}
+            if 'WorkerID' not in subj or 'Timestamp' not in subj:
+                warn("No WorkerID or Timestamp in the subject's "
+                        "record: invalid HIT data?")
+                continue
+            spec = {'WorkerID': subj['WorkerID'],
+                    'Timestamp': subj['Timestamp']}
+            doc = coll.find_one(spec)
+            assert doc is not None
+            doc_id = doc['_id']
+            coll.update({'_id': doc_id}, {
+                '$set': subj
                 }, w=0)
 
-        except pymongo.errors.DuplicateKeyError:
-            warn('Entry already exists, moving to next...')
+        if verbose:
+            print 'Added:', doc_id
+
+        if meta is None:
             continue
+
+        # handle ImgData
+        m = [search_meta(getidfromURL(e), meta) for e in subj['StimShown']]
+        coll.update({'_id': doc_id}, {
+            '$set': {'ImgData': m}
+            }, w=0)
 
 
 def search_meta(needles, meta, lookup_field=LOOKUP_FIELD):
