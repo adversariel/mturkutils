@@ -39,7 +39,7 @@ Options:
         sandbox = True
 
     if len(hitids) == 1 and os.path.exists(hitids[0]):
-    	hitids = pk.load(open(hitids[0]))
+        hitids = pk.load(open(hitids[0]))
     print '* Total %d hits' % len(hitids)
 
     _, n_hits, n_assgns = ut.download_results(hitids, dstprefix=outp,
