@@ -688,18 +688,9 @@ def upload_files(srcfiles, bucketname, dstprefix='',
         section_name=MTURK_CRED_SECTION, test=True, verbose=False,
         accesskey=None, secretkey=None, dstfiles=None, acl='public-read'):
     """Upload multiple files into a S3 bucket"""
-    if accesskey is None or secretkey is None:
-        accesskey, secretkey = \
-                parse_credentials_file(section_name=section_name)
-
     # -- establish connections
-    conn = connect_s3(section_name=section_name, accesskey=accesskey,
-            secretkey=secretkey)
-    try:
-        bucket = conn.get_bucket(bucketname)
-    except boto.exception.S3ResponseError:
-        print('Bucket does not exist, creating a new bucket...')
-        bucket = conn.create_bucket(bucketname)
+    _, bucket = connect_s3(section_name=section_name, accesskey=accesskey,
+            secretkey=secretkey, bucketname=bucketname, createbucket=True)
 
     if dstfiles is None:
         dstfiles = [None] * len(srcfiles)
@@ -734,7 +725,7 @@ def upload_files(srcfiles, bucketname, dstprefix='',
 
 
 def connect_s3(section_name=MTURK_CRED_SECTION, accesskey=None,
-        secretkey=None):
+        secretkey=None, bucketname=None, createbucket=False):
     """Get a S3 connection"""
     if accesskey is None or secretkey is None:
         accesskey, secretkey = \
@@ -747,4 +738,32 @@ def connect_s3(section_name=MTURK_CRED_SECTION, accesskey=None,
         raise ValueError('Could not establish an S3 conection. '
                 'Is your account properly configured?')
 
+    if bucketname is not None:
+        try:
+            bucket = conn.get_bucket(bucketname)
+        except boto.exception.S3ResponseError:
+            print('Bucket does not exist.')
+            bucket = None
+            if createbucket:
+                print('Creating a new bucket...')
+                bucket = conn.create_bucket(bucketname)
+        return conn, bucket
     return conn
+
+
+def exists_s3(bucketname_or_bucket, keyname, section_name=MTURK_CRED_SECTION,
+        accesskey=None, secretkey=None):
+    """Check whether a key is in the bucket"""
+    if isinstance(bucketname_or_bucket, (str, unicode)):
+        # -- establish connections
+        _, bucket = connect_s3(section_name=section_name, accesskey=accesskey,
+                secretkey=secretkey, bucketname=bucketname_or_bucket)
+    else:
+        bucket = bucketname_or_bucket
+
+    if bucket is None:
+        return
+
+    k = Key(bucket)
+    k.key = keyname
+    return k.exists()
