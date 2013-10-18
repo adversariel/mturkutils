@@ -1,0 +1,414 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Subjective Similarity Rating</title>
+
+<style>
+	body { 
+		margin:0; 
+		padding: 0; 
+		font-family: 'trebuchet ms', trebuchet, verdana;
+	}
+
+	div,pre { margin:0; padding:0 }
+
+	h2 { margin: 20px 0 5px 0; padding: 0 }
+
+	p.intro { 
+		margin: 0; 
+		padding: 15px; 
+		background: #eee; 
+		font-size: small; 
+	}
+
+	div#tutorial {
+		position:relative; 
+		background-color: white;  
+		padding: 10px;
+	}
+
+	#preview {
+		position:absolute;
+		border:1px solid #ccc;
+		background:#333;
+		padding:5px;
+		display:none;
+		color:#fff;
+	}
+</style>
+
+<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/slider-1.0.2.js"></script>
+
+<script type="text/javascript" src="adj_dict.js"></script>
+<script type="text/javascript">
+
+imgFiles = [];
+
+shuffle = function(o) { 
+	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x = o[--i], o[i] = o[j], o[j] = x);
+	return o;
+};
+
+function gup(name) {
+    name = name.replace(/[\[]/,"\\[").replace(/[\]]/,"\\]");
+    var regexS = "[\\?&]"+name+"=([^&#]*)";
+    var regex = new RegExp( regexS );
+    var results = regex.exec(window.location.href);
+    if (results === null)
+        return "";
+    else
+        return results[1];
+}
+
+function init_vars() {
+	begin = false;
+	zoom = DetectZoom.zoom();
+	aID = gup("assignmentId");
+	response = [];
+	trialDurations = [];
+	trialStartTime = new Date();
+	StimDone = [];
+	imgFiles_new = [];
+	stimduration = 100;
+	ISI = 500;
+	trialNumber = 0;
+	totalTrials = imgFiles.length;  // 100;
+	startpoint = 0;
+	exp_type = "adjectives_slider";
+	did_famil = false;
+}
+
+function familiar() {
+	did_famil = true;
+	$('#begintask').hide(); $('#_preload').hide(); $('#buttons').hide(); $('#startbuttons').hide();
+	$('.test').show();
+	$('#message').empty();
+	$('#main_test').show();
+	var ii = 0;
+	var id_familar = setInterval(function() {
+		console.log(ii);
+		if (ii < unlabeled_prototypes.length) {
+			console.log(unlabeled_prototypes[ii]);
+			$('#main_test').attr('src', unlabeled_prototypes[ii]);
+			console.log('New image');
+			ii++;
+			$('#img_caption').html(ii.toString() + ' / ' + unlabeled_prototypes.length.toString());
+		}
+		else {
+			clearInterval(id_familar);
+
+			$('#startbuttons p').remove();
+			$('#begintask2').hide();
+			$('#img_caption').html('');
+			$('.test').hide();
+			
+			for (ii=0; ii < unlabeled_prototypes.length; ii++) {
+				$('#main').append('<a href="'+unlabeled_prototypes[ii]+'" class="preview"><img src="'+unlabeled_prototypes[ii]+'" style="float:none; padding:10px; height:100px; width:100px;" /></a>');	
+			}
+			$('#main').append('<div id="dvi" style="position:absolute; top:5px; left:50%;""><button style="position:relative; left:-50%;" onclick="end_familiarization()">Done Viewing Images</button></div>');
+			$.getScript('https://s3.amazonaws.com/objectome_html/subj_similarity_tooltip.js');
+			$('.preview').click(function(event) {event.preventDefault();});
+		}
+	}, 1000);
+	return;
+}
+
+function end_familiarization() {
+	$('.preview').remove();
+	$('#dvi').remove();
+	$('#begintask').unbind('click');
+	$('#begintask').show().click(function() {
+		beginExp();
+	}).html('Begin Experiment');
+	$('#startbuttons').show();
+	totalTrials = 100;
+	$('#buttons').show();
+}
+
+function beginExp() {
+	begin = true;
+	$('#sl0slider').hide();
+	$('#begintask').hide(); $('#_preload').hide(); $('#buttons').hide(); $('#begintask2').hide();
+	$('#startbuttons').empty();
+	$('#message').empty();
+	window.scrollTo(0, 0);   // hahong: make sure scroll to the top
+	$('.fixation').show();
+	var stim1 = imgFiles_new[trialNumber][0];
+	$('#main_test').attr('src', stim1);
+
+	setTimeout(function() {
+		showStim();
+	}, ISI);
+}
+
+function showStim() {
+	$('.test').show();
+	$('.fixation').hide();
+	setTimeout(function() {
+		$('#main_test').hide();
+		$('.test').hide();  //after stimduration, hide the first image.
+		setTimeout( function() {
+			showResponse();  //Go to response screen.
+		}, ISI);
+	}, stimduration);
+}
+
+function showResponse() {
+	$('#sl0slider').hide();
+	sliderRef.f_setValue(0);
+	var myadj = imgFiles_new[trialNumber][1];
+	$('#adj_header').html(myadj+'<br><div style="font-size:75%; width:400px; font-weight:normal;"><i>'+adj_dict[myadj]+'</i></div>');
+	$('#adj_text').html('How ' + myadj + '  was the object in the foreground?');
+	$('#adj_text_bleft').html('Not ' + myadj);
+	$('#adj_text_bright').html('Very ' + myadj);
+	$('#buttons').show();
+	trialStartTime = new Date();
+	$('#trialCounter').html('Progress: '+ (trialNumber + 1) +' of '+totalTrials);
+	if (trialNumber+1 == totalTrials) { }  //Do nothing, skip to submit data func.
+	else {
+		var stim1 = imgFiles_new[trialNumber+1][0]; 
+		$('#main_test').attr('src', stim1);
+	}
+	$('#nextTrial').hide();  // Hide the btn
+	$('#sl0base').mouseup(function() { $('#nextTrial').show(); } );   // undo hiding on user input.
+}
+
+function whitescreen() {
+	if (begin) {
+		trialEndTime = new Date();
+		window.scrollTo(0, 0);   // hahong: make sure scroll to the top
+		$('#buttons').hide();
+		$('.fixation').show();
+		$('#main_test').show();
+		$('#nextTrial').hide();
+		rating = parseInt($('#sliderValue').val(), 10);
+		pushData(rating);
+		endTrial();
+	}
+	else { }
+}
+
+function endTrial() {
+	if (trialNumber >= totalTrials-1) {
+		var resultsobj = [];
+		resultsobj.push({
+			Response:response,
+			ImgOrder:imgFiles_new,
+			StimShown:StimDone,
+			StimDuration:stimduration,
+			RT:trialDurations,
+			Condition:exp_type,
+			Familiarization:did_famil,
+			Zoom:zoom,
+			IPaddress:user_IP,
+			Browser:BrowserDetect.browser,
+			Version:BrowserDetect.version,
+			OpSys:BrowserDetect.OS,
+			WindowHeight:winH,
+			WindowWidth:winW,
+			ScreenHeight:vertical,
+			ScreenWidth:horizontal
+		}); 
+
+		document.getElementById("assignmentId").value = aID;
+		document.getElementById("data").value = JSON.stringify(resultsobj);
+		document.getElementById("postdata").submit();	//Let's think about making this manual.
+	}
+	else {
+		trialNumber = trialNumber + 1;
+		setTimeout( function() {
+			showStim();
+		}, ISI);
+	}
+}
+
+function pushData(rating) {
+	StimDone.push(imgFiles_new[trialNumber]);
+	response.push(rating);
+	trialDurations.push(trialEndTime - trialStartTime);
+}
+
+function preload_resources() {
+	imgFiles_new = imgFiles;
+	shuffle(imgFiles_new);
+
+	unlabeled_prototypes = ['https://s3.amazonaws.com/objectome32_final/nolabels/04_piano_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/22_acoustic_guitar_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/31_african_drums_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/antique_furniture_item_18_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/build51_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/bullfrog_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/calc01_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/Colored_shirt_03M_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/Doctor_pose02_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/dromedary_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/face7_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/fast_food_23_1_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/flarenut_spanner_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/foreign_cat_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/Hanger_02_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/household_aid_29_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/interior_details_033_2_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/interior_details_047_1_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/interior_details_103_2_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/interior_details_103_4_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/interior_details_130_2_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/jewelry_29_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/kitchen_equipment_knife2_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/laptop01_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/leaves16_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_ANT_RED_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_BEAR_BLK_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_CHICKDEE_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_DUCK_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_ELE_AS1_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_HRS_ARBN_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_RB_TROUT_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_RHINO_2_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TIGER_B_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TRANTULA_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/lo_poly_animal_TRTL_B_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB27346_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB27585_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB27780_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB28699_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB29346_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB29822_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB29874_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB30071_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB30203_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB30758_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB30798_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB30850_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB31015_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB31188_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB31405_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/MB31620_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/Nurse_pose01_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/pear_obj_2_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/pumpkin_3_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/single_pineapple_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/Tie_06_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/trousers_03_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/weimaraner_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/womens_halterneck_06_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/womens_shorts_01M_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/womens_Skirt_02M_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/womens_stockings_01M_nolabel.png', 'https://s3.amazonaws.com/objectome32_final/nolabels/zebra_nolabel.png'];
+	shuffle(unlabeled_prototypes);
+
+	stimFiles = [];
+	for (i=0; i<imgFiles_new.length; i++) {
+		stimFiles.push(imgFiles_new[i][0]);
+	}
+	stimFiles = stimFiles.concat(unlabeled_prototypes);
+}
+
+$(document).ready(function() {
+	
+	$('#tutorial_original').hide(); $('#tutorial2').hide(); $('#tutorial3').hide();
+
+	$('.test').hide();
+	$('.fixation').hide();
+	init_vars();
+	preload_resources();
+	preload(stimFiles, function(){
+		$('#begintask').click(function() {
+			familiar();
+		});
+		$('#begintask2').click(function() {
+			beginExp();
+		});
+	});
+
+	$("#tutorial").html($("#tutorial_original").html());
+	$("#tutorial").dialog({height:700,
+		width:700,
+		position: ['middle', 20], //"center", hahong: no center to hide all buttons
+		title:"Instructions"
+	});
+
+	$('#sl0base').click(function(e) {
+		var offset = $(this).offset();
+		var pos_x = e.pageX - offset.left;
+		console.log(100*pos_x/500);
+		sliderRef.f_setValue(100*pos_x/500);
+		$('#sl0slider').show();
+	});
+});
+
+</script>
+
+
+<body bgcolor="#7F7F7F">
+	<div id="main" style="height:1000px; width:auto;">
+		<div id="startbuttons" align="center" style="position:relative; top:20px;">
+			<button id="begintask" value="" style="height:30px; width:auto;">Begin Familiarization</button>
+			<p>
+				<b>OR, if you already did a HIT in this group...</b>
+			</p>
+			<button id="begintask2" value="" style="height:30px; width:auto;">Begin Experiment</button>
+		</div>
+		<div style="position:absolute; top:160px; left:50%">
+			<div align="center" id="message" style="position:relative; left:-50%; width:450px;">
+				Hello MTurk workers! If you've done my object recognition HITs before, <u><span onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700, width:700, position:['middle', 20],title:'Instructions'})" style="cursor:pointer;">be sure to read the instructions here carefully</span></u>. This is a *new* HIT with *different* instructions. If you don't read them, you may do the task improperly and your work will be rejected.
+			</div>
+		</div>
+		<div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
+		<div align="center" id="buttons" name="buttons" style="position:relative; top:250px; z-index:3;">
+			<span id="adj_header" style="font-size:150%; font-weight:bold;"></span>
+			<p>
+			<span id="adj_text">How _____ was the object in the foreground?</span>
+			<br />
+				<table align="center" border=0>
+					<tr>
+						<td>
+							<form id="sliderspace" style="visibility:visible;" method="get">
+							<div align="center" style="padding:5px; pointer-events:none;"><input style="visibility:visible;" id="sliderValue" type="Text" size="3" name="sliderValue"></div>
+							<script language="JavaScript">
+								var A_TPL = {
+									'b_vertical' : false,
+									'b_watch': true,
+									'n_controlWidth': 500,
+									'n_controlHeight': 16,
+									'n_sliderWidth': 19,
+									'n_sliderHeight': 16,
+									'n_pathLeft' : 0,
+									'n_pathTop' : 0,
+									'n_pathLength' : 481,
+									's_imgControl': 'https://s3.amazonaws.com/dlcommon/img/control_gray_500px.gif',
+									's_imgSlider': 'https://s3.amazonaws.com/dlcommon/img/sldr1v_sl_black.gif',
+									'n_zIndex': 1 
+								};
+								var A_INIT = {
+									's_form' : 0,
+									's_name': 'sliderValue',
+									'n_minValue' : 0,
+									'n_maxValue' : 100,
+									'n_value' : 50,
+									'n_step' : 1
+								};
+								var sliderRef = new slider(A_INIT, A_TPL);
+							</script>
+							</form>
+							<div align="center" style="padding:5px;">
+								<span id="adj_text_bleft" style="font-size:100%; font-weight:bold; float:left;">Not _____</span>
+								<span id="adj_text_bright" style="font-size:100%; font-weight:bold; float:right;">Very _____</span>
+								&nbsp;
+							</div>
+							<div id="btnspace" align="center" style="padding:5px;">
+								&nbsp;<button id="nextTrial" onClick="whitescreen()" >Next Trial</button>
+							</div>
+						</td>
+					</tr>
+				</table>
+			<br /><span id="trialCounter"></span>
+		</div>
+		<div class="fixation" align="center" style="position:relative; z-index:2; top:225px; left:0px;">
+			<img id="fixation_dot" src="https://s3.amazonaws.com/human_training/fixation.png" />
+		</div>
+		<div class="test" align="center" style="position:relative; z-index:1; top:200px; left:0px;">
+			<div style="position:relative; top:0px; left:0px; z-index:1;">
+				<img id="main_test" src="" height=360 width=360  border=0 />
+				<p><span id="img_caption"> </span></p>
+			</div>
+			<div style="position:relative; top:0px; left:0px; z-index:-1;">
+			</div>
+		</div>
+	</div>
+
+<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,width:700,position:['middle', 20],title:'Instructions'})"><u>View Instructions</u></div>
+<div id="tutorial" style="position:relative; z-index:-1"></div>
+<div id="tutorial_original" style="position:absolute; z-index:-1;">
+	<b>Please read these instructions carefully!</b>
+	<p><font color=red><b><u>***NOTE*** &nbsp; DO NOT use Internet Explorer!</u></b></font> Your assignmment will be rejected if you submit with IE.  Google Chrome is recommended.</p>
+	<p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
+	<p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 15 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</p>
+	<p>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</p></font></b>
+	<p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
+	<center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center>
+</div>
+<div id="tutorial2" style="position:absolute; z-index:-1;">
+	<ul>
+		<li>You will see a series of images, each one for a very brief time. Each image will feature <b>a single object</b> from 64 possibilities. The objects are common things you might see around your house, on TV, in books, or on the Internet.</li>
+		<p>
+		<li>After you see an image, <b>you must set the slider to indicate how well a given adjective describes <u>that particular image</u>, on a scale of 0-100.</b> 0 indicates the adjective does not describe the image well at all, and 100 indicates the adjective describes it very well.
+		<p>
+		<li>After seeing each image, <b>click anywhere on the slider bar to set the slider location to the number you like</b>. You can click to drag the slider around, or you can click anywhere on the bar again to reset the slider position. Click "Next Trial" to continue to the next image.</li>
+		<p>
+		<li>For example, if you saw <b>a picture of a car in the foreground and a mountain in the background</b> and saw the adjective <b>"boxy"</b>, you would think about <b>how "boxy" the <u>car</u> is (<u>NOT</u> the mountain, the background)</b> and set the slider accordingly. We also provide the dictionary definition of every adjective, which you should read if you are unsure of what a word means.</li>
+		<p>
+		<li>Even if you're not 100% sure of what you saw, <u><b>make your best guess.</b></u> Even if the adjective seems unusual for the given image, <b>try your best to set a reasonable value</b>.</li>
+		<p>
+		<li>When you have worked though all 100 images, this HIT <b>will submit itself automatically</b>.</li>
+	</ul>
+	<center><p onclick="$('#tutorial').html($('#tutorial3').html())"><font color=blue><u>Click here to continue reading</u></font></p></center>
+</div>
+<div id="tutorial3" style="position:absolute; z-index:-1;">
+	<ul>
+		<li>Before beginning the experiment, we would like to briefly familiarize you with the types of objects you will be seeing. When you click the "Begin Familiarization" button at the top of the screen, you will see an animation for 1 minute showing examples of the objects in this experiment.</li>
+		<p>
+		<li>After the animation, you will see all the objects laid out on your screen, and you may look through them briefly before clicking "Done Viewing Images."</li>
+		<p>
+		<li>You <b>*must*</b> do the familiarization the first time you start a HIT in this batch, but on subsequent HITs of the same type you do not need to do the familiarization again. We keep track of whether you did the familiarization step; if you do not do it at least once, you will not be paid.</li>
+		<p>
+		<li>After the familiarization, click the "Begin Experiment" button at the top of the screen. <b>Be prepared to see the first image -- it happens very fast!</b> In total you will see and rate 100 images.</li>
+		<p>
+		<li>If you have questions or concerns about this HIT, feel free to contact the requester. You can re-read these instructions at any time by clicking the link in the upper right-hand corner of the screen. Good luck!</li>
+	</ul>
+	<center><font color=blue><u><p onclick="$('#tutorial').dialog('close')">Click here to close the instructions</p></center></font></u>
+</div>
+
+<!-- This is where data gets submitted to MTurk. For some users, this causes a crash, and I'm not sure why. It isn't too common. -->
+<form style="visibility:hidden;" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
+	<input type="text" name="data" id="data" value="">
+    <input type="text" name="assignmentId" id="assignmentId" value="">
+</form>
+
+</body>
