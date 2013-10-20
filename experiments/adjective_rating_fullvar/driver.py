@@ -138,7 +138,7 @@ def upload():
             verbose=10)
 
 
-def publish(sandbox=True):
+def publish(sandbox=True, opts=None):
     """Publish to the sandbox"""
     exp = mt.Experiment(sandbox=sandbox,
         keywords=['neuroscience', 'psychology', 'experiment', 'object recognition'],  # noqa
@@ -158,6 +158,13 @@ def publish(sandbox=True):
         fns = sorted(glob.glob(os.path.join(
             TMPDIR_PRODUCTION, '*.html')))
 
+    if opts is not None and len(opts) >= 1:
+        urllist = pk.load(open(opts[0]))
+        fns = [e for e in fns if any(
+            [e.endswith(u.split('/')[-1]) for u in urllist])]
+        assert len(fns) == len(urllist)
+        print '*** URL list is used: length =', len(fns)
+
     hitidslog = os.path.join(TMPDIR, 'hitidslog_' +
             ('sandbox' if sandbox else 'production') + '_' +
             str(int(time.time())) + '.pkl')
@@ -175,8 +182,12 @@ def timestamp(tsvar=TSTAMP):
 
 def main(argv):
     if len(argv) < 2:
-        print 'driver.py <target>'
+        print 'driver.py <target> [opts]'
         return 1
+
+    opts = argv[2:]
+    if len(opts) == 0:
+        opts = None
 
     if argv[1] == 'prep':
         prep()
@@ -185,9 +196,9 @@ def main(argv):
     elif argv[1] == 'upload':
         upload()
     elif argv[1] == 'sandbox':
-        publish(sandbox=True)
+        publish(sandbox=True, opts=opts)
     elif argv[1] == 'production':
-        publish(sandbox=False)
+        publish(sandbox=False, opts=opts)
     else:
         print 'Bad arguments'
         return 1
