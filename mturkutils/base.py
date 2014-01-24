@@ -121,14 +121,19 @@ class Experiment(object):
         This function approves and grants bonuses on all hits above a certain performance,
         with a bonus (stored in database) under a certain threshold (checked for safety).
         """
-        for doc in exp.db.find():
+        coll = self.db[self.collection_name]
+        for doc in coll.find():
             assignment_id = doc['AssignmentID']
             worker_id = doc['WorkerID']
             bonus = doc['Bonus']
             performance = doc['Performance']
-            if performance > performance_threshold and bonus < bonus_threshold:
+            if performance < performance_threshold:
+                self.conn.reject_assignment(assignment_id,
+                                            feedback='Your performance was significantly lower than other subjects')
+            else:
                 self.conn.approve_assignment(assignment_id)
-                self.conn.grant_bonus(worker_id, assignment_id, bonus, "Performance Bonus")
+                if bonus < bonus_threshold:
+                    self.conn.grant_bonus(worker_id, assignment_id, bonus, "Performance Bonus")
 
     def getBalance(self):
         """Returns the amount of available funds. If you're in Sandbox mode,
