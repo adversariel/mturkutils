@@ -116,6 +116,20 @@ class Experiment(object):
         self.setMongoVars(collection_name, comment, meta)
         self.conn = self.connect()
 
+    def assignBonuses(self, performance_threshold, bonus_threshold):
+        """
+        This function approves and grants bonuses on all hits above a certain performance,
+        with a bonus (stored in database) under a certain threshold (checked for safety).
+        """
+        for doc in exp.db.find():
+            assignment_id = doc['AssignmentID']
+            worker_id = doc['WorkerID']
+            bonus = doc['Bonus']
+            performance = doc['Performance']
+            if performance > performance_threshold and bonus < bonus_threshold:
+                self.conn.approve_assignment(assignment_id)
+                self.conn.grant_bonus(worker_id, assignment_id, bonus, "Performance Bonus")
+
     def getBalance(self):
         """Returns the amount of available funds. If you're in Sandbox mode,
         this will always return $10,000.
@@ -333,11 +347,12 @@ class Experiment(object):
     def getHITdata(self, hitid, verbose=True, full=False):
         assignments, HITdata = self.getHITdataraw(hitid)
         return parse_human_data_from_HITdata(assignments, HITdata,
-                comment=self.comment, description=self.description, full=full,
-                verbose=verbose)
+                                            comment=self.comment, description=self.description, full=full,
+                                            verbose=verbose)
+
 
     def uploadHTML(self, filelist, bucketname, dstprefix='', verbose=10,
-            section_name=None, test=True, https=True):
+                   section_name=None, test=True, https=True):
         """
         Pass a list of paths to the files you want to upload (or the filenames
         themselves in you're already in the directory) and the name of a bucket
@@ -379,6 +394,9 @@ class Experiment(object):
                 print str(idx) + ': ' + f
         self.URLs = urls
         return urls
+
+
+
 
 experiment = Experiment   # for backward compatibility
 
