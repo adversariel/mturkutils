@@ -124,16 +124,22 @@ class Experiment(object):
         coll = self.db[self.collection_name]
         for doc in coll.find():
             assignment_id = doc['AssignmentID']
+            assignment_status = self.conn.get_assignment(assignment_id)[0].AssignmentStatus
             worker_id = doc['WorkerID']
             bonus = doc['Bonus']
             performance = doc['Performance']
             if performance < performance_threshold:
-                self.conn.reject_assignment(assignment_id,
-                                            feedback='Your performance was significantly lower than other subjects')
+                if assignment_status in ['Submitted']:
+                    self.conn.reject_assignment(assignment_id,
+                                                feedback='Your performance was significantly '
+                                                         'lower than other subjects')
             else:
-                self.conn.approve_assignment(assignment_id)
-                if bonus < bonus_threshold:
-                    self.conn.grant_bonus(worker_id, assignment_id, bonus, "Performance Bonus")
+                if assignment_status in ['Submitted']:
+                    self.conn.approve_assignment(assignment_id)
+                    if bonus < bonus_threshold:
+                        if not doc.get('BonusAwarded', False):
+                            self.conn.grant_bonus(worker_id, assignment_id, bonus, "Performance Bonus")
+                            coll.update({'_id': doc['_id']}, {'$set': {'BonusAwarded': True}})
 
     def getBalance(self):
         """Returns the amount of available funds. If you're in Sandbox mode,
