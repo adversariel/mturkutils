@@ -143,11 +143,13 @@ class Experiment(object):
             if assignment_status == 'Approved':
                 if float(bonus) < float(bonus_threshold):
                     if not doc.get('BonusAwarded', False):
-                        p = boto.mturk.price.Price(bonus)
-                        print 'award granted'
-                        print bonus
-                        self.conn.grant_bonus(worker_id, assignment_id, p, "Performance Bonus")
-                        coll.update({'_id': doc['_id']}, {'$set': {'BonusAwarded': True}})
+                        bonus = np.round(float(bonus)*100)/100
+                        if bonus >= 0.01:
+                            p = boto.mturk.price.Price(bonus)
+                            print 'award granted'
+                            print bonus
+                            self.conn.grant_bonus(worker_id, assignment_id, p, "Performance Bonus")
+                            coll.update({'_id': doc['_id']}, {'$set': {'BonusAwarded': True}})
 
     def getBalance(self):
         """Returns the amount of available funds. If you're in Sandbox mode,
