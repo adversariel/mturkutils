@@ -116,6 +116,41 @@ class Experiment(object):
         self.setMongoVars(collection_name, comment, meta)
         self.conn = self.connect()
 
+    def assignBonuses(self, performance_threshold, bonus_threshold, auto_approve=True):
+        """
+        This function approves and grants bonuses on all hits above a certain performance,
+        with a bonus (stored in database) under a certain threshold (checked for safety).
+        """
+        coll = self.db[self.collection_name]
+        if auto_approve:
+            for doc in coll.find():
+                assignment_id = doc['AssignmentID']
+                assignment_status = self.conn.get_assignment(assignment_id)[0].AssignmentStatus
+                performance = doc['Performance']
+                if performance < performance_threshold:
+                    if assignment_status in ['Submitted']:
+                        self.conn.reject_assignment(assignment_id,
+                                                    feedback='Your performance was significantly '
+                                                             'lower than other subjects')
+                else:
+                    if assignment_status in ['Submitted']:
+                        self.conn.approve_assignment(assignment_id)
+        for doc in coll.find():
+            assignment_id = doc['AssignmentID']
+            worker_id = doc['WorkerID']
+            assignment_status = self.conn.get_assignment(assignment_id)[0].AssignmentStatus
+            bonus = doc['Bonus']
+            if assignment_status == 'Approved':
+                if float(bonus) < float(bonus_threshold):
+                    if not doc.get('BonusAwarded', False):
+                        bonus = np.round(float(bonus)*100)/100
+                        if bonus >= 0.01:
+                            p = boto.mturk.price.Price(bonus)
+                            print 'award granted'
+                            print bonus
+                            self.conn.grant_bonus(worker_id, assignment_id, p, "Performance Bonus")
+                            coll.update({'_id': doc['_id']}, {'$set': {'BonusAwarded': True}})
+
     def getBalance(self):
         """Returns the amount of available funds. If you're in Sandbox mode,
         this will always return $10,000.
@@ -333,11 +368,12 @@ class Experiment(object):
     def getHITdata(self, hitid, verbose=True, full=False):
         assignments, HITdata = self.getHITdataraw(hitid)
         return parse_human_data_from_HITdata(assignments, HITdata,
-                comment=self.comment, description=self.description, full=full,
-                verbose=verbose)
+                                            comment=self.comment, description=self.description, full=full,
+                                            verbose=verbose)
+
 
     def uploadHTML(self, filelist, bucketname, dstprefix='', verbose=10,
-            section_name=None, test=True, https=True):
+                   section_name=None, test=True, https=True):
         """
         Pass a list of paths to the files you want to upload (or the filenames
         themselves in you're already in the directory) and the name of a bucket
@@ -379,6 +415,9 @@ class Experiment(object):
                 print str(idx) + ': ' + f
         self.URLs = urls
         return urls
+
+
+
 
 experiment = Experiment   # for backward compatibility
 
@@ -767,3 +806,4 @@ def exists_s3(bucketname_or_bucket, keyname, section_name=MTURK_CRED_SECTION,
     k = Key(bucket)
     k.key = keyname
     return k.exists()
+
