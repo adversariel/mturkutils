@@ -4,12 +4,16 @@ MTurk. Contact Ethan Solomon (esolomon@mit.edu), Diego Ardila (ardila@mit.edu),
 or Ha Hong (hahong@mit.edu) for help!
 """
 import pymongo
+import glob
 import urllib
 import os.path
+import itertools
 import json
 import datetime
 import numpy as np
+import scipy.stats as stats
 import cPickle as pk
+from collections import Counter, defaultdict
 import csv
 import boto
 import boto.mturk
@@ -23,6 +27,8 @@ from boto.mturk.qualification import PercentAssignmentsApprovedRequirement
 from boto.mturk.qualification import Qualifications
 from boto.mturk.question import ExternalQuestion
 from boto.pyami.config import Config
+
+import mturkutils.utils as ut
 
 MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'
 MTURK_CRED_SECTION = 'MTurkCredentials'
@@ -38,6 +44,36 @@ S3HTTPBASE = 'http://s3.amazonaws.com/'
 S3HTTPSBASE = 'https://s3.amazonaws.com/'
 LOG_PREFIX = './'
 LOOKUP_FIELD = 'id'
+
+PREP_RULE_SIMPLE_RSVP_SANDBOX = [
+        {
+            'old': 'ExperimentData = null;',
+            'new': 'ExperimentData = ${CHUNK};',
+            'n': 1
+        },
+        {
+            'old': 'https://www.mturk.com/mturk/externalSubmit',
+            'new': 'https://workersandbox.mturk.com/mturk/externalSubmit',
+            'n': 1
+        },
+    ]
+
+PREP_RULE_SIMPLE_RSVP_PRODUCTION = [
+        {
+            'old': 'ExperimentData = null;',
+            'new': 'ExperimentData = ${CHUNK};',
+            'n': 1
+        },
+        {
+            # Do not remove this part: although this doesn't really replace
+            # `old` with `new`, this makes sure that there is one `old`.
+            # Also, this part is required to check the existance of `new`
+            # with the use of validate_html_files().
+            'old': 'https://www.mturk.com/mturk/externalSubmit',
+            'new': 'https://www.mturk.com/mturk/externalSubmit',
+            'n': 1
+        },
+    ]
 
 
 class Experiment(object):
@@ -89,12 +125,25 @@ class Experiment(object):
         You can retrieve data from any hit published in the past using these
         IDs (within the Experiment object, the IDs are also saved in 'hitids').
     """
-
-    def __init__(self, sandbox=True, keywords=None, lifetime=1209600,
+    
+    def __init__(self, htmlsrc, htmldst, othersrc=None,
+            sandbox=True, keywords=None, lifetime=1209600,
             max_assignments=1, title='TEST', reward=0.01, duration=1500,
             approval_delay=172800, description='TEST', frame_height_pix=1000,
             comment='TEST', collection_name='TEST', meta=None,
-            log_prefix=LOG_PREFIX, section_name=MTURK_CRED_SECTION):
+            log_prefix=LOG_PREFIX, section_name=MTURK_CRED_SECTION,
+            bucket_name=None, 
+            trials_per_hit=100,
+            tmpdir='tmp',
+            productionpath='html',
+            production_prefix='html',
+            sandboxpath='html_sandbox',
+            sandbox_prefix='html_sandbox',
+            tmpdir_production=None,
+            tmpdir_sandbox=None,
+            trials_loc='trials.pkl',
+            html_data=None):
+            
         if keywords is None:
             keywords = ['']
         self.sandbox = sandbox
@@ -112,11 +161,32 @@ class Experiment(object):
         self.log_prefix = log_prefix
         self.section_name = section_name
         self.setQual(90)
+        self.bucket_name = bucket_name
+
+        self.tmpdir = tmpdir
+        self.productionpath = productionpath
+        self.sandboxpath  =sandboxpath
+        if tmpdir_production is None:
+             tmpdir_production = os.path.join(tmpdir, productionpath)
+        self.tmpdir_production = tmpdir_production
+        if tmpdir_sandbox is None:
+            tmpdir_sandbox = os.path.join(tmpdir, sandboxpath)
+        self.tmpdir_sandbox = tmpdir_sandbox
+        self.trials_loc = trials_loc 
+        self.sandbox_prefix = sandbox_prefix
+        self.production_prefix = production_prefix
+    
+        self.htmlsrc = htmlsrc
+        self.htmldst = htmldst
+        self.othersrc = othersrc
+        self.html_data = html_data
+        
+        self.trials_per_hit = trials_per_hit
 
         self.setMongoVars(collection_name, comment, meta)
         self.conn = self.connect()
 
-    def assignBonuses(self, performance_threshold, bonus_threshold, auto_approve=True):
+    def payBonuses(self, performance_threshold, bonus_threshold, auto_approve=True):
         """
         This function approves and grants bonuses on all hits above a certain performance,
         with a bonus (stored in database) under a certain threshold (checked for safety).
@@ -204,7 +274,91 @@ class Experiment(object):
         self.mongo_conn = pymongo.Connection(port=MONGO_PORT, host=MONGO_HOST)
         self.db = self.mongo_conn[MONGO_DBNAME]
         self.collection = self.db[collection_name]
+        
+    def createTrials(self):
+        raise NotImplementedError
 
+    def prepHTMLs(self):
+        trials = self._trials
+        
+        n_per_file = self.trials_per_hit
+        htmlsrc = self.htmlsrc
+        htmldst = self.htmldst
+        othersrc = self.othersrc
+      
+        tmpdir = self.tmpdir
+        tmpdir_sandbox = self.tmpdir_sandbox
+        tmpdir_production = self.tmpdir_production
+        trials_loc = self.trials_loc
+        
+        for label, rules, dstdir in [
+                ('sandbox', PREP_RULE_SIMPLE_RSVP_SANDBOX, tmpdir_sandbox),
+                ('production', PREP_RULE_SIMPLE_RSVP_PRODUCTION,
+                    tmpdir_production)]:
+            print '  ->', label
+            ut.prep_web_simple(trials, htmlsrc, dstdir, dstpatt=htmldst,
+                    rules=rules, auxfns=othersrc,
+                    n_per_file=n_per_file, verbose=True,
+                    chunkerfunc=ut.dictchunker)
+
+        # save trials for future reference
+        pk.dump(trials, open(os.path.join(tmpdir, trials_loc), 'wb'))
+        
+    def testHTMLs(self, full=False):
+        """Test and validates the written html files"""
+        
+        tmpdir = self.tmpdir
+        tmpdir_sandbox = self.tmpdir_sandbox
+        tmpdir_production = self.tmpdir_production
+        trials_loc = self.trials_loc
+        
+        trials_org = pk.load(open(os.path.join(tmpdir, trials_loc)))
+
+        fns_sandbox = sorted(glob.glob(os.path.join(
+            tmpdir_sandbox, '*.html')))
+        fns_production = sorted(glob.glob(os.path.join(
+            tmpdir_production, '*.html')))
+
+        print '* Testing sandbox...'
+        ut.validate_html_files(fns_sandbox,
+                rules=PREP_RULE_SIMPLE_RSVP_SANDBOX,
+                trials_org=trials_org)
+        print '* Testing production...'
+        ut.validate_html_files(fns_production,
+                rules=PREP_RULE_SIMPLE_RSVP_PRODUCTION,
+                trials_org=trials_org)
+
+        if full:
+            ids = [e[0].split('/')[-1] for e in trials_org]
+            ids = np.unique(ids)
+            print '* Making sure all images are there:', len(ids)
+            _, bucket = connect_s3(section_name='MTurkCredentials_esolomon',  ##whats this ???
+                    bucketname=S3BUCKET_FULLOBJT)  ##and this??
+            for i, e in enumerate(ids):
+                assert exists_s3(bucket, e)
+                if i % 100 == 0:
+                    print ' ->', i
+
+    def uploadHTMLs(self):
+        tmpdir = self.tmpdir
+        tmpdir_sandbox = self.tmpdir_sandbox
+        tmpdir_production = self.tmpdir_production
+        trials_loc = self.trials_loc
+        sandbox_prefix = self.sandbox_prefix
+        production_prefix = self.production_prefix
+        bucket_name = self.bucket_name
+        
+        """Upload generated web files into S3"""
+        print '* Uploading sandbox...'
+        fns = glob.glob(os.path.join(tmpdir_sandbox, '*.*'))
+        upload_files(fns, bucket_name, dstprefix=sandbox_prefix + '/', test=True,
+                verbose=10)
+
+        print '* Uploading production...'
+        fns = glob.glob(os.path.join(tmpdir_production, '*.*'))
+        upload_files(fns, bucket_name, dstprefix=production_prefix + '/', test=True,
+                verbose=10)        
+        
     def connect(self):
         """Establishes connection to MTurk for publishing HITs and getting
         data. Pass sandbox=True if you want to use sandbox mode.
@@ -220,7 +374,22 @@ class Experiment(object):
 
     def setQual(self, performance_thresh=90):
         self.qual = create_qual(performance_thresh)
+        
+    def URLs(self):
+        tmpdir = self.tmpdir
+        tmpdir_sandbox = self.tmpdir_sandbox
+        tmpdir_production = self.tmpdir_production
+        trials_loc = self.trials_loc
+        bucket_name = self.bucket_name
 
+        if self.sandbox:
+            fns = glob.glob(os.path.join(TMPDIR_SANDBOX, '*.*'))
+        else:
+            fns = glob.glob(os.path.join(TMPDIR_PRODUCTION, '*.*'))
+            
+        return ['https://s3.amazonaws.com/' + bucket_name + '/' + \
+                                         fn.split('/')[-1] for fn in fns]
+        
     def createHIT(self, URLlist=None, verbose=True, hitidslog=None):
         """
         - Pass a list of URLs (check that they work first!) for each one to be
@@ -232,7 +401,8 @@ class Experiment(object):
           if given, `hitidslog`.
         """
         if URLlist is None:
-            URLlist = self.URLs
+            URLlist = self.URLs()
+            
         if self.sandbox:
             print('**WORKING IN SANDBOX MODE**')
 
@@ -357,7 +527,7 @@ class Experiment(object):
     def getHITdataraw(self, hitid):
         """Get the human data as raw boto objects for the given `hitid`"""
         # NOTE: be extra careful when modify this function.
-        # especially utils.download_results() and cli.make_backup()
+        # especially download_results() and cli.make_backup()
         # depends on this.  In short: avoid modification of this func
         # as much as possible, especially the returned data.
         assignments = self.conn.get_assignments(hit_id=hitid,
@@ -372,54 +542,120 @@ class Experiment(object):
                                             verbose=verbose)
 
 
-    def uploadHTML(self, filelist, bucketname, dstprefix='', verbose=10,
-                   section_name=None, test=True, https=True):
-        """
-        Pass a list of paths to the files you want to upload (or the filenames
-        themselves in you're already in the directory) and the name of a bucket
-        as a string. If the bucket does not exist, a new one will be created.
-        This function uploads the files and sets their ACL to public-read, then
-        returns a list of URLs. This will also set self.URLs to that list of
-        urls.
 
-        Sub-directories within the bucket are not yet supported.
-        """
-        if section_name is None:
-            # section_name is provided to give flexibility of
-            # using different accounts
-            section_name = self.section_name
+class MatchToSampleFromDLDataExperiment(Experiment):
 
-        keys = upload_files(filelist, bucketname, dstprefix=dstprefix,
-                section_name=section_name, test=test, verbose=verbose)
+    def createTrials(self):
 
-        urls = []
-        if not https:
-            print '********************** WARNING **************************'
-            print 'You are using http instead of https: this may cause the'
-            print 'failure in submitting external question depending on the'
-            print 'browser setting of turkers.  Consider using `https=False`'
-            print 'in the future.'
-            print '*********************************************************'
-            s3base = S3HTTPBASE
+        html_data = self.html_data
+        
+        dataset = html_data['dataset']
+        preproc = html_data['preproc']
+        meta_query = html_data['meta_query']
+        meta_field = html_data['meta_field']
+        k = html_data['num_trials']
+        response_images = html_data['response_images']
+        dummy_upload = html_data['dummy_upload']
+        image_bucket_name = html_data['image_bucket_name']
+        combs = html_data['combs']
+        labelfunc = html_data['labelfunc']
+        seed = html_data['seed']
+        
+        meta = dataset.meta
+        if meta_query is not None:
+            query_inds = set(np.ravel(np.argwhere(map(meta_query, meta))))
         else:
-            print '************************ NOTE ***************************'
-            print 'While `https=True` is highly recommended, you must double'
-            print 'check your html and js files to get rid of all statements'
-            print 'that fetch external files (especially js files) via http.'
-            print '*********************************************************'
-            s3base = S3HTTPSBASE
+            query_inds = set(range(len(meta)))
+        
+        category_occurences = Counter(itertools.chain.from_iterable(combs))
+        synset_urls = defaultdict(list)
+        img_inds = []
+        imgData = []
+        n = len(list(combs[0]))
+        category_meta_dicts = defaultdict(list)
+        if response_images is None:
+            num_per_category = int(np.ceil(float(k) / n) * (n + 1))
+            response_images = [None]*len(combs)
+        else:
+            num_per_category = int(np.ceil(float(k) / n))
+            
+        rng = np.random.RandomState(seed=seed)
+        for category in category_occurences.keys():
+            cat_inds = set(np.ravel(np.argwhere(meta[meta_field] == category)))
+            inds = list(query_inds & cat_inds)
+            num_sample = category_occurences[category] * num_per_category
+            assert len(inds) >= num_per_category, "Category %s has %s images, %s are required for this experiment" % \
+                                                  (category, len(inds), num_sample)
+            
+            img_inds.extend(list(np.array(inds)[rng.permutation(len(inds))[: num_sample]]))
 
-        for idx, (k, f) in enumerate(zip(keys, filelist)):
-            urls.append(s3base + bucketname + '/' + k)
-            if verbose > 0:
-                print str(idx) + ': ' + f
-        self.URLs = urls
-        return urls
+        urls = dataset.publish_images(img_inds, preproc, image_bucket_name, dummy_upload=dummy_upload)
+        for url, img_ind in zip(urls, img_inds):
+            meta_entry = meta[img_ind]
+            category = meta_entry[meta_field]
+            synset_urls[category].append(url)
+            meta_dict = {name: value for name, value in
+                         zip(meta_entry.dtype.names, meta_entry.tolist())}
+            category_meta_dicts[category].append(meta_dict)
+        imgs = []
+        labels = []
+        for c, ri in zip(combs, response_images):
+            #We cycle through the possible sample categories one by one.
+            for _ in np.arange(np.ceil(float(k) / n)):
+                for sample_synset in c:
+                    sample = synset_urls[sample_synset].pop()
+                    sample_meta = category_meta_dicts[sample_synset].pop()
+                    if ri is None:
+                        test = [synset_urls[s].pop() for s in c]
+                        test_meta = [category_meta_dicts[s].pop() for s in c]
+                    else:
+                        test = ri['urls']
+                        test_meta = ri['meta']
+                    imgs.append([sample, test])
+                    imgData.append({"Sample": sample_meta, "Test": test_meta})
+                    if ri is None:
+                        if labels is None:
+                            labels.append([''] * len(test_meta))
+                        labels.append([labelfunc(meta_dict, dataset) for meta_dict in test_meta])
+                    else:
+                        labels.append(ri['labels'])
 
+        for list_data in [imgs, imgData, labels]:
+            rng = np.random.RandomState(seed=seed)
+            rng.shuffle(list_data)
+            
+        self._trials = {'imgFiles': imgs, 'imgData': imgData, 'labels': labels,
+                               'meta_field': [meta_field] * len(labels)}
+        
 
+class MatchToSampleFromDLDataExperimentWithTiming(MatchToSampleFromDLDataExperiment):
+    def createTrials(self):
+        MatchToSampleFromDLDataExperiment.createTrials(self)
+        N = len(self._trials['imgFiles'])
+        self._trials['stimduration'] = [presentation_time] * N
+        
 
+class MatchToSampleFromDLDataExperimentWithReward(MatchToSampleFromDLDataExperiment):
 
-experiment = Experiment   # for backward compatibility
+        def createTrials(self):
+            MatchToSampleFromDLDataExperiment.createTrials(self)
+            html_data = self.html_data
+            combs = html_data['combs']
+            acc = np.linspace(0, 1, 100)
+            n = float(len(combs[0]))
+            print n
+            fudged_hr = (acc/n)/(1/n)
+            fudged_fa = ((1/n)-acc/n)/(1-1/n)
+            fudged_hr[0] = 1. / (2 * 100)
+            fudged_fa[0] = 1 - 1. / (2 * 100)
+            fudged_fa[-1] = 1. / (2 * 100)
+            fudged_hr[-1] = 1 - 1. / (2 * 100)
+            dprime = stats.norm.ppf(fudged_hr) - stats.norm.ppf(fudged_fa)
+            reward = dprime
+            reward[reward < 0] = 0
+            reward_scale = html_data['reward_scale']
+            reward = list(reward/max(reward)*reward_scale)
+            self._trials['reward_scale'] = [reward] * len(self._trials['imgFiles'])        
 
 
 # -- helper functions
@@ -761,6 +997,51 @@ def upload_files(srcfiles, bucketname, dstprefix='',
             print 'At:', i_fn, 'out of', len(srcfiles)
 
     return keys
+    
+    
+def download_results(hitids, dstprefix=None, sandbox=True,
+        replstr='${HIT_ID}', verbose=False, full=False):
+    """Download all assignment results in `hittids` and save one pickle file
+    per HIT with `dstprefix` if it is not `None`.  If `dstprefix` is `None`,
+    the downloaded info will be returned without saving files."""
+    exp = Experiment(sandbox=sandbox,
+        max_assignments=MTURK_PAGE_SIZE_LIMIT,
+        reward=0.,
+        collection_name=None,   # disables db connection
+        meta=None,
+        )
+
+    res = []
+    n_total = len(hitids)
+    n_hits = 0
+    n_assgns = 0
+    meta = {'boto_version': boto_version,
+            'backup_algo_version': BACKUP_ALGO_VER}
+
+    for hitid in hitids:
+        if verbose:
+            print 'At (%d/%d):' % (n_hits + 1, n_total), hitid
+
+        assignments, HITdata = exp.getHITdataraw(hitid)
+        n_hits += 1
+        n_assgns += len(assignments)
+
+        if dstprefix is None:
+            res.append((assignments, HITdata))
+            continue
+
+        # save files otherwise
+        if replstr in dstprefix:
+            dst = dstprefix.replace(replstr, str(hitid))
+        else:
+            dst = dstprefix + str(hitid) + '.pkl'
+        pk.dump((assignments, HITdata, meta), open(dst, 'wb'))
+
+    if full:
+        return res, n_hits, n_assgns
+    if dstprefix is None:
+        return res
+
 
 
 def connect_s3(section_name=MTURK_CRED_SECTION, accesskey=None,
