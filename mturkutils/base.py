@@ -379,15 +379,19 @@ class Experiment(object):
         tmpdir = self.tmpdir
         tmpdir_sandbox = self.tmpdir_sandbox
         tmpdir_production = self.tmpdir_production
+        sandbox_prefix = self.sandbox_prefix
+        production_prefix = self.production_prefix
         trials_loc = self.trials_loc
         bucket_name = self.bucket_name
 
         if self.sandbox:
-            fns = glob.glob(os.path.join(TMPDIR_SANDBOX, '*.*'))
+            prefix = sandbox_prefix
+            fns = glob.glob(os.path.join(tmpdir_sandbox, '*.*'))
         else:
-            fns = glob.glob(os.path.join(TMPDIR_PRODUCTION, '*.*'))
+            prefix = production_prefix
+            fns = glob.glob(os.path.join(tmpdir_production, '*.*'))
             
-        return ['https://s3.amazonaws.com/' + bucket_name + '/' + \
+        return ['https://s3.amazonaws.com/' + bucket_name + '/' + prefix + '/' + \
                                          fn.split('/')[-1] for fn in fns]
         
     def createHIT(self, URLlist=None, verbose=True, hitidslog=None):

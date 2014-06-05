@@ -37,7 +37,6 @@ img {
 
 </style>
 
-ExperimentData = null; 
 
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
@@ -49,6 +48,8 @@ ExperimentData = null;
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 
 <script type="text/javascript">
+
+ExperimentData = null;
 
 shuffle = function(o) {
 	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
