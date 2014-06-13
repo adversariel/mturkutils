@@ -3,6 +3,7 @@ import os
 import json
 import shutil as sh
 import cPickle as pk
+from yamutils.mongo import SONify
 from boto import __version__ as boto_version
 
 BACKUP_ALGO_VER = 1
@@ -63,7 +64,7 @@ def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
             sold = rule['old']
             snew = rule['new']
             if '${CHUNK}' in snew:
-                snew = snew.replace('${CHUNK}', json.dumps(chunk))
+                snew = snew.replace('${CHUNK}', json.dumps(SONify(chunk)))
             html_dst = html_dst.replace(sold, snew)
 
         dst_fn = dstpatt % i_chunk
