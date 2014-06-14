@@ -58,7 +58,7 @@ exp = HvMPositionExperiment(htmlsrc = 'hvm_position.html',
 exp.createTrials()
 exp.prepHTMLs()
 exp.testHTMLs()
-exp.uploadHTMLs()
+#exp.uploadHTMLs()
 #exp.createHIT()
 
 #hitids = ['3YLTXLH3DFGSTOVAX3N7WV2YQWNHP0',
