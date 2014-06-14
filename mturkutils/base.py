@@ -4,6 +4,7 @@ MTurk. Contact Ethan Solomon (esolomon@mit.edu), Diego Ardila (ardila@mit.edu),
 or Ha Hong (hahong@mit.edu) for help!
 """
 import pymongo
+import copy
 import glob
 import urllib
 import os.path
