@@ -284,20 +284,40 @@ class Experiment(object):
         n_per_file = self.trials_per_hit
         htmlsrc = self.htmlsrc
         htmldst = self.htmldst
-        othersrc = self.othersrc
-      
+        auxfns = self.othersrc
+        
         tmpdir = self.tmpdir
         tmpdir_sandbox = self.tmpdir_sandbox
         tmpdir_production = self.tmpdir_production
         trials_loc = self.trials_loc
+        sandbox_prefix = self.sandbox_prefix
+        production_prefix = self.production_prefix
+        bucket_name = self.bucket_name        
+        
+        sandbox_rules = copy.deepcopy(PREP_RULE_SIMPLE_RSVP_SANDBOX)
+        production_rules = copy.deepcopy(PREP_RULE_SIMPLE_RSVP_PRODUCTION)
+        
+        if auxfns is not None:
+            for auxfn in auxfns:
+                auxroot = os.path.split(auxfn)[1]
+                new_sandbox_rule = {
+                'old': auxroot,
+                'new': 'https://s3.amazonaws.com/' + bucket_name + '/' + sandbox_prefix + '/' + auxroot,
+                        }
+                new_production_rule = {
+                'old': auxroot,
+                'new': 'https://s3.amazonaws.com/' + bucket_name + '/' + production_prefix + '/' + auxroot,
+                        }
+                sandbox_rules.append(new_sandbox_rule)
+                production_rules.append(new_production_rule)
         
         for label, rules, dstdir in [
-                ('sandbox', PREP_RULE_SIMPLE_RSVP_SANDBOX, tmpdir_sandbox),
-                ('production', PREP_RULE_SIMPLE_RSVP_PRODUCTION,
+                ('sandbox', sandbox_rules, tmpdir_sandbox),
+                ('production', production_rules,
                     tmpdir_production)]:
             print '  ->', label
             ut.prep_web_simple(trials, htmlsrc, dstdir, dstpatt=htmldst,
-                    rules=rules, auxfns=othersrc,
+                    rules=rules, auxfns=auxfns,
                     n_per_file=n_per_file, verbose=True,
                     chunkerfunc=ut.dictchunker)
 
