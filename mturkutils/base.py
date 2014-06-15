@@ -312,12 +312,13 @@ class Experiment(object):
                 sandbox_rules.append(new_sandbox_rule)
                 production_rules.append(new_production_rule)
         
+        self.base_URLs = []
         for label, rules, dstdir in [
                 ('sandbox', sandbox_rules, tmpdir_sandbox),
                 ('production', production_rules,
                     tmpdir_production)]:
             print '  ->', label
-            ut.prep_web_simple(trials, htmlsrc, dstdir, dstpatt=htmldst,
+            self.base_URLs += ut.prep_web_simple(trials, htmlsrc, dstdir, dstpatt=htmldst,
                     rules=rules, auxfns=auxfns,
                     n_per_file=n_per_file, verbose=True,
                     chunkerfunc=ut.dictchunker)
@@ -413,8 +414,11 @@ class Experiment(object):
             prefix = production_prefix
             fns = glob.glob(os.path.join(tmpdir_production, '*.*'))
             
+        #return ['http://s3.amazonaws.com/' + bucket_name + '/' + prefix + '/' + \
+        #                                 fn.split('/')[-1] for fn in fns]
+        
         return ['http://s3.amazonaws.com/' + bucket_name + '/' + prefix + '/' + \
-                                         fn.split('/')[-1] for fn in fns]
+                                         fn.split('/')[-1] for fn in self.base_URLs]
         
     def createHIT(self, URLlist=None, verbose=True, hitidslog=None):
         """
