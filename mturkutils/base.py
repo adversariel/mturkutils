@@ -372,13 +372,14 @@ class Experiment(object):
         """Upload generated web files into S3"""
         print '* Uploading sandbox...'
         fns = glob.glob(os.path.join(tmpdir_sandbox, '*.*'))
-        upload_files(fns, bucket_name, dstprefix=sandbox_prefix + '/', test=True,
+        keys = upload_files(fns, bucket_name, dstprefix=sandbox_prefix + '/', test=True,
                 verbose=10)
 
         print '* Uploading production...'
         fns = glob.glob(os.path.join(tmpdir_production, '*.*'))
-        upload_files(fns, bucket_name, dstprefix=production_prefix + '/', test=True,
-                verbose=10)        
+        keys += upload_files(fns, bucket_name, dstprefix=production_prefix + '/', test=True,
+                verbose=10)     
+        return keys   
         
     def connect(self):
         """Establishes connection to MTurk for publishing HITs and getting
@@ -412,7 +413,7 @@ class Experiment(object):
             prefix = production_prefix
             fns = glob.glob(os.path.join(tmpdir_production, '*.*'))
             
-        return ['https://s3.amazonaws.com/' + bucket_name + '/' + prefix + '/' + \
+        return ['http://s3.amazonaws.com/' + bucket_name + '/' + prefix + '/' + \
                                          fn.split('/')[-1] for fn in fns]
         
     def createHIT(self, URLlist=None, verbose=True, hitidslog=None):
@@ -1016,7 +1017,7 @@ def upload_files(srcfiles, bucketname, dstprefix='',
             s = k.get_contents_as_string()
             k.close()
             assert s == open(fn).read()
-        keys.append(key_dst)
+        keys.append(k)
 
         if verbose and i_fn % verbose == 0:
             print 'At:', i_fn, 'out of', len(srcfiles)
