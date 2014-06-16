@@ -144,6 +144,12 @@ function showResponse() {
 	console.log('showResponse');
     obj = {};
 
+    var imageObj = new Image();
+    imageObj.onload = function(){
+        canvas_context.drawImage(imageObj, 0, 0);
+    };
+    imageObj.src = 'https://s3.amazonaws.com/objectome32/whitebg.png';
+
 	$('#totalSeen').html('Total Objects Seen: 0');
 	if (trialNumber > 0){
     	error = (trialNumber / (trialNumber + 1)) * error + (1 / (trialNumber + 1)) * distances[trialNumber-1];
@@ -151,13 +157,13 @@ function showResponse() {
     reward = reward_scale(error);
     console.log('reward', reward)
     var format_error = (100 * error).toPrecision(3);
-    $('#trialCounter').html('Progress: ' + trialNumber + ' of ' + totalTrials  +
-                 '<br /> Mean Error: ' + format_error +
-                 '<br/> Expected Bonus: $' + reward
+    $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
+                 '<br /> Mean Error: '+ format_error +
+                 '<br/> Expected Bonus: $'+ reward
                  );
 	$('#getClick').show();
     $('#trialCounter').show();
-	$('#instruct').html('Click where the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> was!');
+	$('#instruct').html('Put a box around where the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> was!');
 	$('#instruct').show();
 
 	trialStartTime = new Date();
@@ -175,37 +181,67 @@ function clicked(pos_x, pos_y, eX, eY) {
 	if (begin) {
  		trialEndTime = new Date();
 
-        $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:red; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
-
         var pos_xn = .6 * (pos_x - 256) / 256.;
         var pos_yn = -1.2 * (pos_y - 256) / 256.;
 
- 		pushData({ 'X':pos_x, 'Y':pos_y, 'eX': eX, 'eY': eY,
- 		           'pos_xn': pos_xn, 'pos_yn': pos_yn })
+        if (clicknum == 1){
 
-        var real_posx = -imgData[trialNumber]['ty'];
-        var real_posy = imgData[trialNumber]['tz'];
-        var dist = Math.sqrt(Math.pow(real_posx - pos_xn, 2) + Math.pow(real_posy - pos_yn, 2));
+            $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:red; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
+ 		    click1data = { 'X':pos_x, 'Y':pos_y, 'eX': eX, 'eY': eY,
+ 		                  'pos_xn': pos_xn, 'pos_yn': pos_yn };
+ 		    clicknum = 2;
+        } else {
+            clicknum = 1;
+            $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:blue; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
+            var click2data =  {'X':pos_x, 'Y':pos_y, 'eX': eX, 'eY': eY,
+ 		                  'pos_xn': pos_xn, 'pos_yn': pos_yn };
 
-        distances.push(dist);
+            var left = Math.min(click1data['X'], click2data['X']);
+            var right = Math.max(click1data['X'], click2data['X']);
+            var top = Math.min(click1data['Y'], click2data['Y']);
+            var bottom = Math.max(click1data['Y'], click2data['Y']);
 
-        //console.log(real_posx, real_posx, pos_x, pos_y, pos_xn, pos_yn, eX, eY, dist);
+            var left_n = Math.min(click1data['pos_xn'], click2data['pos_xn']);
+            var right_n = Math.max(click1data['pos_xn'], click2data['pos_xn']);
+            var top_n = Math.max(click1data['pos_yn'], click2data['pos_yn']);
+            var bottom_n = Math.min(click1data['pos_yn'], click2data['pos_yn']);
+            var response_bbox_n = [left_n, top_n, right_n, bottom_n];
 
-		//Set proper height/width:
-		if (getAspectRatio(tmpImage) > 1) {
-			//width is longer axis
-			$('#main_test').removeClass().addClass('shrinkwidth');
-		}
-		else {
-			//height is longer axis
-			$('#main_test').removeClass().addClass('shrinkheight');
-		}
-        setTimeout(function(){
-        $('#getClick').hide();
-        $('#instruct').hide();
-        $('#trialCounter').hide();
- 		endTrial();
- 		}, 100);
+            var real_left = (imgData[trialNumber]['axis_bb_left'] - 128) / 128;
+            var real_right = (imgData[trialNumber]['axis_bb_right'] - 128) / 128;
+            var real_top = (128 - imgData[trialNumber]['axis_bb_top']) / 128;
+            var real_bottom = (128 - imgData[trialNumber]['axis_bb_bottom']) / 128;
+            var real_bbox_n = [real_left, real_top, real_right, real_bottom];
+
+            var diff1 = Math.sqrt(Math.pow(left_n - real_left, 2) + Math.pow(top_n - real_top, 2));
+            var diff2 = Math.sqrt(Math.pow(right_n - real_right, 2) + Math.pow(bottom_n - real_bottom, 2));
+
+            var dist = (diff1 + diff2) / 2;
+            distances.push(dist);
+
+            console.log(left, top, right, bottom);
+            canvas_context.rect(left, top, right - left, bottom - top);
+            canvas_context.strokeStyle="black";
+            canvas_context.stroke();
+
+            pushData({'click1': click1data, 'click2': click2data,
+                      'response_bbox_n': response_bbox_n,
+                      'real_bbox_n': real_bbox_n});
+
+            setTimeout(function(){
+                canvas.width = canvas.width;
+                //canvas_context.setTransform(1, 0, 0, 1, 0, 0);
+                //canvas_context.clearRect(0, 0, canvas.width, canvas.height);
+                //canvas_context.restore();
+                $('#getClick').hide();
+                $('#instruct').hide();
+                $('#trialCounter').hide();
+                $('.fixation img').attr('src',fixationImage.src);
+                $('.fixation').show();
+                $('.marker').remove();
+                endTrial();
+            }, 500);
+ 	   };
  	}
  else { }
 }
@@ -218,9 +254,7 @@ trialDurations.push(trialEndTime - trialStartTime);
 }
 
 function endTrial() {
-	$('.fixation img').attr('src',fixationImage.src);
- 	$('.fixation').show();
- 	$('.marker').remove();
+
   if (trialNumber >= (totalTrials-1))
   {
 	var resultsobj = [];
@@ -296,6 +330,8 @@ function gup( name )
 }
 
 function init_vars() {
+    clicknum = 1;
+    click1data = null;
     zoom = DetectZoom.zoom();
 	aID = gup("assignmentId");
 	response = new Array();
@@ -333,6 +369,15 @@ function preload_resources() {
 }
 
 $(document).ready(function() {
+
+
+    canvas = document.getElementById('getClick');
+    canvas_context = canvas.getContext('2d');
+    var imageObj = new Image();
+    imageObj.onload = function(){
+        canvas_context.drawImage(imageObj, 0, 0);
+    };
+    imageObj.src = 'https://s3.amazonaws.com/objectome32/whitebg.png';
 
 	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
 
@@ -377,8 +422,9 @@ $(document).ready(function() {
 <div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src="" /></div>
 <div class="test" align="center" style="position:relative; z-index:200; top:75px; left:0px;"><img id="main_test" src="" /></div>
 <div align="center" id="markers">
-	<img id="getClick" src="https://s3.amazonaws.com/objectome32/whitebg.png" style="position:relative; top:75px; left:0px;" border=2 height=512 width=512/>
-	<div id="instruct" style="position:relative; top:-490px; font-size:150%;">Click where the object was!</div>
+    <canvas id="getClick" width="512" height="512" style="position:relative; top:75px; left:0px;" border=2></canvas>
+
+	<div id="instruct" style="position:relative; top:-490px; font-size:150%;">Put a bounding box around the object!</div>
 	<div id="trialCounter" style="position:relative; top:65px; font-size:small;"></div>
 </div>
 

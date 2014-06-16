@@ -26,13 +26,13 @@ img {
 }
 
 .shrinkwidth {
-	width:512px;
+	width:360px;
 	height:auto;
 }
 
 .shrinkheight {
 	width:auto;
-	height:512px;
+	height:360px;
 }
 
 </style>
@@ -49,12 +49,25 @@ img {
 
 <script type="text/javascript">
 
-ExperimentData = null;
+ExperimentData = {'imgData': [{'posx': 0, 'posy': 0, 'category': 'thing1'},
+                              {'posx': 0, 'posy': 0, 'category': 'thing2'},
+                              {'posx': 0, 'posy': 0, 'category': 'thing3'},
+                              {'posx': 0, 'posy': 0, 'category': 'thing4'},
+                              {'posx': 0, 'posy': 0, 'category': 'thing5'}],
+                  'imgFiles': ['http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/0135e6e61eb05390ece27c39412fdd752c62ac2f.png',
+ 'http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/bb2f0cb03f35ae1dcc98198307bea31ebddd568d.png',
+ 'http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/6d80a271c2bba48d8ccfa4c7979c54e0bcded52f.png',
+ 'http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/c4d332a4dc8b7c8ff53d284567a57177d3651565.png',
+ 'http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/f0f9b7ed3dc6a548bbcda9daecd53d00af0e1224.png',
+                  ]
+                  };
 
 shuffle = function(o) {
 	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
 	return o;
   };
+
+
 
 
 Array.prototype.flatten = function flatten(){
@@ -76,20 +89,17 @@ function getAspectRatio(im) {
 	return ar
 }
 
-function reward_scale(error){
-     if (error !== null){
+function reward_scale(acc){
+     if (acc !== null){
          var maxdist = Math.sqrt(2);
-         return Math.max(((maxdist - error) / maxdist).toPrecision(3), 0)
+         return ((maxdist - acc) / maxdist).toPrecision(3)
      } else{
          return 0.0
      }
     };
 
-var reward;
-var error = null;
-var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
-               'Chairs': 'chair', 'Faces': 'face', 'Fruits': 'fruit',
-               'Planes': 'plane', 'Tables': 'table'};
+var reward
+var acc = null;
 
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
@@ -146,18 +156,18 @@ function showResponse() {
 
 	$('#totalSeen').html('Total Objects Seen: 0');
 	if (trialNumber > 0){
-    	error = (trialNumber / (trialNumber + 1)) * error + (1 / (trialNumber + 1)) * distances[trialNumber-1];
+    	acc = (trialNumber / (trialNumber + 1)) * acc + (1 / (trialNumber + 1)) * distances[trialNumber-1];
     };
-    reward = reward_scale(error);
+    reward = reward_scale(acc);
     console.log('reward', reward)
-    var format_error = (100 * error).toPrecision(3);
-    $('#trialCounter').html('Progress: ' + trialNumber + ' of ' + totalTrials  +
-                 '<br /> Mean Error: ' + format_error +
-                 '<br/> Expected Bonus: $' + reward
+    var format_acc = (100 * acc).toPrecision(3);
+    $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
+                 '<br /> Mean Accuracy: '+ format_acc +
+                 '<br/> Expected Bonus: $'+ reward
                  );
 	$('#getClick').show();
     $('#trialCounter').show();
-	$('#instruct').html('Click where the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> was!');
+	$('#instruct').html('Click where the <b><font color=red>'+imgData[trialNumber]['category']+'</b></font> was!');
 	$('#instruct').show();
 
 	trialStartTime = new Date();
@@ -177,14 +187,15 @@ function clicked(pos_x, pos_y, eX, eY) {
 
         $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:red; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
 
-        var pos_xn = .6 * (pos_x - 256) / 256.;
-        var pos_yn = -1.2 * (pos_y - 256) / 256.;
+        var pos_xn = (pos_x - 256) / 256.;
+        var pos_yn = -(pos_y - 256) / 256.;
 
  		pushData({ 'X':pos_x, 'Y':pos_y, 'eX': eX, 'eY': eY,
  		           'pos_xn': pos_xn, 'pos_yn': pos_yn })
 
-        var real_posx = -imgData[trialNumber]['ty'];
-        var real_posy = imgData[trialNumber]['tz'];
+
+        var real_posx = imgData[trialNumber]['posx'];
+        var real_posy = imgData[trialNumber]['posy'];
         var dist = Math.sqrt(Math.pow(real_posx - pos_xn, 2) + Math.pow(real_posy - pos_yn, 2));
 
         distances.push(dist);
@@ -205,7 +216,7 @@ function clicked(pos_x, pos_y, eX, eY) {
         $('#instruct').hide();
         $('#trialCounter').hide();
  		endTrial();
- 		}, 100);
+ 		}, 50);
  	}
  else { }
 }
@@ -240,8 +251,8 @@ function endTrial() {
 					WindowWidth:winW,
 					ScreenHeight:vertical,
 					ScreenWidth:horizontal,
-                    ImgData:imgData,
-                    "Error":error,
+                    ImgData: imgData,
+                    Performance:acc,
                     Bonus:reward
 					});
 
@@ -378,7 +389,7 @@ $(document).ready(function() {
 <div class="test" align="center" style="position:relative; z-index:200; top:75px; left:0px;"><img id="main_test" src="" /></div>
 <div align="center" id="markers">
 	<img id="getClick" src="https://s3.amazonaws.com/objectome32/whitebg.png" style="position:relative; top:75px; left:0px;" border=2 height=512 width=512/>
-	<div id="instruct" style="position:relative; top:-490px; font-size:150%;">Click where the object was!</div>
+	<div id="instruct" style="position:relative; top:-490px; font-size:150%;">Click where the occluder was!</div>
 	<div id="trialCounter" style="position:relative; top:65px; font-size:small;"></div>
 </div>
 
@@ -394,11 +405,11 @@ $(document).ready(function() {
 <center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
 <div id="tutorial2" style="position:absolute; z-index:-1;">
 <ul>
-<li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
+<li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: <b>Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
 <p>
-<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>click on the white canvas in the position where the object was located in the  original image.</b>  For example, if you think you see an elephant located somewhere in the screen, place your click in the center of the elephant.</li>
+<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>y click on the white canvas in the position where the object was located in the original original</b> Once you click, you will move on to the next image immediately, so be ready.
 <p>
-<li>The white canvas is of a slightly different size than the original, so you should click in the <b>proportionately</b> correct spot.  That is, if the elephant is half way up and half way to the right side in the original image, then you should click on the white canvas half way up and half way to the right.  Once you click, you will move on to the next image immediately, so be ready.
+<li>For example, if you think you see an elephant located somewhere in the screen, place your click in the center of where ou think the elephant appeared.</li>
 <p>
 <li>Even if you're not 100% sure of location of the object, <u><b>make your best guess.</b></u></li>
 <p>
