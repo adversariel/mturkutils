@@ -126,14 +126,14 @@ class Experiment(object):
         You can retrieve data from any hit published in the past using these
         IDs (within the Experiment object, the IDs are also saved in 'hitids').
     """
-    
+
     def __init__(self, htmlsrc, htmldst, othersrc=None,
             sandbox=True, keywords=None, lifetime=1209600,
             max_assignments=1, title='TEST', reward=0.01, duration=1500,
             approval_delay=172800, description='TEST', frame_height_pix=1000,
             comment='TEST', collection_name='TEST', meta=None,
             log_prefix=LOG_PREFIX, section_name=MTURK_CRED_SECTION,
-            bucket_name=None, 
+            bucket_name=None,
             trials_per_hit=100,
             tmpdir='tmp',
             productionpath='html',
@@ -144,7 +144,7 @@ class Experiment(object):
             tmpdir_sandbox=None,
             trials_loc='trials.pkl',
             html_data=None):
-            
+
         if keywords is None:
             keywords = ['']
         self.sandbox = sandbox
@@ -173,15 +173,15 @@ class Experiment(object):
         if tmpdir_sandbox is None:
             tmpdir_sandbox = os.path.join(tmpdir, sandboxpath)
         self.tmpdir_sandbox = tmpdir_sandbox
-        self.trials_loc = trials_loc 
+        self.trials_loc = trials_loc
         self.sandbox_prefix = sandbox_prefix
         self.production_prefix = production_prefix
-    
+
         self.htmlsrc = htmlsrc
         self.htmldst = htmldst
         self.othersrc = othersrc
         self.html_data = html_data
-        
+
         self.trials_per_hit = trials_per_hit
 
         self.setMongoVars(collection_name, comment, meta)
@@ -275,29 +275,29 @@ class Experiment(object):
         self.mongo_conn = pymongo.Connection(port=MONGO_PORT, host=MONGO_HOST)
         self.db = self.mongo_conn[MONGO_DBNAME]
         self.collection = self.db[collection_name]
-        
+
     def createTrials(self):
         raise NotImplementedError
 
     def prepHTMLs(self):
         trials = self._trials
-        
+
         n_per_file = self.trials_per_hit
         htmlsrc = self.htmlsrc
         htmldst = self.htmldst
         auxfns = self.othersrc
-        
+
         tmpdir = self.tmpdir
         tmpdir_sandbox = self.tmpdir_sandbox
         tmpdir_production = self.tmpdir_production
         trials_loc = self.trials_loc
         sandbox_prefix = self.sandbox_prefix
         production_prefix = self.production_prefix
-        bucket_name = self.bucket_name        
-        
+        bucket_name = self.bucket_name
+
         sandbox_rules = copy.deepcopy(PREP_RULE_SIMPLE_RSVP_SANDBOX)
         production_rules = copy.deepcopy(PREP_RULE_SIMPLE_RSVP_PRODUCTION)
-        
+
         if auxfns is not None:
             for auxfn in auxfns:
                 auxroot = os.path.split(auxfn)[1]
@@ -311,7 +311,7 @@ class Experiment(object):
                         }
                 sandbox_rules.append(new_sandbox_rule)
                 production_rules.append(new_production_rule)
-        
+
         self.base_URLs = []
         for label, rules, dstdir in [
                 ('sandbox', sandbox_rules, tmpdir_sandbox),
@@ -325,15 +325,15 @@ class Experiment(object):
 
         # save trials for future reference
         pk.dump(trials, open(os.path.join(tmpdir, trials_loc), 'wb'))
-        
+
     def testHTMLs(self, full=False):
         """Test and validates the written html files"""
-        
+
         tmpdir = self.tmpdir
         tmpdir_sandbox = self.tmpdir_sandbox
         tmpdir_production = self.tmpdir_production
         trials_loc = self.trials_loc
-        
+
         trials_org = pk.load(open(os.path.join(tmpdir, trials_loc)))
 
         fns_sandbox = sorted(glob.glob(os.path.join(
@@ -369,7 +369,7 @@ class Experiment(object):
         sandbox_prefix = self.sandbox_prefix
         production_prefix = self.production_prefix
         bucket_name = self.bucket_name
-        
+
         """Upload generated web files into S3"""
         print '* Uploading sandbox...'
         fns = glob.glob(os.path.join(tmpdir_sandbox, '*.*'))
@@ -379,9 +379,9 @@ class Experiment(object):
         print '* Uploading production...'
         fns = glob.glob(os.path.join(tmpdir_production, '*.*'))
         keys += upload_files(fns, bucket_name, dstprefix=production_prefix + '/', test=True,
-                verbose=10)     
-        return keys   
-        
+                verbose=10)
+        return keys
+
     def connect(self):
         """Establishes connection to MTurk for publishing HITs and getting
         data. Pass sandbox=True if you want to use sandbox mode.
@@ -397,11 +397,11 @@ class Experiment(object):
 
     def setQual(self, performance_thresh=90):
         self.qual = create_qual(performance_thresh)
-        
-    def URLs(self):
-        tmpdir = self.tmpdir
-        tmpdir_sandbox = self.tmpdir_sandbox
-        tmpdir_production = self.tmpdir_production
+
+    def URLs(self, secure=False):
+        """urls of actual tasks for createHITs
+           prepHTMLs must be run first
+        """
         sandbox_prefix = self.sandbox_prefix
         production_prefix = self.production_prefix
         trials_loc = self.trials_loc
@@ -409,18 +409,19 @@ class Experiment(object):
 
         if self.sandbox:
             prefix = sandbox_prefix
-            fns = glob.glob(os.path.join(tmpdir_sandbox, '*.*'))
         else:
             prefix = production_prefix
-            fns = glob.glob(os.path.join(tmpdir_production, '*.*'))
-            
-        #return ['http://s3.amazonaws.com/' + bucket_name + '/' + prefix + '/' + \
-        #                                 fn.split('/')[-1] for fn in fns]
-        
-        return ['http://s3.amazonaws.com/' + bucket_name + '/' + prefix + '/' + \
+
+        if secure:
+            urlbase = S3HTTPSBASE
+        else:
+            urlbase = S3HTTPBASE
+
+        return [urlbase + bucket_name + '/' + prefix + '/' + \
                                          fn.split('/')[-1] for fn in self.base_URLs]
-        
-    def createHIT(self, URLlist=None, verbose=True, hitidslog=None):
+
+    def createHIT(self, URLlist=None, verbose=True, hitidslog=None,
+                  secure=False, hits_per_url=1):
         """
         - Pass a list of URLs (check that they work first!) for each one to be
           published as a HIT. If you've used mturkutils to upload HTML, those
@@ -431,8 +432,10 @@ class Experiment(object):
           if given, `hitidslog`.
         """
         if URLlist is None:
-            URLlist = self.URLs()
-            
+            URLlist = self.URLs(secure=secure)
+
+        URLlist = URLlist * hits_per_url
+
         if self.sandbox:
             print('**WORKING IN SANDBOX MODE**')
 
@@ -578,7 +581,7 @@ class MatchToSampleFromDLDataExperiment(Experiment):
     def createTrials(self):
 
         html_data = self.html_data
-        
+
         dataset = html_data['dataset']
         preproc = html_data['preproc']
         meta_query = html_data['meta_query']
@@ -590,13 +593,13 @@ class MatchToSampleFromDLDataExperiment(Experiment):
         combs = html_data['combs']
         labelfunc = html_data['labelfunc']
         seed = html_data['seed']
-        
+
         meta = dataset.meta
         if meta_query is not None:
             query_inds = set(np.ravel(np.argwhere(map(meta_query, meta))))
         else:
             query_inds = set(range(len(meta)))
-        
+
         category_occurences = Counter(itertools.chain.from_iterable(combs))
         synset_urls = defaultdict(list)
         img_inds = []
@@ -608,7 +611,7 @@ class MatchToSampleFromDLDataExperiment(Experiment):
             response_images = [None]*len(combs)
         else:
             num_per_category = int(np.ceil(float(k) / n))
-            
+
         rng = np.random.RandomState(seed=seed)
         for category in category_occurences.keys():
             cat_inds = set(np.ravel(np.argwhere(meta[meta_field] == category)))
@@ -616,7 +619,7 @@ class MatchToSampleFromDLDataExperiment(Experiment):
             num_sample = category_occurences[category] * num_per_category
             assert len(inds) >= num_per_category, "Category %s has %s images, %s are required for this experiment" % \
                                                   (category, len(inds), num_sample)
-            
+
             img_inds.extend(list(np.array(inds)[rng.permutation(len(inds))[: num_sample]]))
 
         urls = dataset.publish_images(img_inds, preproc, image_bucket_name, dummy_upload=dummy_upload)
@@ -653,17 +656,17 @@ class MatchToSampleFromDLDataExperiment(Experiment):
         for list_data in [imgs, imgData, labels]:
             rng = np.random.RandomState(seed=seed)
             rng.shuffle(list_data)
-            
+
         self._trials = {'imgFiles': imgs, 'imgData': imgData, 'labels': labels,
                                'meta_field': [meta_field] * len(labels)}
-        
+
 
 class MatchToSampleFromDLDataExperimentWithTiming(MatchToSampleFromDLDataExperiment):
     def createTrials(self):
         MatchToSampleFromDLDataExperiment.createTrials(self)
         N = len(self._trials['imgFiles'])
         self._trials['stimduration'] = [presentation_time] * N
-        
+
 
 class MatchToSampleFromDLDataExperimentWithReward(MatchToSampleFromDLDataExperiment):
 
@@ -685,7 +688,7 @@ class MatchToSampleFromDLDataExperimentWithReward(MatchToSampleFromDLDataExperim
             reward[reward < 0] = 0
             reward_scale = html_data['reward_scale']
             reward = list(reward/max(reward)*reward_scale)
-            self._trials['reward_scale'] = [reward] * len(self._trials['imgFiles'])        
+            self._trials['reward_scale'] = [reward] * len(self._trials['imgFiles'])
 
 
 # -- helper functions
@@ -1027,8 +1030,8 @@ def upload_files(srcfiles, bucketname, dstprefix='',
             print 'At:', i_fn, 'out of', len(srcfiles)
 
     return keys
-    
-    
+
+
 def download_results(hitids, dstprefix=None, sandbox=True,
         replstr='${HIT_ID}', verbose=False, full=False):
     """Download all assignment results in `hittids` and save one pickle file
