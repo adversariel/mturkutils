@@ -11,7 +11,7 @@ class HvMAxisBBoxExperiment(Experiment):
         dataset = hvm.HvMWithDiscfade()
         preproc = None
 
-        dummy_upload = True
+        dummy_upload = False
         image_bucket_name = 'hvm_images_for_axis_bbox'
         seed = 0
 
@@ -36,7 +36,7 @@ class HvMAxisBBoxExperiment(Experiment):
             pinds2 = np.concatenate([pinds, pinds.copy()])
             perm0 = rng.permutation(len(pinds2))
             pinds2 = pinds2[perm0]
-            bmeta = meta[query_inds[pinds2]]
+            bmeta = extended_meta[query_inds[pinds2]]
             burls = [urls[_i] for _i in pinds2]
             bmeta = [{df: bm[df] for df in meta.dtype.names + additional} for bm in bmeta]
             imgs.extend(burls)
@@ -52,7 +52,7 @@ exp = HvMAxisBBoxExperiment(htmlsrc = 'hvm_axis_bbox.html',
                               duration=1500,
                               description = 'Make bounding box judgements for up to 50 cent bonus',
                               comment = "Axis-aligned bounding box judgement in HvM dataset (var6)",
-                              collection_name = 'hvm_axis_bbox',
+                              collection_name = None,
                               max_assignments=1,
                               bucket_name='hvm_axis_bbox',
                               trials_per_hit=100)
