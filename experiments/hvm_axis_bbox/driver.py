@@ -47,7 +47,7 @@ class HvMAxisBBoxExperiment(Experiment):
 exp = HvMAxisBBoxExperiment(htmlsrc = 'hvm_axis_bbox.html',
                               htmldst = 'hvm_axis_bbox_var6_n%04d.html',
                               sandbox = True,
-                              title = 'Axis-aligned Boundox Box Judgement',
+                              title = 'Axis-aligned Bounding Box Judgement',
                               reward = 0.5,
                               duration=1500,
                               description = 'Make bounding box judgements for up to 50 cent bonus',
