@@ -143,7 +143,8 @@ class Experiment(object):
             tmpdir_production=None,
             tmpdir_sandbox=None,
             trials_loc='trials.pkl',
-            html_data=None):
+            html_data=None,
+            otherrules=None):
 
         if keywords is None:
             keywords = ['']
@@ -181,6 +182,7 @@ class Experiment(object):
         self.htmldst = htmldst
         self.othersrc = othersrc
         self.html_data = html_data
+        self.otherrules = otherrules
 
         self.trials_per_hit = trials_per_hit
 
@@ -312,17 +314,33 @@ class Experiment(object):
                 sandbox_rules.append(new_sandbox_rule)
                 production_rules.append(new_production_rule)
 
+        if self.otherrules is not None:
+            rulesets = []
+            for label, ruleset in self.otherrules:
+                srules = copy.deepcopy(sandbox_rules)
+                srules.extend(ruleset)
+                prules = copy.deepcopy(production_rules)
+                prules.extend(ruleset)                
+                rulesets.append(('sandbox_%s' % label, srules, tmpdir_sandbox, label))
+                rulesets.append(('production_%s' % label, prules, tmpdir_production, label))
+
+        else:
+            rulesets = [('sandbox', sandbox_rules, tmpdir_sandbox, None),
+                        ('production', production_rules, tmpdir_production, None)]
+
         self.base_URLs = []
-        for label, rules, dstdir in [
-                ('sandbox', sandbox_rules, tmpdir_sandbox),
-                ('production', production_rules,
-                    tmpdir_production)]:
-            print '  ->', label
-            self.base_URLs += ut.prep_web_simple(trials, htmlsrc, dstdir, dstpatt=htmldst,
+        self.final_rules = []
+        for label, rules, dstdir, pfix in rulesets:
+            print ('  ->', label, pfix)
+            new_urls = ut.prep_web_simple(trials, htmlsrc, dstdir, dstpatt=htmldst,
                     rules=rules, auxfns=auxfns,
                     n_per_file=n_per_file, verbose=True,
-                    chunkerfunc=ut.dictchunker)
-
+                    chunkerfunc=ut.dictchunker,
+                    prefix=pfix)
+            self.base_URLs += new_urls
+            self.final_rules.extend([rules for _ind in range(len(new_urls))])
+        assert len(self.final_rules) == len(self.base_URLs)
+        self.final_rules = dict(zip(self.base_URLs, self.final_rules))
         # save trials for future reference
         pk.dump(trials, open(os.path.join(tmpdir, trials_loc), 'wb'))
 
@@ -343,11 +361,11 @@ class Experiment(object):
 
         print '* Testing sandbox...'
         ut.validate_html_files(fns_sandbox,
-                rules=PREP_RULE_SIMPLE_RSVP_SANDBOX,
+                ruledict=self.final_rules,
                 trials_org=trials_org)
         print '* Testing production...'
         ut.validate_html_files(fns_production,
-                rules=PREP_RULE_SIMPLE_RSVP_PRODUCTION,
+                ruledict=self.final_rules,
                 trials_org=trials_org)
 
         if full:
