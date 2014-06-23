@@ -87,7 +87,7 @@ ExperimentData = {'imgData': [{'posx': 0, 'posy': 0, 'category': 'thing1', 'axis
 
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
-var container, camera, controls, scene, renderer;
+var container, camera, controls, scene, renderer, mesh;
 
 function init_scene() {
 
@@ -110,7 +110,7 @@ function init_scene() {
                 );
 
     function createScene( geometry, materials ) {
-        var mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
+        mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
         scene.add( mesh );
 
     }
@@ -156,6 +156,7 @@ function onWindowResize() {
 }
 
 function render_scene() {
+    
     renderer.render( scene, camera );
 }
 
@@ -282,6 +283,7 @@ function clicked() {
 	if (begin) {
  		trialEndTime = new Date();
 
+        console.log(controls.object.rotation);
  		//get data and compute distances etc
         //pushData(data);
 
@@ -291,7 +293,9 @@ function clicked() {
         $('.fixation img').attr('src',fixationImage.src);
         $('.fixation').show();
         $('.marker').remove();
-        controls.reset();
+        //controls.reset();
+        mesh.rotateX(1);
+        render_scene();
         endTrial();
 
  	}

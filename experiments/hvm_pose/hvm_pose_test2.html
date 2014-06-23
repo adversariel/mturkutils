@@ -1,0 +1,298 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="https://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Object Identification</title>
+
+<style>
+body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana }
+div,pre { margin:0; padding:0 }
+h2 { margin: 20px 0 5px 0; padding: 0 }
+p.intro { margin: 0; padding: 15px; background: #eee; font-size: small; }
+.thumbs { position: absolute; width: 100px; height: 100px;}
+div.thumb { position:absolute; float:left; padding: 1px; width: 64px; height: 64px;}
+div.thumb img { border: 2px solid white; width:64px; height:64px; }
+
+div#tutorial {
+	position:relative;
+	background-color: white;
+	padding: 10px;
+}
+
+img {
+    /*filter: url(http://s3.amazonaws.com/imagenet_psychophysics/filters.svg#grayscale); *//* Firefox 3.5+ */
+    /*filter: gray; *//* IE6-9 */
+    /*-webkit-filter: grayscale(1); *//* Google Chrome & Safari 6+ */
+}
+
+.shrinkwidth {
+	width:512px;
+	height:auto;
+}
+
+.shrinkheight {
+	width:auto;
+	height:512px;
+}
+
+
+#responeCanvas {
+    color: #000;
+    font-family:Monospace;
+    font-size:13px;
+    text-align:center;
+    font-weight: bold;
+
+    background-color: #fff;
+    margin: 0px;
+    overflow: hidden;
+}
+
+</style>
+
+
+<script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/slider-1.0.2.js"></script>
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js"></script>
+
+<script src="three.min.js"></script>
+<script src="MTLLoader.js"></script>
+<script src="OBJMTLLoader.js"></script>
+<script src="TrackballControls.js"></script>
+<script src="Detector.js"></script>
+<script src="stats.min.js"></script>
+
+<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+
+<script type="text/javascript">
+
+hvm_equivalents = {'Apple_Fruit_obj': 'single_apple', 'Apricot_obj': 'Apricot_obj', 'BAHRAIN': 'MB27239', 
+ 'Beetle': 'MB31409', 'CGTG_L': 'MB27840', 'DTUG_L': 'MB28041', 'ELEPHANT_M': 'lo_poly_animal_ELE_AF1',
+ 'GORILLA': 'MB28626', 'LIONESS': 'MB29302', 'MQUEEN_L': 'MB29654', 'Peach_obj': 'Peach_obj', 
+ 'Pear_obj': 'single_pear', 'SISTER_L': 'MB27840', 'Strawberry_obj': 'Strawberry_obj', 
+ 'TURTLE_L': 'lo_poly_animal_TRTL_GRN',
+ '_001': 'MB29830', '_004': 'MB28045', '_008': 'MB29830', '_010': 'MB29830', '_011': 'MB27680', '_014': 'MB29822', 
+ '_01_Airliner_2jetEngines': 'MB27463', '_031': 'MB29822', '_033': 'MB27667', '_05_future': 'MB28029', 
+ '_08': 'antique_furniture_item_08', '_10': 'antique_furniture_item_10', '_11': 'antique_furniture_item_11',
+ '_12': 'antique_furniture_item_12',
+ '_18': 'antique_furniture_item_37', '_19_flyingBoat': 'MB28113', 
+ '_37': 'antique_furniture_item_37', '_38': 'antique_furniture_item_38', '_44': 'antique_furniture_item_44', 'alfa155': 'MB27827',
+ 'astra': 'MB27827', 'bear': 'lo_poly_animal_BEAR_BLK', 'blCow': 'MB27925', 'bmw325': 'MB27827', 'bora_a': 'MB27827', 
+ 'breed_pug': 'lo_poly_animal_DOBERMAN', 'celica': 'MB27827',
+ 'clio': 'MB27827',
+ 'cruiser': 'MB27840',
+ 'f16': 'MB28243', 
+ 'face0001': 'face0001',
+ 'face0002': 'face0001',
+ 'face0003': 'face0001',
+ 'face0004': 'face0001', 
+ 'face0005': 'face0001' , 'face0006': 'face0001',
+ 'face0007': 'face0001' , 'face0008': 'face0001', 
+ 'hedgehog': 'hedgehog', 
+ 'junkers88': 'MB29050',
+ 'mig29': 'MB29629' ,
+ 'motoryacht': 'motoryacht', 'raspberry_obj': 'Raspberry_obj', 
+ 'rdbarren': 'MB27309', 
+ 'sopwith': 'MB29050', 
+ 'support': 'support_ship',
+ 'walnut_obj': 'walnut_obj', 
+ 'watermelon_obj': 'single_watermelon', 
+ 'z3': 'MB31079'};
+ 
+if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+var container, camera, controls, scene, renderer, mesh, jsonLoader;
+
+
+
+function createScene( geometry, materials ) {
+    mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
+    scene.add( mesh );
+    mesh.scale.set(mesh.scale.x / mesh.geometry.boundingSphere.radius,
+                   mesh.scale.y / mesh.geometry.boundingSphere.radius,
+                   mesh.scale.z / mesh.geometry.boundingSphere.radius);
+    mesh.translateX(-1 * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
+    mesh.translateY(-1 * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
+    mesh.translateZ(-1 * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+
+
+}
+
+function replace_scene(objname){
+    scene.remove(mesh);
+    jsonLoader.load("hvm_js/" + objname + "/" + objname + ".js",
+              createScene, "hvm_js/" + objname + "/");    
+}
+
+function init_scene(objname) {
+
+
+
+    camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
+    camera.position.z = 5;
+
+    controls = new THREE.TrackballControls( camera );
+
+    controls.rotateSpeed = 1.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.8;
+
+    controls.noZoom = false;
+    controls.noPan = false;
+
+    controls.staticMoving = true;
+    controls.dynamicDampingFactor = 0.3;
+
+    controls.keys = [ 65, 83, 68 ];
+
+    controls.addEventListener( 'change', render_scene);
+    
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2( 0xcccccc, 0.0002 );
+
+    jsonLoader = new THREE.JSONLoader();
+    jsonLoader.load("hvm_js/" + objname + "/" + objname + ".js",
+              createScene, "hvm_js/" + objname + "/");
+
+
+    // lights
+
+    light = new THREE.DirectionalLight( 0xaaaaaa);
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+    
+    light = new THREE.DirectionalLight( 0xaaaaaa);
+    light.position.set( 1, 1, -1 );
+    scene.add( light );
+    
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( 1, -1, 1 );
+    scene.add( light );
+    
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( -1, 1, 1 );
+    scene.add( light );
+    
+    light.position.set( -1, 1, -1 );
+    scene.add( light );
+    
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( -1, -1, -1 );
+    scene.add( light );
+
+    //light = new THREE.DirectionalLight( 0x002288 );
+    //light.position.set( -1, -1, -1 );
+    //scene.add( light );
+
+    light = new THREE.AmbientLight( 0xffffff );
+    scene.add( light );
+
+
+    // renderer
+
+    renderer = new THREE.WebGLRenderer( { antialias: false } );
+    renderer.setClearColor( scene.fog.color, 1 );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+
+    //container = document.getElementById( 'container' );
+    container = $('#responseCanvas');
+    container.append( renderer.domElement );
+
+    window.addEventListener( 'resize', onWindowResize, false );
+
+}
+
+function onWindowResize() {
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    render_scene();
+
+}
+
+function render_scene() {
+    console.log('hi')
+    renderer.render( scene, camera );
+}
+
+
+
+shuffle = function(o) {
+	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+	return o;
+  };
+
+
+Array.prototype.flatten = function flatten(){
+   var flat = [];
+   for (var i = 0, l = this.length; i < l; i++){
+       var type = Object.prototype.toString.call(this[i]).split(' ').pop().split(']').shift().toLowerCase();
+       if (type) { flat = flat.concat(/^(array|collection|arguments|object)$/.test(type) ? flatten.call(this[i]) : this[i]); }
+   }
+   return flat;
+};
+
+
+//!!==BEGIN DYNAMIC TRIAL CODE==!!//
+
+
+var K, ind, posdict;
+
+function clicked(){
+    console.log('clicked');
+    posdict[hvm_equivalents[K[ind]]] = {'x': controls.object.rotation.x, 
+        'y': controls.object.rotation.y, 'z': controls.object.rotation.z};
+    ind += 1;
+    $('#trialdesc').html('Equivalent for ' + K[ind] + ': ' + hvm_equivalents[K[ind]]);
+    replace_scene(hvm_equivalents[K[ind]]);
+    controls.reset();
+    render_scene();
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    controls.update();
+
+}
+
+$(document).ready(function() {
+        
+    $("#submitResponse").click(function(e) {
+            clicked();
+    });
+    
+    K = _.keys(hvm_equivalents);
+    ind = 0;
+    posdict = {};
+    
+    $('#trialdesc').html('Equivalent for ' + K[ind] + ': ' + hvm_equivalents[K[ind]]);
+    init_scene(hvm_equivalents[K[ind]]);
+    render_scene();
+    animate();
+
+});
+
+</script>
+
+</head>
+
+<body bgcolor="#7F7F7F">
+<div style="height:1000px; width:auto;">
+<div align="center"><button id="submitResponse" value="Submit Response">Submit Response</button></div>
+<div align="center" id="markers">
+<div id="trialdesc" style="position:relative; top:65px; font-size:small;"></div>
+    <div id="responseCanvas"></div>
+	
+</div>
+</div>
+</body>
+</html>
+
