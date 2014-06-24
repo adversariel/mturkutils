@@ -54,7 +54,7 @@ def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
     for rule in rules:
         if 'n' not in rule:
             continue
-        assert html_src.count(rule['old']) == rule['n'], (html_src.count(rule['old']), 
+        assert html_src.count(rule['old']) == rule['n'], (html_src.count(rule['old']),
                                                           rule['n'],
                                                           rule['old'])
 

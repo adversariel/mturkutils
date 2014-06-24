@@ -320,7 +320,7 @@ class Experiment(object):
                 srules = copy.deepcopy(sandbox_rules)
                 srules.extend(ruleset)
                 prules = copy.deepcopy(production_rules)
-                prules.extend(ruleset)                
+                prules.extend(ruleset)
                 rulesets.append(('sandbox_%s' % label, srules, tmpdir_sandbox, label))
                 rulesets.append(('production_%s' % label, prules, tmpdir_production, label))
 
@@ -339,6 +339,7 @@ class Experiment(object):
                     prefix=pfix)
             self.base_URLs += new_urls
             self.final_rules.extend([rules for _ind in range(len(new_urls))])
+
         assert len(self.final_rules) == len(self.base_URLs)
         self.final_rules = dict(zip(self.base_URLs, self.final_rules))
         # save trials for future reference
