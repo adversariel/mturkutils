@@ -4,7 +4,7 @@ import numpy as np
 import dldata.stimulus_sets.hvm as hvm
 from mturkutils.base import Experiment
 
-class HvMPoseExperiment(Experiment):
+class HvMSizeExperiment(Experiment):
 
     def createTrials(self):
 
@@ -43,18 +43,18 @@ class HvMPoseExperiment(Experiment):
 
 othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'TrackballControls.js']
 
-exp = HvMPoseExperiment(htmlsrc = 'hvm_pose.html',
-                        htmldst = 'hvm_pose_n%04d.html',
+exp = HvMSizeExperiment(htmlsrc = 'hvm_size.html',
+                        htmldst = 'hvm_size_n%04d.html',
                         othersrc = othersrc,
                         sandbox = True,
-                        title = 'Pose Judgement',
+                        title = 'Size Judgement',
                         reward = 0.5,
                         duration=1500,
-                        description = 'Make object 3-d pose judgements for up to 50 cent bonus',
-                        comment = "Pose judgement in HvM dataset (var6)",
+                        description = 'Make object size judgements for up to 50 cent bonus',
+                        comment = "Size judgement in HvM dataset (var6)",
                         collection_name = None,
                         max_assignments=1,
-                        bucket_name='hvm_pose',
+                        bucket_name='hvm_size',
                         trials_per_hit=100)
 
 if __name__ == '__main__':

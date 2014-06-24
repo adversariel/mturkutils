@@ -1,0 +1,795 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="https://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Size Estimation</title>
+
+<style>
+body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana }
+div,pre { margin:0; padding:0 }
+h2 { margin: 20px 0 5px 0; padding: 0 }
+p.intro { margin: 0; padding: 15px; background: #eee; font-size: small; }
+.thumbs { position: absolute; width: 100px; height: 100px;}
+div.thumb { position:absolute; float:left; padding: 1px; width: 64px; height: 64px;}
+div.thumb img { border: 2px solid white; width:64px; height:64px; }
+
+div#tutorial {
+	position:relative;
+	background-color: white;
+	padding: 10px;
+}
+
+img {
+    /*filter: url(http://s3.amazonaws.com/imagenet_psychophysics/filters.svg#grayscale); *//* Firefox 3.5+ */
+    /*filter: gray; *//* IE6-9 */
+    /*-webkit-filter: grayscale(1); *//* Google Chrome & Safari 6+ */
+}
+
+.shrinkwidth {
+	width:512px;
+	height:auto;
+}
+
+.shrinkheight {
+	width:auto;
+	height:512px;
+}
+
+
+#responseCanvas {
+    color: #000;
+    font-family:Monospace;
+    font-size:13px;
+    text-align:center;
+    font-weight: bold;
+
+    background-color: #fff;
+    margin: 0px;
+    overflow: hidden;
+    position: relative;
+}
+
+</style>
+
+
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.10.2.js"></script>
+<script src="http://code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+<script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+<link rel="stylesheet" href="http://jqueryui.com/resources/demos/style.css">
+
+<script src="three.min.js"></script>
+<script src="Detector.js"></script>
+<script src="posdict.js"></script>
+
+<script type="text/javascript">
+
+ExperimentData = {'imgData':
+[{'category': 'Cars',
+  'obj': 'bmw325',
+  'rxy': -0.372,
+  'rxz': 1.5189999999999999,
+  'ryz': 10.752000000000001,
+  's': 1.087},
+ {'category': 'Faces',
+  'obj': 'face0006',
+  'rxy': -1.133,
+  'rxz': -2.2570000000000001,
+  'ryz': -28.672999999999998,
+  's': 0.8125},
+ {'category': 'Cars',
+  'obj': 'bmw325',
+  'rxy': 1.764,
+  'rxz': 1.829,
+  'ryz': 25.207000000000001,
+  's': 1.1599999999999999},
+ {'category': 'Fruits',
+  'obj': 'Pear_obj',
+  'rxy': -2.6209999999999951,
+  'rxz': -0.59499999999999997,
+  'ryz': -17.488,
+  's': 1.2957142857142858},
+ {'category': 'Planes',
+  'obj': '_19_flyingBoat',
+  'rxy': -2.8300000000000001,
+  'rxz': 1.2729999999999961,
+  'ryz': -13.436000000000007,
+  's': 0.7946153846153845},
+ {'category': 'Boats',
+  'obj': 'cruiser',
+  'rxy': -2.8029999999999999,
+  'rxz': 1.561000000000007,
+  'ryz': -33.130000000000003,
+  's': 0.79749999999999999},
+ {'category': 'Faces',
+  'obj': 'face0006',
+  'rxy': -1.254,
+  'rxz': 3.0459999999999998,
+  'ryz': 17.363,
+  's': 0.79749999999999999},
+ {'category': 'Tables',
+  'obj': '_11',
+  'rxy': 0.70399999999999996,
+  'rxz': -3.258,
+  'ryz': 67.364000000000004,
+  's': 1.4671428571428571},
+ {'category': 'Boats',
+  'obj': 'SISTER_L',
+  'rxy': -1.018,
+  'rxz': -3.278,
+  'ryz': -1.8720000000000001,
+  's': 0.82000000000000006},
+ {'category': 'Fruits',
+  'obj': 'Apple_Fruit_obj',
+  'rxy': -3.0400000000000063,
+  'rxz': -1.6739999999999999,
+  'ryz': 41.118000000000002,
+  's': 1.2071428571428571},
+ {'category': 'Chairs',
+  'obj': '_033',
+  'rxy': -7.3789999999999996,
+  'rxz': -0.39100000000000001,
+  'ryz': 0.434,
+  's': 0.81285714285714283},
+ {'category': 'Boats',
+  'obj': 'support',
+  'rxy': -31.396000000000001,
+  'rxz': -0.060000000000002274,
+  'ryz': 0.85899999999999999,
+  's': 1.1591666666666667},
+ {'category': 'Faces',
+  'obj': 'face0005',
+  'rxy': 8.4700000000000006,
+  'rxz': 1.3839999999999999,
+  'ryz': 1.056,
+  's': 0.87749999999999995},
+ {'category': 'Fruits',
+  'obj': 'Apple_Fruit_obj',
+  'rxy': 21.902000000000001,
+  'rxz': -0.89600000000000002,
+  'ryz': 1.552,
+  's': 1.1585714285714288},
+ {'category': 'Faces',
+  'obj': 'face0007',
+  'rxy': 6.8440000000000003,
+  'rxz': -1.5640000000000001,
+  'ryz': 1.7130000000000001,
+  's': 0.94999999999999996},
+ {'category': 'Boats',
+  'obj': 'CGTG_L',
+  'rxy': 26.669,
+  'rxz': -1.9490000000000001,
+  'ryz': 1.5629999999999999,
+  's': 0.81833333333333336},
+ {'category': 'Chairs',
+  'obj': '_031',
+  'rxy': 43.472000000000001,
+  'rxz': 2.0270000000000001,
+  'ryz': -1.573,
+  's': 1.5414285714285714},
+ {'category': 'Boats',
+  'obj': 'SISTER_L',
+  'rxy': -39.670999999999999,
+  'rxz': 2.6019999999999999,
+  'ryz': 0.34899999999999998,
+  's': 0.79083333333333328},
+ {'category': 'Chairs',
+  'obj': '_004',
+  'rxy': -18.582999999999998,
+  'rxz': 2.6709999999999998,
+  'ryz': -0.35299999999999998,
+  's': 1.0028571428571429},
+ {'category': 'Tables',
+  'obj': '_11',
+  'rxy': 77.266000000000005,
+  'rxz': -1.03,
+  'ryz': 2.637,
+  's': 1.2628571428571429},
+ {'category': 'Chairs',
+  'obj': '_033',
+  'rxy': 0.16600000000000001,
+  'rxz': 52.475999999999999,
+  'ryz': 0.098000000000000004,
+  's': 1.1628571428571428},
+ {'category': 'Animals',
+  'obj': 'blCow',
+  'rxy': 0.46000000000000002,
+  'rxz': 20.024999999999999,
+  'ryz': -0.66600000000000004,
+  's': 1.14375},
+ {'category': 'Fruits',
+  'obj': 'walnut_obj',
+  'rxy': -0.84099999999999397,
+  'rxz': -20.334,
+  'ryz': 0.53600000000000003,
+  's': 1.1200000000000001},
+ {'category': 'Faces',
+  'obj': 'face0003',
+  'rxy': -0.92300000000000004,
+  'rxz': 15.397,
+  'ryz': -0.74399999999999999,
+  's': 1.1899999999999999},
+ {'category': 'Chairs',
+  'obj': '_011',
+  'rxy': -0.90600000000000003,
+  'rxz': -22.863,
+  'ryz': 1.2310000000000001,
+  's': 0.93571428571428583},
+ {'category': 'Chairs',
+  'obj': '_010',
+  'rxy': -1.159,
+  'rxz': -22.305,
+  'ryz': 1.5980000000000001,
+  's': 1.23},
+ {'category': 'Cars',
+  'obj': 'clio',
+  'rxy': 0.442,
+  'rxz': 43.793999999999997,
+  'ryz': 1.964,
+  's': 1.0629999999999999},
+ {'category': 'Fruits',
+  'obj': 'walnut_obj',
+  'rxy': 1.8990000000000009,
+  'rxz': 30.440999999999999,
+  'ryz': -0.95899999999999996,
+  's': 1.04},
+ {'category': 'Boats',
+  'obj': 'SISTER_L',
+  'rxy': -1.018,
+  'rxz': -3.278,
+  'ryz': -1.8720000000000001,
+  's': 0.82000000000000006},
+ {'category': 'Fruits',
+  'obj': 'raspberry_obj',
+  'rxy': 1.902000000000001,
+  'rxz': -42.295000000000002,
+  'ryz': 1.6399999999999999,
+  's': 0.99285714285714288}],
+                  'imgFiles': ['http://s3.amazonaws.com/hvm_timing/ab4d3b714a4d2390096318101bf6d6315edb771a.png',
+ 'http://s3.amazonaws.com/hvm_timing/ec5a732ce9f356ff3b8d60c55f280e9664c0368f.png',
+ 'http://s3.amazonaws.com/hvm_timing/c51cfe1d8dbd70905a21c22bb71d19c3eca3a8f8.png',
+ 'http://s3.amazonaws.com/hvm_timing/c41c369d7cde564cdb841d66c69cd8ffe025dc12.png',
+ 'http://s3.amazonaws.com/hvm_timing/67dc1d933b827522ce3f45f32f0164594ba0de1a.png',
+ 'http://s3.amazonaws.com/hvm_timing/e231aea066923bdd8be9c47f89e07dbecb677350.png',
+ 'http://s3.amazonaws.com/hvm_timing/f42c2c8022e424a4c8b9a2850dff26aa118b28a2.png',
+ 'http://s3.amazonaws.com/hvm_timing/4bfa4c7d0395ab5a5be8f8965458ae125dade92d.png',
+ 'http://s3.amazonaws.com/hvm_timing/db6a0dec76b597e86d8d2c382946e3d46060f6d3.png',
+ 'http://s3.amazonaws.com/hvm_timing/ac4da60f7e95c2738a64be6e5a33b530c4316529.png',
+ 'http://s3.amazonaws.com/hvm_timing/e1ae712c7353aebc5f691fc406b058c5d98890f6.png',
+ 'http://s3.amazonaws.com/hvm_timing/2c8bd80e619e5aaad37bb1b4144dda10ca516096.png',
+ 'http://s3.amazonaws.com/hvm_timing/241e627908cebec721bed359f920ed15a939559b.png',
+ 'http://s3.amazonaws.com/hvm_timing/262839644f1ad77cc9718db41f3b8ee34d5dab4c.png',
+ 'http://s3.amazonaws.com/hvm_timing/f7d551ceece6a6f184fc6603c0e294e063463302.png',
+ 'http://s3.amazonaws.com/hvm_timing/4d5387d617c86773c441857c7f7daea91fc166f8.png',
+ 'http://s3.amazonaws.com/hvm_timing/f50e812699b1ace31ba903467a6797205a061cc5.png',
+ 'http://s3.amazonaws.com/hvm_timing/d1a76bea7787d1a95a7fddccf72c3269378c9a7b.png',
+ 'http://s3.amazonaws.com/hvm_timing/7b87a9c36b42b0f8fa4689db307bd0c6c6a17c10.png',
+ 'http://s3.amazonaws.com/hvm_timing/37808d537a07d186c80f205df4e1b83da79fb0f8.png',
+ 'http://s3.amazonaws.com/hvm_timing/437ecc1fd77417296d6036e8a5e0d1ed845cf0ad.png',
+ 'http://s3.amazonaws.com/hvm_timing/6abe8f1cce54d7fb3fc3d05ab004e54316806001.png',
+ 'http://s3.amazonaws.com/hvm_timing/5fa0286f0fab1b226b4446fd7f3b9d3582507f26.png',
+ 'http://s3.amazonaws.com/hvm_timing/d04fafdd3648e49bf75d4c018ea6f775246ff279.png',
+ 'http://s3.amazonaws.com/hvm_timing/5eaef9fb2fa650f6cb8a3f34fd02e76f9901d691.png',
+ 'http://s3.amazonaws.com/hvm_timing/f7434064cc5251d1f314869f877fd74554b226be.png',
+ 'http://s3.amazonaws.com/hvm_timing/b297789308c2e790d82abb5657c97b617161931a.png',
+ 'http://s3.amazonaws.com/hvm_timing/2c8ea663efbcde8ca5f0e4e3f953b7dfe772c1b0.png',
+ 'http://s3.amazonaws.com/hvm_timing/db6a0dec76b597e86d8d2c382946e3d46060f6d3.png',
+ 'http://s3.amazonaws.com/hvm_timing/78af8f26c8ce62770d65f4a1c425ebd0c2bc284f.png']
+                  };
+
+
+
+if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+var container, camera, scene, renderer, mesh, jsonLoader, objname, posdict, hvm_equivalents, arot, arotinv;
+
+function animate() {
+    requestAnimationFrame( animate );
+}
+
+function createScene( geometry, materials) {
+    mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
+    scene.add( mesh );
+
+    mesh.rotateZ(-posdict[objname]['z']);
+    mesh.rotateY(-posdict[objname]['y']);
+    mesh.rotateX(-posdict[objname]['x']);
+
+    mesh.scale.set(mesh.scale.x / mesh.geometry.boundingSphere.radius,
+                   mesh.scale.y / mesh.geometry.boundingSphere.radius,
+                   mesh.scale.z / mesh.geometry.boundingSphere.radius);
+    mesh.translateX(-1 * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
+    mesh.translateY(-1 * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
+    mesh.translateZ(-1 * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+
+    size0x = mesh.scale.x;
+    size0y = mesh.scale.y;
+    size0z = mesh.scale.z;
+
+   sizer0x = mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius;
+   sizer0y = mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius;
+   sizer0z = mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius;
+
+    render_scene();
+
+    $('#slider').slider("option", "value", 50);
+    animate();
+
+    $('#submitResponse').show();
+    $('#responseCanvas').show();
+
+    trialStartTime = new Date();
+
+    if (trialNumber+1 == totalTrials)
+    {
+        }
+    else {
+        var thisStim = imgFiles_new[trialNumber+1];
+        $('#main_test').attr('src',thisStim);
+    };
+
+    }
+
+function replace_scene(){
+    jsonLoader.loadAjaxJSON( jsonLoader, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/" + objname + ".js",
+              createScene, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/",
+        function( progress, result ) {
+
+        });
+    }
+
+function init_scene() {
+
+    camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
+    camera.position.z = 4.19;
+
+
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2( 0xcccccc, 0.0002 );
+
+    jsonLoader = new THREE.JSONLoader();
+    jsonLoader.crossOrigin = "anonymous";
+
+    // lights
+    light = new THREE.DirectionalLight( 0xaaaaaa);
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa);
+    light.position.set( 1, 1, -1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( 1, -1, 1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( -1, 1, 1 );
+    scene.add( light );
+
+    light.position.set( -1, 1, -1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( -1, -1, -1 );
+    scene.add( light );
+
+    //light = new THREE.DirectionalLight( 0x002288 );
+    //light.position.set( -1, -1, -1 );
+    //scene.add( light );
+
+    light = new THREE.AmbientLight( 0xffffff );
+    scene.add( light );
+
+
+    // renderer
+
+    renderer = new THREE.WebGLRenderer( { antialias: false } );
+    renderer.setClearColor( scene.fog.color, 1 );
+    var ratio = window.innerWidth / window.innerHeight;
+    var _width = ratio * 512;
+    renderer.setSize(_width , 512);
+
+    container = $('#responseCanvas');
+    container.append( renderer.domElement );
+
+    window.addEventListener( 'resize', onWindowResize, false );
+
+}
+
+function onWindowResize() {
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    var ratio = window.innerWidth / window.innerHeight;
+    var _width = ratio * 512;
+    renderer.setSize(_width , 512);
+    render_scene();
+
+}
+
+function render_scene() {
+    console.log('render')
+    renderer.render( scene, camera );
+}
+
+
+shuffle = function(o) {
+	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+	return o;
+  };
+
+
+Array.prototype.flatten = function flatten(){
+   var flat = [];
+   for (var i = 0, l = this.length; i < l; i++){
+       var type = Object.prototype.toString.call(this[i]).split(' ').pop().split(']').shift().toLowerCase();
+       if (type) { flat = flat.concat(/^(array|collection|arguments|object)$/.test(type) ? flatten.call(this[i]) : this[i]); }
+   }
+   return flat;
+};
+var num_correct = 0
+
+function getAspectRatio(im) {
+	//Defining aspect ratio as width/height
+	var width = im.naturalWidth;
+	var height = im.naturalHeight;
+	var ar = width/height;
+	//console.log(ar)
+	return ar
+}
+
+function reward_scale(error){
+    var maxdist = 180 * 3;
+    console.log('error', error);
+    if (error !== null){
+         return Math.max(((maxdist - error) / maxdist).toPrecision(3), 0)
+     } else{
+         return 0;
+     }
+    };
+
+var reward;
+var error = null;
+var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
+               'Chairs': 'chair', 'Faces': 'face', 'Fruits': 'fruit',
+               'Planes': 'plane', 'Tables': 'table'};
+
+
+//!!==BEGIN DYNAMIC TRIAL CODE==!!//
+
+function beginExp() {
+	console.log('beginExp');
+	begin = true;
+	$('#instruct').hide(), $("#begintask").hide(), $("#_preload").hide();
+
+	$('#submitResponse').click(function(e) {
+		clicked();
+	});
+
+	$('#responseCanvas').hide();
+	$('.fixation img').attr('src',fixationImage.src);
+	$('.fixation').show();
+	var thisStim = imgFiles_new[trialNumber];
+    window.scrollTo(0, 0);
+	tmpImage = new Image();
+	tmpImage.src = thisStim;
+	$('#main_test').attr('src',thisStim);
+	//Set proper height/width:
+	if (getAspectRatio(tmpImage) > 1) {
+		//width is longer axis
+		$('#main_test').removeClass().addClass('shrinkwidth');
+	}
+	else {
+		//height is longer axis
+		$('#main_test').removeClass().addClass('shrinkheight');
+	}
+
+	setTimeout(function() {
+						showStim();
+						},ISI);
+}
+
+function showStim() {
+	console.log('showStim');
+	$('#instruct').hide();
+	$('.test').show();
+	$('.fixation').hide();
+	setTimeout(function() {
+						$('.test').hide();
+						setTimeout("showResponse()",ISI);
+						},stimduration);
+}
+
+
+function showResponse() {
+	console.log('showResponse');
+
+	$('#totalSeen').html('Total Objects Seen: 0');
+	if (trialNumber > 0){
+    	error = (trialNumber / (trialNumber + 1)) * error + (1 / (trialNumber + 1)) * distances[trialNumber-1];
+    };
+    reward = reward_scale(error);
+    console.log('reward', reward)
+    var format_error = (1 * error).toPrecision(3);
+    $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
+                 '<br /> Mean Error: '+ format_error +
+                 '<br/> Expected Bonus: $'+ reward
+                 );
+    $('#trialCounter').show();
+	$('#instruct').html('Slide the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> to the correct size!');
+	$('#instruct').show();
+
+    objname = hvm_equivalents[imgData[trialNumber]['obj']];
+    replace_scene();
+
+}
+
+function clicked() {
+	console.log('clicked');
+	if (begin) {
+ 		trialEndTime = new Date();
+        var val = $('#slider').slider("option", "value");
+        val = val * .02;
+        console.log(imgData[trialNumber]['s'], val)
+        pushData({});
+
+        $('#responseCanvas').hide();
+        $('#submitResponse').hide();
+        $('#instruct').hide();
+        $('#trialCounter').hide();
+        $('.fixation img').attr('src',fixationImage.src);
+        $('.fixation').show();
+        $('.marker').remove();
+        scene.remove(mesh);
+
+        render_scene();
+        endTrial();
+
+ 	}
+ else { }
+}
+
+function pushData(myval) {
+	console.log('pushData');
+StimDone.push(imgFiles_new[trialNumber]);
+response.push(myval);
+trialDurations.push(trialEndTime - trialStartTime);
+}
+
+function endTrial() {
+
+  if (trialNumber >= (totalTrials-1))
+  {
+	var resultsobj = [];
+	resultsobj.push({
+					Response:response,
+					ImgOrder:imgFiles_new,
+					StimShown:StimDone,
+					StimDuration:stimduration,
+					RT:trialDurations,
+					Condition:exp_type,
+					Zoom:zoom,
+					IPaddress:user_IP,
+					Browser:BrowserDetect.browser,
+					Version:BrowserDetect.version,
+					OpSys:BrowserDetect.OS,
+					WindowHeight:winH,
+					WindowWidth:winW,
+					ScreenHeight:vertical,
+					ScreenWidth:horizontal,
+                    ImgData:imgData,
+                    "Error":error,
+                    Bonus:reward
+					});
+
+	document.getElementById("assignmentId").value = aID;
+	document.getElementById("data").value = JSON.stringify(resultsobj);
+	//document.getElementById("postdata").submit();
+  }
+    else if (jQuery.inArray(trialNumber,BreakTimes) > -1) {
+	  takeABreak();
+  }
+  else
+  {
+    trialNumber++;
+    setTimeout(function() {showStim()},ISI);
+  }
+}
+
+function takeABreak() {
+	$('#main_test').attr('src',breakscreen.src);
+	$('.fixation').hide();
+	$('.test').show()
+	$('#_preload').html("<font color=red style=background-color:white>You have completed "+Math.round((trialNumber/totalTrials)*100)+"% of the experiment. Be sure to pay attention so that you know you can finish on time!");
+	$('#_preload').show();
+	document.onkeypress = function(e){
+			var evtobj = window.event? event : e;
+			var unicode = evtobj.charCode? evtobj.charCode : evtobj.keyCode;
+			var actualKey = String.fromCharCode(unicode);
+				if (actualKey=='z'){
+					trialNumber++;
+					$('.test').hide()
+					$('#_preload').hide();
+					$('.fixation').show();
+					var thisStim = imgFiles_new[trialNumber];
+					$('#main_test').attr('src',thisStim)
+					setTimeout(function() {showStim()},ISI)};
+		};
+
+}
+
+//!!==END DYNAMIC TRIAL CODE==!!//
+
+function gup( name )
+{
+  name = name.replace(/[\[]/,"\[").replace(/[\]]/,"\]");
+  var regexS = "[\?&]"+name+"=([^&#]*)";
+  var regex = new RegExp( regexS );
+  var param = regex.exec( window.location.href );
+  if( param == null )
+    return "";
+  else
+    return param[1];
+}
+
+function init_vars() {
+    clicknum = 1;
+    click1data = null;
+    zoom = DetectZoom.zoom();
+	aID = gup("assignmentId");
+	response = new Array();
+	trialDurations = new Array();
+	trialStartTime = new Date();
+	StimDone = new Array();
+	imgFiles_new = new Array();
+	fixationImage = new Image;
+	fixationImage.src = "https://s3.amazonaws.com/human_training/fixation.png";
+	breakscreen = new Image;
+	breakscreen.src = "https://s3.amazonaws.com/monkeyimgs/2way_impute/break.png";
+	stimduration = 500;
+    imgData = ExperimentData.imgData;
+	ISI = 500;
+	trialNumber = 0;
+	totalTrials = ExperimentData["imgFiles"].length;
+	BreakTimes = [];
+	begin = false;
+	startpoint = 0
+	exp_type = 'position_with_click';
+    imgData = ExperimentData.imgData;
+    reward = 0;
+    distances = new Array();
+}
+
+function preload_resources() {
+    imgFiles_new = ExperimentData.imgFiles;
+
+	stimFiles = imgFiles_new.map(function(a) {
+		return a;
+	});
+}
+
+$(document).ready(function() {
+
+	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
+    $('#instruct').hide();
+    $('#submitResponse').hide();
+    init_vars();
+	preload_resources();
+	preload(stimFiles, function() {
+							   $("#begintask").click(function(){
+															  beginExp();
+															  });
+							   });
+
+    $(function() {
+        $( "#slider" ).slider({value: 50});
+    });
+
+    $('#slider').on("slide", function(event, ui){
+        var val = $('#slider').slider("option", "value");
+        var dil = 0.02 * val;
+        mesh.position.setX(0); mesh.position.setY(0); mesh.position.setZ(0);
+        mesh.scale.set(dil * size0x, dil * size0y, dil * size0z);
+        mesh.translateX(-dil * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
+        mesh.translateY(-dil * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
+        mesh.translateZ(-dil * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+        render_scene();
+
+    });
+
+    init_scene();
+    hvm_equivalents = model_data["hvm_equivalents"];
+    posdict = model_data["posdict"];
+
+	$('.test').hide();
+	$('#warning').hide();
+
+	$("#tutorial").html($("#tutorial_original").html());
+	$("#tutorial").dialog({height:650,
+							width:600,
+							position:"center",
+							title:"Instructions"
+							});
+
+	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
+		$('#warning').show();
+		$('#warning').html("<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>")
+	}
+	if (BrowserDetect.browser == 'Explorer') {
+		$('#warning').show();
+		$('#warning').append("<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT. Thank you!</b></font></span>");
+	}
+
+});
+
+</script>
+
+</head>
+
+<body bgcolor="#7F7F7F">
+<div style="height:1000px; width:auto;">
+<div align="center" id="warning"></div>
+<div align="center"><button id="begintask" value="Begin!">Begin!</button></div>
+<div align="center"><button id="submitResponse" value="Submit Response">Submit Response</button></div>
+<div align="center" id="slider"></div>
+<div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
+<div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src="" /></div>
+<div class="test" align="center" style="position:relative; z-index:200; top:75px; left:0px;"><img id="main_test" src="" /></div>
+
+<div align="center" id="markers">
+<div id="instruct" style="position:relative; z-index:100; top:30px; font-size:150%;">Make the object have the correct size.</div>
+<div id="responseCanvas"></div>
+<div id="trialCounter" style="position:relative; top:65px; font-size:small;"></div>
+</div>
+
+<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,	width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
+
+<div id="tutorial" style="position:relative; z-index:-1"></div>
+<div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: Instructions have changed, and low performance will lead to rejection: make sure to read!**</b>
+<p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
+<p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
+<p><font color=red><b>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</b></font></p>
+<p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
+<center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
+<div id="tutorial2" style="position:absolute; z-index:-1;">
+<ul>
+<li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
+<p>
+<li>After you see an image, you will be presented with the object again.  Size ... </li>
+<p>
+<li> Once you click, you will move on to the next image immediately, so be ready.</li>
+<p>
+<li>Even if you're not 100% sure of pose of the object, <u><b>make your best guess.</b></u></li>
+<p>
+<li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
+</ul>
+<center><p onclick="$('#tutorial').html($('#tutorial3').html())"><font color=blue><u>Click here to continue reading</u></font></p></center>
+</div>
+<div id="tutorial3" style="position:absolute; z-index:-1;">
+<ul>
+<p>
+<li>Please be sure to maximize your browser window before beginning this experiment. .</li>
+<p>
+<li><b>In total, you will see 100 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
+<p>
+<li>When you are ready to begin, click the "Begin" button at the very top of the screen. <b>Be prepared to see the first image -- it happens very fast!</b></li>
+<p>
+<li>If you have questions or concerns about this HIT, feel free to contact the requester. You can re-read these instructions at any time by clicking the link in the upper right-hand corner of the screen. Good luck!</li>
+</ul>
+<center><font color=blue><u><p onclick="$('#tutorial').dialog('close')">Click here to close the instructions</p></u></font></center>
+</div>
+
+</div>
+	<form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
+	<input type="text" name="data" id="data" value="">
+    <input type="text" name="assignmentId" id="assignmentId" value="">
+	</form>
+
+</body>
+</html>
+
