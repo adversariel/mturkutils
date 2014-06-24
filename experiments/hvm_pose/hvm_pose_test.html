@@ -2,7 +2,7 @@
 <html xmlns="https://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<title>Object Identification</title>
+<title>Pose Estimation</title>
 
 <style>
 body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana }
@@ -36,7 +36,7 @@ img {
 }
 
 
-#responeCanvas {
+#responseCanvas {
     color: #000;
     font-family:Monospace;
     font-size:13px;
@@ -46,6 +46,9 @@ img {
     background-color: #fff;
     margin: 0px;
     overflow: hidden;
+    position: absolute;
+    //height: 512px;
+    //width: 512px;
 }
 
 </style>
@@ -60,73 +63,302 @@ img {
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/slider-1.0.2.js"></script>
 
 <script src="three.min.js"></script>
-<script src="MTLLoader.js"></script>
-<script src="OBJMTLLoader.js"></script>
-<script src="OrbitControls.js"></script>
+<script src="TrackballControls.js"></script>
 <script src="Detector.js"></script>
-<script src="stats.min.js"></script>
+<script src="posdict.js"></script>
 
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 
 <script type="text/javascript">
 
-ExperimentData = {'imgData': [{'posx': 0, 'posy': 0, 'category': 'thing1', 'axis_bb_top': 0, 'axis_bb_right': 10, 'axis_bb_left': 0, 'axis_bb_bottom': 10},
-                              {'posx': 0, 'posy': 0, 'category': 'thing2', 'axis_bb_top': 0, 'axis_bb_right': 10, 'axis_bb_left': 0, 'axis_bb_bottom': 10},
-                              {'posx': 0, 'posy': 0, 'category': 'thing3', 'axis_bb_top': 0, 'axis_bb_right': 10, 'axis_bb_left': 0, 'axis_bb_bottom': 10},
-                              {'posx': 0, 'posy': 0, 'category': 'thing4', 'axis_bb_top': 0, 'axis_bb_right': 10, 'axis_bb_left': 0, 'axis_bb_bottom': 10},
-                              {'posx': 0, 'posy': 0, 'category': 'thing5', 'axis_bb_top': 0, 'axis_bb_right': 10, 'axis_bb_left': 0, 'axis_bb_bottom': 10}],
-                  'imgFiles': ['http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/0135e6e61eb05390ece27c39412fdd752c62ac2f.png',
- 'http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/bb2f0cb03f35ae1dcc98198307bea31ebddd568d.png',
- 'http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/6d80a271c2bba48d8ccfa4c7979c54e0bcded52f.png',
- 'http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/c4d332a4dc8b7c8ff53d284567a57177d3651565.png',
- 'http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/f0f9b7ed3dc6a548bbcda9daecd53d00af0e1224.png',
-                  ]
+ExperimentData = {'imgData':
+[{'category': 'Cars',
+  'obj': 'bmw325',
+  'rxy': -0.372,
+  'rxz': 1.5189999999999999,
+  'ryz': 10.752000000000001},
+ {'category': 'Faces',
+  'obj': 'face0006',
+  'rxy': -1.133,
+  'rxz': -2.2570000000000001,
+  'ryz': -28.672999999999998},
+ {'category': 'Cars',
+  'obj': 'bmw325',
+  'rxy': 1.764,
+  'rxz': 1.829,
+  'ryz': 25.207000000000001},
+ {'category': 'Fruits',
+  'obj': 'Pear_obj',
+  'rxy': -2.6209999999999951,
+  'rxz': -0.59499999999999997,
+  'ryz': -17.488},
+ {'category': 'Planes',
+  'obj': '_19_flyingBoat',
+  'rxy': -2.8300000000000001,
+  'rxz': 1.2729999999999961,
+  'ryz': -13.436000000000007},
+ {'category': 'Boats',
+  'obj': 'cruiser',
+  'rxy': -2.8029999999999999,
+  'rxz': 1.561000000000007,
+  'ryz': -33.130000000000003},
+ {'category': 'Faces',
+  'obj': 'face0006',
+  'rxy': -1.254,
+  'rxz': 3.0459999999999998,
+  'ryz': 17.363},
+ {'category': 'Tables',
+  'obj': '_11',
+  'rxy': 0.70399999999999996,
+  'rxz': -3.258,
+  'ryz': 67.364000000000004},
+ {'category': 'Boats',
+  'obj': 'SISTER_L',
+  'rxy': -1.018,
+  'rxz': -3.278,
+  'ryz': -1.8720000000000001},
+ {'category': 'Fruits',
+  'obj': 'Apple_Fruit_obj',
+  'rxy': -3.0400000000000063,
+  'rxz': -1.6739999999999999,
+  'ryz': 41.118000000000002},
+ {'category': 'Chairs',
+  'obj': '_033',
+  'rxy': -7.3789999999999996,
+  'rxz': -0.39100000000000001,
+  'ryz': 0.434},
+ {'category': 'Boats',
+  'obj': 'support',
+  'rxy': -31.396000000000001,
+  'rxz': -0.060000000000002274,
+  'ryz': 0.85899999999999999},
+ {'category': 'Faces',
+  'obj': 'face0005',
+  'rxy': 8.4700000000000006,
+  'rxz': 1.3839999999999999,
+  'ryz': 1.056},
+ {'category': 'Fruits',
+  'obj': 'Apple_Fruit_obj',
+  'rxy': 21.902000000000001,
+  'rxz': -0.89600000000000002,
+  'ryz': 1.552},
+ {'category': 'Faces',
+  'obj': 'face0007',
+  'rxy': 6.8440000000000003,
+  'rxz': -1.5640000000000001,
+  'ryz': 1.7130000000000001},
+ {'category': 'Boats',
+  'obj': 'CGTG_L',
+  'rxy': 26.669,
+  'rxz': -1.9490000000000001,
+  'ryz': 1.5629999999999999},
+ {'category': 'Chairs',
+  'obj': '_031',
+  'rxy': 43.472000000000001,
+  'rxz': 2.0270000000000001,
+  'ryz': -1.573},
+ {'category': 'Boats',
+  'obj': 'SISTER_L',
+  'rxy': -39.670999999999999,
+  'rxz': 2.6019999999999999,
+  'ryz': 0.34899999999999998},
+ {'category': 'Chairs',
+  'obj': '_004',
+  'rxy': -18.582999999999998,
+  'rxz': 2.6709999999999998,
+  'ryz': -0.35299999999999998},
+ {'category': 'Tables',
+  'obj': '_11',
+  'rxy': 77.266000000000005,
+  'rxz': -1.03,
+  'ryz': 2.637},
+ {'category': 'Chairs',
+  'obj': '_033',
+  'rxy': 0.16600000000000001,
+  'rxz': 52.475999999999999,
+  'ryz': 0.098000000000000004},
+ {'category': 'Animals',
+  'obj': 'blCow',
+  'rxy': 0.46000000000000002,
+  'rxz': 20.024999999999999,
+  'ryz': -0.66600000000000004},
+ {'category': 'Fruits',
+  'obj': 'walnut_obj',
+  'rxy': -0.84099999999999397,
+  'rxz': -20.334,
+  'ryz': 0.53600000000000003},
+ {'category': 'Faces',
+  'obj': 'face0003',
+  'rxy': -0.92300000000000004,
+  'rxz': 15.397,
+  'ryz': -0.74399999999999999},
+ {'category': 'Chairs',
+  'obj': '_011',
+  'rxy': -0.90600000000000003,
+  'rxz': -22.863,
+  'ryz': 1.2310000000000001},
+ {'category': 'Chairs',
+  'obj': '_010',
+  'rxy': -1.159,
+  'rxz': -22.305,
+  'ryz': 1.5980000000000001},
+ {'category': 'Cars',
+  'obj': 'clio',
+  'rxy': 0.442,
+  'rxz': 43.793999999999997,
+  'ryz': 1.964},
+ {'category': 'Fruits',
+  'obj': 'walnut_obj',
+  'rxy': 1.8990000000000009,
+  'rxz': 30.440999999999999,
+  'ryz': -0.95899999999999996},
+ {'category': 'Boats',
+  'obj': 'SISTER_L',
+  'rxy': -1.018,
+  'rxz': -3.278,
+  'ryz': -1.8720000000000001},
+ {'category': 'Fruits',
+  'obj': 'raspberry_obj',
+  'rxy': 1.902000000000001,
+  'rxz': -42.295000000000002,
+  'ryz': 1.6399999999999999}],
+                  'imgFiles': ['http://s3.amazonaws.com/hvm_timing/ab4d3b714a4d2390096318101bf6d6315edb771a.png',
+ 'http://s3.amazonaws.com/hvm_timing/ec5a732ce9f356ff3b8d60c55f280e9664c0368f.png',
+ 'http://s3.amazonaws.com/hvm_timing/c51cfe1d8dbd70905a21c22bb71d19c3eca3a8f8.png',
+ 'http://s3.amazonaws.com/hvm_timing/c41c369d7cde564cdb841d66c69cd8ffe025dc12.png',
+ 'http://s3.amazonaws.com/hvm_timing/67dc1d933b827522ce3f45f32f0164594ba0de1a.png',
+ 'http://s3.amazonaws.com/hvm_timing/e231aea066923bdd8be9c47f89e07dbecb677350.png',
+ 'http://s3.amazonaws.com/hvm_timing/f42c2c8022e424a4c8b9a2850dff26aa118b28a2.png',
+ 'http://s3.amazonaws.com/hvm_timing/4bfa4c7d0395ab5a5be8f8965458ae125dade92d.png',
+ 'http://s3.amazonaws.com/hvm_timing/db6a0dec76b597e86d8d2c382946e3d46060f6d3.png',
+ 'http://s3.amazonaws.com/hvm_timing/ac4da60f7e95c2738a64be6e5a33b530c4316529.png',
+ 'http://s3.amazonaws.com/hvm_timing/e1ae712c7353aebc5f691fc406b058c5d98890f6.png',
+ 'http://s3.amazonaws.com/hvm_timing/2c8bd80e619e5aaad37bb1b4144dda10ca516096.png',
+ 'http://s3.amazonaws.com/hvm_timing/241e627908cebec721bed359f920ed15a939559b.png',
+ 'http://s3.amazonaws.com/hvm_timing/262839644f1ad77cc9718db41f3b8ee34d5dab4c.png',
+ 'http://s3.amazonaws.com/hvm_timing/f7d551ceece6a6f184fc6603c0e294e063463302.png',
+ 'http://s3.amazonaws.com/hvm_timing/4d5387d617c86773c441857c7f7daea91fc166f8.png',
+ 'http://s3.amazonaws.com/hvm_timing/f50e812699b1ace31ba903467a6797205a061cc5.png',
+ 'http://s3.amazonaws.com/hvm_timing/d1a76bea7787d1a95a7fddccf72c3269378c9a7b.png',
+ 'http://s3.amazonaws.com/hvm_timing/7b87a9c36b42b0f8fa4689db307bd0c6c6a17c10.png',
+ 'http://s3.amazonaws.com/hvm_timing/37808d537a07d186c80f205df4e1b83da79fb0f8.png',
+ 'http://s3.amazonaws.com/hvm_timing/437ecc1fd77417296d6036e8a5e0d1ed845cf0ad.png',
+ 'http://s3.amazonaws.com/hvm_timing/6abe8f1cce54d7fb3fc3d05ab004e54316806001.png',
+ 'http://s3.amazonaws.com/hvm_timing/5fa0286f0fab1b226b4446fd7f3b9d3582507f26.png',
+ 'http://s3.amazonaws.com/hvm_timing/d04fafdd3648e49bf75d4c018ea6f775246ff279.png',
+ 'http://s3.amazonaws.com/hvm_timing/5eaef9fb2fa650f6cb8a3f34fd02e76f9901d691.png',
+ 'http://s3.amazonaws.com/hvm_timing/f7434064cc5251d1f314869f877fd74554b226be.png',
+ 'http://s3.amazonaws.com/hvm_timing/b297789308c2e790d82abb5657c97b617161931a.png',
+ 'http://s3.amazonaws.com/hvm_timing/2c8ea663efbcde8ca5f0e4e3f953b7dfe772c1b0.png',
+ 'http://s3.amazonaws.com/hvm_timing/db6a0dec76b597e86d8d2c382946e3d46060f6d3.png',
+ 'http://s3.amazonaws.com/hvm_timing/78af8f26c8ce62770d65f4a1c425ebd0c2bc284f.png']
                   };
 
 
 
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
-var container, camera, controls, scene, renderer, mesh;
+var container, camera, controls, scene, renderer, mesh, jsonLoader, objname, posdict, hvm_equivalents, arot, arotinv;
+
+function animate() {
+    requestAnimationFrame( animate );
+    controls.update();
+}
+
+function createScene( geometry, materials) {
+    mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
+    scene.add( mesh );
+
+    var _v = new THREE.Euler((2 * Math.random() - 1) * Math.PI,
+                             (2 * Math.random() - 1) * Math.PI,
+                             (2 * Math.random() - 1) * Math.PI, 'XYZ' );
+    mesh.rotateX(_v.x);
+    mesh.rotateY(_v.y);
+    mesh.rotateZ(_v.z);
+    arot = new THREE.Quaternion();
+    arot.setFromEuler(_v);
+    arotinv = new THREE.Quaternion();
+    arotinv.copy(arot);
+    arotinv.inverse();
+
+    mesh.rotateZ(-posdict[objname]['z']);
+    mesh.rotateY(-posdict[objname]['y']);
+    mesh.rotateX(-posdict[objname]['x']);
+
+    mesh.scale.set(mesh.scale.x / mesh.geometry.boundingSphere.radius,
+                   mesh.scale.y / mesh.geometry.boundingSphere.radius,
+                   mesh.scale.z / mesh.geometry.boundingSphere.radius);
+    mesh.translateX(-1 * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
+    mesh.translateY(-1 * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
+    mesh.translateZ(-1 * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+
+    render_scene();
+    }
+
+function replace_scene(){
+    scene.remove(mesh);
+    controls.reset();
+    jsonLoader.loadAjaxJSON( jsonLoader, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/" + objname + ".js",
+              createScene, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/",
+        function( progress, result ) {});
+    }
 
 function init_scene() {
 
     camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
-    camera.position.z = 500;
+    camera.position.z = 5;
 
-    controls = new THREE.OrbitControls( camera );
-    controls.addEventListener( 'change', render_scene );
+    controls = new THREE.TrackballControls( camera );
+
+    controls.rotateSpeed = 1.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.8;
+
+    controls.noZoom = false;
+    controls.noPan = false;
+
+    controls.staticMoving = true;
+    controls.dynamicDampingFactor = 0.3;
+
+    controls.keys = [ 65, 83, 68 ];
+
+    controls.addEventListener( 'change', render_scene);
 
     scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2( 0xcccccc, 0.0002 );
 
-
-    var jsonLoader = new THREE.JSONLoader();
+    jsonLoader = new THREE.JSONLoader();
     jsonLoader.crossOrigin = "anonymous";
-    jsonLoader.loadAjaxJSON( jsonLoader, "http://s3.amazonaws.com/dicarlocox-datasets/testjs/001_0.js",
-              createScene, 'http://s3.amazonaws.com/dicarlocox-datasets/testjs/',
-        function( progress, result ) {
-                }
-                );
-
-    function createScene( geometry, materials ) {
-        mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
-        scene.add( mesh );
-
-    }
-
 
     // lights
-
-    light = new THREE.DirectionalLight( 0xffffff );
+    light = new THREE.DirectionalLight( 0xaaaaaa);
     light.position.set( 1, 1, 1 );
     scene.add( light );
 
-    light = new THREE.DirectionalLight( 0x002288 );
+    light = new THREE.DirectionalLight( 0xaaaaaa);
+    light.position.set( 1, 1, -1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( 1, -1, 1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( -1, 1, 1 );
+    scene.add( light );
+
+    light.position.set( -1, 1, -1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa );
     light.position.set( -1, -1, -1 );
     scene.add( light );
 
-    light = new THREE.AmbientLight( 0x222222 );
+    //light = new THREE.DirectionalLight( 0x002288 );
+    //light.position.set( -1, -1, -1 );
+    //scene.add( light );
+
+    light = new THREE.AmbientLight( 0xffffff );
     scene.add( light );
 
 
@@ -150,16 +382,14 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
 
     renderer.setSize( window.innerWidth, window.innerHeight );
-
     render_scene();
 
 }
 
 function render_scene() {
-    
+    console.log('render')
     renderer.render( scene, camera );
 }
-
 
 
 shuffle = function(o) {
@@ -188,11 +418,12 @@ function getAspectRatio(im) {
 }
 
 function reward_scale(error){
-     if (error !== null){
-         var maxdist = Math.sqrt(2);
+    var maxdist = 180 * 3;
+    console.log('error', error);
+    if (error !== null){
          return Math.max(((maxdist - error) / maxdist).toPrecision(3), 0)
      } else{
-         return 0.0
+         return 0;
      }
     };
 
@@ -208,7 +439,7 @@ var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
 function beginExp() {
 	console.log('beginExp');
 	begin = true;
-	$("#begintask").hide(), $("#_preload").hide();
+	$('#instruct').hide(), $("#begintask").hide(), $("#_preload").hide();
 
 	$('#submitResponse').click(function(e) {
 		clicked();
@@ -239,6 +470,7 @@ function beginExp() {
 
 function showStim() {
 	console.log('showStim');
+	$('#instruct').hide();
 	$('.test').show();
 	$('.fixation').hide();
 	setTimeout(function() {
@@ -257,16 +489,20 @@ function showResponse() {
     };
     reward = reward_scale(error);
     console.log('reward', reward)
-    var format_error = (100 * error).toPrecision(3);
+    var format_error = (1 * error).toPrecision(3);
     $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
                  '<br /> Mean Error: '+ format_error +
                  '<br/> Expected Bonus: $'+ reward
                  );
-
+    $('#submitResponse').show();
 	$('#responseCanvas').show();
     $('#trialCounter').show();
-	$('#instruct').html('Put a box around where the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> was!');
+	$('#instruct').html('Rotate the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> to the correct orientation!');
 	$('#instruct').show();
+
+    objname = hvm_equivalents[imgData[trialNumber]['obj']];
+    replace_scene();
+    animate();
 
 	trialStartTime = new Date();
 
@@ -283,18 +519,39 @@ function clicked() {
 	if (begin) {
  		trialEndTime = new Date();
 
-        console.log(controls.object.rotation);
- 		//get data and compute distances etc
-        //pushData(data);
+        var _q = controls.object.quaternion;
+        _v = new THREE.Euler();
+        _v.setFromQuaternion(_q);
+
+        var newrot = new THREE.Quaternion();
+        newrot.copy(arotinv);
+        newrot.multiply(_q);
+        _v1 = new THREE.Euler();
+        _v1.setFromQuaternion(newrot);
+        xrotdeg = 180 * _v1.x / Math.PI;
+        yrotdeg = 180 * _v1.y / Math.PI;
+        zrotdeg = 180 * _v1.z / Math.PI;
+
+        var rxrotdeg = imgData[trialNumber]['ryz'];
+        var ryrotdeg = imgData[trialNumber]['rxz'];
+        var rzrotdeg = imgData[trialNumber]['rxy'];
+
+        console.log(xrotdeg, yrotdeg, zrotdeg, rxrotdeg, ryrotdeg, rzrotdeg);
+
+        var dist = Math.min(Math.abs(zrotdeg - rxrotdeg), Math.abs(360 + zrotdeg - rxrotdeg))  + Math.min(Math.abs(yrotdeg - ryrotdeg), Math.abs(360 + yrotdeg - ryrotdeg))  + Math.min(Math.abs(xrotdeg + rzrotdeg), Math.abs(360 + xrotdeg + rxrotdeg))
+
+        distances.push(dist);
+
+        pushData({"ryz": zrotdeg, "rxz": yrotdeg, "rxy": -xrotdeg});
 
         $('#responseCanvas').hide();
+        $('#submitResponse').hide();
         $('#instruct').hide();
         $('#trialCounter').hide();
         $('.fixation img').attr('src',fixationImage.src);
         $('.fixation').show();
         $('.marker').remove();
-        //controls.reset();
-        mesh.rotateX(1);
+
         render_scene();
         endTrial();
 
@@ -399,7 +656,7 @@ function init_vars() {
 	fixationImage.src = "https://s3.amazonaws.com/human_training/fixation.png";
 	breakscreen = new Image;
 	breakscreen.src = "https://s3.amazonaws.com/monkeyimgs/2way_impute/break.png";
-	stimduration = 100;
+	stimduration = 500;
     imgData = ExperimentData.imgData;
 	ISI = 500;
 	trialNumber = 0;
@@ -416,9 +673,6 @@ function init_vars() {
 function preload_resources() {
     imgFiles_new = ExperimentData.imgFiles;
 
-//	imgFiles_new = imgFiles.slice(startpoint*totalTrials,(startpoint+1)*totalTrials)
-//	shuffle(imgFiles_new);
-
 	stimFiles = imgFiles_new.map(function(a) {
 		return a;
 	});
@@ -426,19 +680,21 @@ function preload_resources() {
 
 $(document).ready(function() {
 
-
 	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
-
-	init_vars();
-	init_scene();
-    render_scene();
-
+    $('#instruct').hide();
+    $('#submitResponse').hide();
+    init_vars();
 	preload_resources();
 	preload(stimFiles, function() {
 							   $("#begintask").click(function(){
 															  beginExp();
 															  });
 							   });
+
+
+    init_scene();
+    hvm_equivalents = model_data["hvm_equivalents"];
+    posdict = model_data["posdict"];
 
 	$('.test').hide();
 	$('#warning').hide();
@@ -473,12 +729,12 @@ $(document).ready(function() {
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
 <div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src="" /></div>
 <div class="test" align="center" style="position:relative; z-index:200; top:75px; left:0px;"><img id="main_test" src="" /></div>
-<div align="center" id="markers">
-    <div id="responseCanvas"></div>
-	<div id="instruct" style="position:relative; top:-490px; font-size:150%;">Put a bounding box around the object!</div>
-	<div id="trialCounter" style="position:relative; top:65px; font-size:small;"></div>
-</div>
 
+<div align="center" id="markers">
+<div id="instruct" style="position:relative; z-index:100; top:30px; font-size:150%;">Rotate the object into the correct pose.</div>
+<div id="responseCanvas"></div>
+<div id="trialCounter" style="position:relative; top:65px; font-size:small;"></div>
+</div>
 
 <div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,	width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
 
@@ -493,11 +749,11 @@ $(document).ready(function() {
 <ul>
 <li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
 <p>
-<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>click on the white canvas in the position where the object was located in the  original image.</b>  For example, if you think you see an elephant located somewhere in the screen, place your click in the center of the elephant.</li>
+<li>After you see an image, you will be presented with the object again.  You must then <b>rotate the object into the pose that it had in the first image.</b>  For example, if you thought you saw an elephant pointing up and to the right in the first image, rotate the model elephant until it points up and to the right.</li>
 <p>
-<li>The white canvas is of a slightly different size than the original, so you should click in the <b>proportionately</b> correct spot.  That is, if the elephant is half way up and half way to the right side in the original image, then you should click on the white canvas half way up and half way to the right.  Once you click, you will move on to the next image immediately, so be ready.
+<li> Once you click, you will move on to the next image immediately, so be ready.</li>
 <p>
-<li>Even if you're not 100% sure of location of the object, <u><b>make your best guess.</b></u></li>
+<li>Even if you're not 100% sure of pose of the object, <u><b>make your best guess.</b></u></li>
 <p>
 <li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
 </ul>

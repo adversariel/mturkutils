@@ -41,8 +41,8 @@ class HvMPoseExperiment(Experiment):
         dataset = hvm.HvMWithDiscfade()
         preproc = None
 
-        dummy_upload = False
-        image_bucket_name = 'hvm_images_for_pose'
+        dummy_upload = True
+        image_bucket_name = 'hvm_timing'
         seed = 0
 
         meta = dataset.meta
@@ -59,7 +59,7 @@ class HvMPoseExperiment(Experiment):
         print('%d blocks' % nblocks)
         imgs = []
         imgData = []
-        for bn in range(nblocks):
+        for bn in range(nblocks)[:2]:
             pinds = perm[bsize * bn: bsize * (bn + 1)]
             pinds2 = np.concatenate([pinds, pinds.copy()])
             perm0 = rng.permutation(len(pinds2))
@@ -71,13 +71,7 @@ class HvMPoseExperiment(Experiment):
             imgData.extend(bmeta)
         self._trials = {'imgFiles': imgs, 'imgData': imgData}
 
-
-goodexts = ['.JPG', '.bmp', '.jpg', '.js', '.png', '.tif']
-L = filter(lambda x : x.endswith(tuple(goodexts)), os.listdir('hvm_js'))
-
-
-othersrc = ['three.min.js', 'MTLLoader.js', 'OBJMTLLoader.js', 'OrbitControls.js',
-            'Detector.js', 'stats.min.js'] + L
+othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'TrackballControls.js']
 
 exp = HvMPoseExperiment(htmlsrc = 'hvm_pose.html',
                         htmldst = 'hvm_pose_n%04d.html',
@@ -98,7 +92,7 @@ if __name__ == '__main__':
     exp.createTrials()
     exp.prepHTMLs()
     exp.testHTMLs()
-    #exp.uploadHTMLs()
+    exp.uploadHTMLs()
     #exp.createHIT()
 
     #hitids = cPickle.load(open('3ARIN4O78FSZNXPJJAE45TI21DLIF1_2014-06-13_16:25:48.143902.pkl'))
