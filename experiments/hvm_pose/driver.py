@@ -41,7 +41,7 @@ class HvMPoseExperiment(Experiment):
             imgData.extend(bmeta)
         self._trials = {'imgFiles': imgs, 'imgData': imgData}
 
-othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'TrackballControls.js']
+othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'TrackballControls.js', 'jstat.min.js']
 
 exp = HvMPoseExperiment(htmlsrc = 'hvm_pose.html',
                         htmldst = 'hvm_pose_n%04d.html',

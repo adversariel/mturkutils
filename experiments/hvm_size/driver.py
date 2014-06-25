@@ -4,6 +4,15 @@ import numpy as np
 import dldata.stimulus_sets.hvm as hvm
 from mturkutils.base import Experiment
 
+"""
+TODOs (From Judy's suggestions):
+   reduce lags between stim presentation!!! fix this
+   longer ISI?
+   surface texture doesn't come immediately
+   better instructions about angle and real size and depth
+   move submit button to near the bar?
+"""
+
 class HvMSizeExperiment(Experiment):
 
     def createTrials(self):
@@ -41,7 +50,7 @@ class HvMSizeExperiment(Experiment):
             imgData.extend(bmeta)
         self._trials = {'imgFiles': imgs, 'imgData': imgData}
 
-othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'TrackballControls.js']
+othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'jstat.min.js']
 
 exp = HvMSizeExperiment(htmlsrc = 'hvm_size.html',
                         htmldst = 'hvm_size_n%04d.html',
@@ -54,7 +63,7 @@ exp = HvMSizeExperiment(htmlsrc = 'hvm_size.html',
                         comment = "Size judgement in HvM dataset (var6)",
                         collection_name = None,
                         max_assignments=1,
-                        bucket_name='hvm_size',
+                        bucket_name='hvm_size_judgements',
                         trials_per_hit=100)
 
 if __name__ == '__main__':

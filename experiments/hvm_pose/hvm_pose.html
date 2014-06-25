@@ -66,6 +66,7 @@ img {
 <script src="TrackballControls.js"></script>
 <script src="Detector.js"></script>
 <script src="posdict.js"></script>
+<script src="jstat.min.js"></script>
 
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 
@@ -111,6 +112,20 @@ function createScene( geometry, materials) {
     mesh.translateZ(-1 * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
 
     render_scene();
+    animate();
+	$('#submitResponse').show();
+	$('#responseCanvas').show();
+    $('#trialCounter').show();
+	$('#instruct').show();
+
+	trialStartTime = new Date();
+
+	if (trialNumber+1 == totalTrials) {}
+	else {
+		var thisStim = imgFiles_new[trialNumber+1];
+		$('#main_test').attr('src',thisStim);
+		}
+
     }
 
 function replace_scene(){
@@ -235,9 +250,25 @@ function getAspectRatio(im) {
 	return ar
 }
 
-function reward_scale(error){
+/* function reward_scale(error){
     var maxdist = 180 * 3;
     var randomerror = 230;  //empirically observed random error
+    console.log('error', error);
+    if (error !== null){
+        var _score = ((maxdist - error) / maxdist);
+        var _randscore = ((maxdist - randomerror) / maxdist);
+        var _scorediff = (_score - _randscore) / (1 - _randscore);
+        _score = Math.max(_scorediff, 0).toPrecision(2);
+        return _score
+     } else{
+        return 0;
+     }
+    }; */
+
+
+function reward_scale(error){
+    var maxdist = 1;
+    var randomerror = .4;  //empirically observed random error
     console.log('error', error);
     if (error !== null){
         var _score = ((maxdist - error) / maxdist);
@@ -317,23 +348,12 @@ function showResponse() {
                  '<br /> Mean Error: '+ format_error +
                  '<br/> Expected Bonus: $'+ reward
                  );
-    $('#submitResponse').show();
-	$('#responseCanvas').show();
-    $('#trialCounter').show();
 	$('#instruct').html('Rotate the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> to the correct orientation!');
-	$('#instruct').show();
 
     objname = hvm_equivalents[imgData[trialNumber]['obj']];
     replace_scene();
-    animate();
 
-	trialStartTime = new Date();
 
-	if (trialNumber+1 == totalTrials) {}
-	else {
-		var thisStim = imgFiles_new[trialNumber+1];
-		$('#main_test').attr('src',thisStim);
-		}
 
 }
 
@@ -359,9 +379,25 @@ function clicked() {
         var ryrotdeg = imgData[trialNumber]['rxz'];
         var rzrotdeg = imgData[trialNumber]['rxy'];
 
+        var _t = new THREE.Euler(-Math.PI * rzrotdeg / 180,
+                                  Math.PI * ryrotdeg / 180,
+                                  Math.PI * rxrotdeg / 180);
+        var _tq = new THREE.Quaternion();
+        _tq.setFromEuler(_t);
+        _tq.inverse();
+        _tq.multiply(newrot);
+        _tq.normalize();
+        //var _tqd = Math.sqrt(Math.pow(_tq.x, 2) + Math.pow(_tq.y, 2) + Math.pow(_tq.z, 2));
+        //var _tqd = (Math.abs(_tq.x) + Math.abs(_tq.y) + Math.abs(_tq.z)) / 3;
+        var _tqd = jStat.geomean([Math.abs(_tq.x) , Math.abs(_tq.y) ,  Math.abs(_tq.z)]);
+
+        console.log('tqd', _tqd, _tq);
+
         console.log(xrotdeg, yrotdeg, zrotdeg, rxrotdeg, ryrotdeg, rzrotdeg);
 
-        var dist = Math.min(Math.abs(zrotdeg - rxrotdeg), Math.abs(360 + zrotdeg - rxrotdeg))  + Math.min(Math.abs(yrotdeg - ryrotdeg), Math.abs(360 + yrotdeg - ryrotdeg))  + Math.min(Math.abs(xrotdeg + rzrotdeg), Math.abs(360 + xrotdeg + rxrotdeg))
+        //var dist = Math.min(Math.abs(zrotdeg - rxrotdeg), Math.abs(360 + zrotdeg - rxrotdeg))  + Math.min(Math.abs(yrotdeg - ryrotdeg), Math.abs(360 + yrotdeg - ryrotdeg))  + Math.min(Math.abs(xrotdeg + rzrotdeg), Math.abs(360 + xrotdeg + rxrotdeg))
+
+        var dist = _tqd;
 
         distances.push(dist);
 
@@ -550,7 +586,7 @@ $(document).ready(function() {
 <div align="center" id="warning"></div>
 <div align="center"><button id="begintask" value="Begin!">Begin!</button></div>
 <div align="center"><button id="submitResponse" value="Submit Response">Submit Response</button></div>
-<div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
+<div id="_preload" align="center" style="position:fixed; top:0px; left:10px; z-index:100"></div>
 <div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src="" /></div>
 <div class="test" align="center" style="position:relative; z-index:200; top:75px; left:0px;"><img id="main_test" src="" /></div>
 
