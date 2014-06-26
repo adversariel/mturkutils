@@ -131,7 +131,7 @@ class Experiment(object):
             sandbox=True, keywords=None, lifetime=1209600,
             max_assignments=1, title='TEST', reward=0.01, duration=1500,
             approval_delay=172800, description='TEST', frame_height_pix=1000,
-            comment='TEST', collection_name='TEST', meta=None,
+            comment='TEST', meta=None,
             log_prefix=LOG_PREFIX, section_name=MTURK_CRED_SECTION,
             bucket_name=None,
             trials_per_hit=100,
@@ -144,7 +144,11 @@ class Experiment(object):
             tmpdir_sandbox=None,
             trials_loc='trials.pkl',
             html_data=None,
-            otherrules=None):
+            otherrules=None,
+            mongo_port=None,
+            mongo_host=None,
+            mongo_dbname=None,
+            collection_name='TEST'):
 
         if keywords is None:
             keywords = ['']
@@ -186,7 +190,13 @@ class Experiment(object):
 
         self.trials_per_hit = trials_per_hit
 
-        self.setMongoVars(collection_name, comment, meta)
+        self.comment = comment
+        self.meta = meta
+        self.mongo_port = mongo_port
+        self.mongo_host = mongo_host
+        self.mongo_dbname = mongo_dbname
+        self.collection_name = collection_name
+        self.setMongoVars()
         self.conn = self.connect()
 
     def payBonuses(self, performance_threshold, bonus_threshold, auto_approve=True):
@@ -230,7 +240,7 @@ class Experiment(object):
         """
         return self.conn.get_account_balance()[0].amount
 
-    def setMongoVars(self, collection_name, comment, meta):
+    def setMongoVars(self):
         """Establishes connection to database
 
         :param collection_name: You must specify a valid collection name. If it
@@ -247,11 +257,26 @@ class Experiment(object):
         otherwise specified).
         """
 
-        self.collection_name = collection_name
-        self.comment = comment
         self.mongo_conn = None
         self.db = None
         self.collection = None
+
+        meta = self.meta
+        comment = self.comment
+        collection_name = self.collection_name
+
+        if self.mongo_port is None:
+            mongo_port = MONGO_PORT
+        else:
+            mongo_port = self.mongo_port
+        if self.mongo_host is None:
+            mongo_host = MONGO_HOST
+        else:
+            mongo_host = self.mongo_host
+        if self.mongo_dbname is None:
+            mongo_dbname = MONGO_DBNAME
+        else:
+            mongo_dbname = self.mongo_dbname
 
         if isinstance(meta, tabarray):
             print('Converting tabarray to dictionary for speed. '
@@ -274,8 +299,8 @@ class Experiment(object):
                     'database collection name.')
 
         #Connect to pymongo database for MTurk results.
-        self.mongo_conn = pymongo.Connection(port=MONGO_PORT, host=MONGO_HOST)
-        self.db = self.mongo_conn[MONGO_DBNAME]
+        self.mongo_conn = pymongo.Connection(host=mongo_host, port=mongo_port)
+        self.db = self.mongo_conn[mongo_dbname]
         self.collection = self.db[collection_name]
 
     def createTrials(self):
@@ -436,8 +461,10 @@ class Experiment(object):
         else:
             urlbase = S3HTTPBASE
 
-        return [urlbase + bucket_name + '/' + prefix + '/' + \
-                                         fn.split('/')[-1] for fn in self.base_URLs]
+        base_URLs = [fn.split('/')[-1] for fn in self.base_URLs]
+        base_URLs = [b for (i, b) in enumerate(base_URLs) if b not in base_URLs[:i]]
+
+        return [urlbase + bucket_name + '/' + prefix + '/' + b for b in base_URLs]
 
     def createHIT(self, URLlist=None, verbose=True, hitidslog=None,
                   secure=False, hits_per_url=1):
@@ -548,7 +575,7 @@ class Experiment(object):
         self.all_data = all_data
         return all_data
 
-    def updateDBwithHITs(self, **kwargs):
+    def updateDBwithHITs(self, hitids=None, **kwargs):
         """
         - Takes a list of HIT IDs, gets data from MTurk, attaches metadata (if
           necessary) and puts results in dicarlo2 database.
@@ -560,7 +587,9 @@ class Experiment(object):
           - verbose: show the progress of db update
           - overwrite: if True, the existing records will be overwritten.
         """
-        return self._updateDBcore(self.hitids, 'hitids', **kwargs)
+        if hitids is None:
+            hitids = self.hitids
+        return self._updateDBcore(hitids, 'hitids', **kwargs)
 
     def updateDBwithHITslocal(self, datafiles, mode='files', **kwargs):
         """
@@ -824,7 +853,7 @@ def parse_human_data_from_HITdata(assignments, HITdata=None, comment='',
             qfa = a.answers[0][0]
             assert len(qfa.fields) == 1     # must be...?
             ansdat = json.loads(qfa.fields[0])
-            assert len(ansdat) == 1         # only this format is supported
+            assert len(ansdat) == 1, len(ansdat)        # only this format is supported
             ansdat = ansdat[0]
             ansdat['AssignmentID'] = a.AssignmentId
             ansdat['WorkerID'] = a.WorkerId
