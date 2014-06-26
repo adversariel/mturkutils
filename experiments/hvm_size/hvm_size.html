@@ -319,7 +319,7 @@ function showResponse() {
     console.log('reward', reward)
     var format_error = (1 * error).toPrecision(3);
     $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
-                 '<br/> Expected Bonus: $'+ reward.toPrecision(2);
+                 '<br/> Expected Bonus: $'+ reward.toPrecision(2)
                  );
 	$('#instruct').html('Slide the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> to the correct size!');
 

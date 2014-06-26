@@ -11,8 +11,8 @@ class HvMAxisBBoxExperiment(Experiment):
         dataset = hvm.HvMWithDiscfade()
         preproc = None
 
-        dummy_upload = False
-        image_bucket_name = 'hvm_images_for_axis_bbox'
+        dummy_upload = True
+        image_bucket_name = 'hvm_timing'
         seed = 0
 
         meta = dataset.meta
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     exp.createTrials()
     exp.prepHTMLs()
     exp.testHTMLs()
-    #exp.uploadHTMLs()
+    exp.uploadHTMLs()
     #exp.createHIT()
 
     #hitids = cPickle.load(open('3ARIN4O78FSZNXPJJAE45TI21DLIF1_2014-06-13_16:25:48.143902.pkl'))

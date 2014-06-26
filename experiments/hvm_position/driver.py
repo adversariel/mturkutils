@@ -12,7 +12,7 @@ class HvMPositionExperiment(Experiment):
         preproc = None
 
         dummy_upload = True
-        image_bucket_name = 'hvm_images_for_position'
+        image_bucket_name = 'hvm_timing'
         seed = 0
 
         meta = dataset.meta
@@ -50,7 +50,7 @@ exp = HvMPositionExperiment(htmlsrc = 'hvm_position.html',
                               duration=1500,
                               description = 'Make position judgements for up to 50 cent bonus',
                               comment = "Position judgement in HvM dataset (var6)",
-                              collection_name = 'hvm_position',
+                              collection_name = None, #'hvm_position',
                               max_assignments=1,
                               bucket_name='hvm_position',
                               trials_per_hit=100)
@@ -58,7 +58,7 @@ exp = HvMPositionExperiment(htmlsrc = 'hvm_position.html',
 exp.createTrials()
 exp.prepHTMLs()
 exp.testHTMLs()
-#exp.uploadHTMLs()
+exp.uploadHTMLs()
 #exp.createHIT()
 
 #hitids = ['3YLTXLH3DFGSTOVAX3N7WV2YQWNHP0',
