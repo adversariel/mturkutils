@@ -17,7 +17,7 @@ class HvMAreaBBoxExperiment(Experiment):
 
         meta = dataset.meta
         extended_meta = dataset.extended_meta
-        query_inds = ((meta['var'] == 'V6') & (extended_meta['area_bb_top'] > 0)).nonzero()[0]
+        query_inds = ((meta['var'] == 'V6') & (extended_meta['axis_bb_top'] > 0)).nonzero()[0]
 
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
@@ -28,7 +28,14 @@ class HvMAreaBBoxExperiment(Experiment):
         bsize = 50
         nblocks = int(math.ceil(float(len(perm))/bsize))
         print('%d blocks' % nblocks)
-        additional = .....
+        additional = ('area_bb_0_x',
+                     'area_bb_0_y',
+                     'area_bb_1_x',
+                     'area_bb_1_y',
+                     'area_bb_2_x',
+                     'area_bb_2_y',
+                     'area_bb_3_x',
+                     'area_bb_3_y')
         imgs = []
         imgData = []
         for bn in range(nblocks):
@@ -55,7 +62,8 @@ exp = HvMAreaBBoxExperiment(htmlsrc = 'hvm_area_bbox.html',
                               collection_name = None,
                               max_assignments=1,
                               bucket_name='hvm_area_bbox',
-                              trials_per_hit=100)
+                              trials_per_hit=100,
+                              othersrc = ['raphael.min.js'])
 
 if __name__ == '__main__':
 

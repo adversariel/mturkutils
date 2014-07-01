@@ -49,18 +49,7 @@ img {
 
 <script type="text/javascript">
 
-ExperimentData = {'imgData': [{'posx': 0, 'posy': 0, 'category': 'thing1', 'axis_bb_top': 0, 'axis_bb_right': 10, 'axis_bb_left': 0, 'axis_bb_bottom': 10},
-                              {'posx': 0, 'posy': 0, 'category': 'thing2', 'axis_bb_top': 0, 'axis_bb_right': 10, 'axis_bb_left': 0, 'axis_bb_bottom': 10},
-                              {'posx': 0, 'posy': 0, 'category': 'thing3', 'axis_bb_top': 0, 'axis_bb_right': 10, 'axis_bb_left': 0, 'axis_bb_bottom': 10},
-                              {'posx': 0, 'posy': 0, 'category': 'thing4', 'axis_bb_top': 0, 'axis_bb_right': 10, 'axis_bb_left': 0, 'axis_bb_bottom': 10},
-                              {'posx': 0, 'posy': 0, 'category': 'thing5', 'axis_bb_top': 0, 'axis_bb_right': 10, 'axis_bb_left': 0, 'axis_bb_bottom': 10}],
-                  'imgFiles': ['http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/0135e6e61eb05390ece27c39412fdd752c62ac2f.png',
- 'http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/bb2f0cb03f35ae1dcc98198307bea31ebddd568d.png',
- 'http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/6d80a271c2bba48d8ccfa4c7979c54e0bcded52f.png',
- 'http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/c4d332a4dc8b7c8ff53d284567a57177d3651565.png',
- 'http://dicarlocox-rendered-imagesets.s3.amazonaws.com/simple_geometric_occluder/f0f9b7ed3dc6a548bbcda9daecd53d00af0e1224.png',
-                  ]
-                  };
+ExperimentData = null;
 
 shuffle = function(o) {
 	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
@@ -267,9 +256,27 @@ function clicked(pos_x, pos_y, eX, eY) {
 
         } else {
             clicknum = 1;
+            rect.remove()
             rect = null;
             rect1 = null;
+            rect1.remove();
+            line.remove();
             click3data = { 'X':pos_x, 'Y':pos_y};
+
+            var p0x = 2*imgData[trialNumber]['area_bb_0_x'];
+            var p0y = 2*imgData[trialNumber]['area_bb_0_y'];
+            var p1x = 2*imgData[trialNumber]['area_bb_1_x'];
+            var p1y = 2*imgData[trialNumber]['area_bb_1_y'];
+            var p2x = 2*imgData[trialNumber]['area_bb_2_x'];
+            var p2y = 2*imgData[trialNumber]['area_bb_2_y'];
+            var p3x = 2*imgData[trialNumber]['area_bb_3_x'];
+            var p3y = 2*imgData[trialNumber]['area_bb_3_y'];
+
+            //$('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:blue; position:absolute; z-index:202; top:'+(p0x-2)+'px; left:'+(p0y-2)+'px;"></div>');
+            //R.circle(p0y, p0x, 5);
+            //R.circle(p1y, p1x, 5);
+            //R.circle(p2y, p2x, 5);
+            //R.circle(p3y, p3x, 5);
 
             var dist2 = Math.abs(sdist2);
             var dist1 = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
@@ -278,7 +285,6 @@ function clicked(pos_x, pos_y, eX, eY) {
             var a = sdist2 * sinth;
             var b = -sdist2 * costh;
             console.log(x1 , y1, x1 + a, y1 + b, x2, y2, x2 + a, y2 + b);
-
 
             var dist = 1
             distances.push(dist);
