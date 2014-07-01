@@ -62,7 +62,6 @@ img {
 <script src="three.min.js"></script>
 <script src="Detector.js"></script>
 <script src="posdict.js"></script>
-
 <script type="text/javascript">
 
 ExperimentData = null;
@@ -71,7 +70,7 @@ ExperimentData = null;
 
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
-var container, camera, scene, renderer, mesh, jsonLoader, objname, posdict, sizes, hvm_equivalents, arot, arotinv;
+var container, camera, scene, renderer, mesh, jsonLoader, objname, posdict, sizes, hvm_equivalents, arot, arotinv, bounding_boxes;
 
 function animate() {
     requestAnimationFrame( animate );
@@ -87,14 +86,18 @@ function createScene( geometry, materials) {
 
     var mult = sizes[imgData[trialNumber]['obj']] / 100;
 
-    mesh.scale.set(mult * mesh.scale.x / mesh.geometry.boundingSphere.radius,
-                   mult * mesh.scale.y / mesh.geometry.boundingSphere.radius,
-                   mult * mesh.scale.z / mesh.geometry.boundingSphere.radius);
+    var bpp = bounding_boxes[imgData[trialNumber]['obj']];
+    var bsize = Math.max(bpp['h'], bpp['w']) / 2;
+    var mult1 = 100 / bsize;
+
+    mesh.scale.set(mult1 * mult * mesh.scale.x / mesh.geometry.boundingSphere.radius,
+                   mult1 * mult * mesh.scale.y / mesh.geometry.boundingSphere.radius,
+                   mult1 * mult * mesh.scale.z / mesh.geometry.boundingSphere.radius);
 
 
-    mesh.translateX(-mult * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
-    mesh.translateY(-mult * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
-    mesh.translateZ(-mult * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+    mesh.translateX(-mult1 * mult * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
+    mesh.translateY(-mult1 * mult * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
+    mesh.translateZ(-mult1 * mult * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
 
     size0x = mesh.scale.x;
     size0y = mesh.scale.y;
@@ -504,9 +507,15 @@ $(document).ready(function() {
         mesh.position.setX(0); mesh.position.setY(0); mesh.position.setZ(0);
         mesh.scale.set(dil * size0x, dil * size0y, dil * size0z);
         var mult = sizes[imgData[trialNumber]['obj']] / 100;
-        mesh.translateX(-mult * dil * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
-        mesh.translateY(-mult * dil * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
-        mesh.translateZ(-mult * dil * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+
+        var bpp = bounding_boxes[imgData[trialNumber]['obj']];
+        var bsize = Math.max(bpp['h'], bpp['w']) / 2;
+        var mult1 = 100 / bsize;
+
+
+        mesh.translateX(-mult1 * mult * dil * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
+        mesh.translateY(-mult1 * mult * dil * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
+        mesh.translateZ(-mult1 * mult * dil * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
         render_scene();
 
     });
@@ -515,6 +524,7 @@ $(document).ready(function() {
     hvm_equivalents = model_data["hvm_equivalents"];
     posdict = model_data["posdict"];
     sizes = model_data["sizes"];
+    bounding_boxes = model_data["bounding_boxes"];
 
 	$('.test').hide();
 	$('#warning').hide();

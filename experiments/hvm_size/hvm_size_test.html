@@ -64,7 +64,7 @@ img {
 <script src="three.min.js"></script>
 <script src="Detector.js"></script>
 <script src="posdict.js"></script>
-
+<script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
 <script type="text/javascript">
 
 ExperimentData = {'imgData':
@@ -204,38 +204,79 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 var container, camera, scene, renderer, mesh, jsonLoader, objname, posdict, sizes, hvm_equivalents, arot, arotinv;
 
+var boundingboxes = {};
+
 function animate() {
     requestAnimationFrame( animate );
+}
+
+
+function pixelBoundingBox(data, w, h){
+    var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    for (var x=0;x<w;++x){
+        for (var y=0;y<h;++y){
+            var a1 = data[(w*y+x)*4];
+            var a2 = data[(w*y+x)*4 + 1];
+            var a3 = data[(w*y+x)*4 + 2];
+            if ((a1 !== 204) || (a2 !== 204) | (a3 !== 204)){
+                if (x>maxX) maxX=x;
+                if (x<minX) minX=x;
+                if (y>maxY) maxY=y;
+                if (y<minY) minY=y;
+            }
+        }
+    }
+    return {x:minX,y:minY,maxX:maxX,maxY:maxY,w:maxX-minX,h:maxY-minY};
 }
 
 function createScene( geometry, materials) {
     mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
     scene.add( mesh );
 
+    mesh.geometry.computeBoundingBox();
+    console.log(mesh.geometry.boundingBox.min, mesh.geometry.boundingBox.max)
+
+    xsize = mesh.geometry.boundingSphere.radius;
+    console.log('xsize', xsize)
+    //var mult = sizes[imgData[trialNumber]['obj']] / 100;
+    var mult = 1;
+
+
     mesh.rotateZ(-posdict[objname]['z']);
     mesh.rotateY(-posdict[objname]['y']);
     mesh.rotateX(-posdict[objname]['x']);
 
-    var mult = sizes[imgData[trialNumber]['obj']] / 100;
+    mesh.scale.set(mult * mesh.scale.x / xsize,
+                   mult * mesh.scale.y / xsize,
+                   mult * mesh.scale.z / xsize);
 
-    mesh.scale.set(mult * mesh.scale.x / mesh.geometry.boundingSphere.radius,
-                   mult * mesh.scale.y / mesh.geometry.boundingSphere.radius,
-                   mult * mesh.scale.z / mesh.geometry.boundingSphere.radius);
-
-
-    mesh.translateX(-mult * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
-    mesh.translateY(-mult * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
-    mesh.translateZ(-mult * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+    mesh.translateX(-mult * mesh.geometry.boundingSphere.center.x / xsize);
+    mesh.translateY(-mult * mesh.geometry.boundingSphere.center.y / xsize);
+    mesh.translateZ(-mult * mesh.geometry.boundingSphere.center.z / xsize);
 
     size0x = mesh.scale.x;
     size0y = mesh.scale.y;
     size0z = mesh.scale.z;
 
-   sizer0x = mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius;
-   sizer0y = mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius;
-   sizer0z = mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius;
+    sizer0x = mesh.geometry.boundingSphere.center.x / xsize;
+    sizer0y = mesh.geometry.boundingSphere.center.y / xsize;
+    sizer0z = mesh.geometry.boundingSphere.center.z / xsize;
 
     render_scene();
+
+    width = $('canvas').get(0).width;
+    height = $('canvas').get(0).height;
+
+    pixels = new Uint8Array(width * height * 4);
+    ctx = $('canvas').get(0).getContext('webgl', {preserveDrawingBuffer: true});
+    ctx.readPixels(0, 0, width, height, ctx.RGBA, ctx.UNSIGNED_BYTE, pixels);
+
+    _pbb = pixelBoundingBox(pixels, width, height);
+
+    vsize = Math.max(_pbb['w'], _pbb['h']);
+    console.log('vsize', vsize, _pbb);
+
+    boundingboxes[imgData[trialNumber]['obj']] = _pbb;
 
     $('#slider').slider("option", "value", 50);
     animate();
@@ -312,7 +353,7 @@ function init_scene() {
 
     // renderer
 
-    renderer = new THREE.WebGLRenderer( { antialias: false } );
+    renderer = new THREE.WebGLRenderer( { antialias: false , preserveDrawingBuffer: true} );
     renderer.setClearColor( scene.fog.color, 1 );
     var ratio = window.innerWidth / window.innerHeight;
     var _width = ratio * 512;
