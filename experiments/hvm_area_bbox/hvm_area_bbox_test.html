@@ -39,7 +39,10 @@ img {
 
 
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"
+></script>
 <script type="text/javascript" src="raphael.min.js"></script>
+<script type="text/javascript" src="2D.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
@@ -97,7 +100,7 @@ function reward_scale(error){
     };
 
 var reward;
-var R, sdist2, rect = null, rect1 = null;
+var R, sdist2, line = null, rect = null, rect1 = null;
 var error = null;
 var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
                'Chairs': 'chair', 'Faces': 'face', 'Fruits': 'fruit',
@@ -122,6 +125,26 @@ function beginExp() {
 	console.log('beginExp');
 	begin = true;
 	$("#begintask").hide(), $("#_preload").hide();
+
+    $('#delete').click(function(e){
+        click1data = null;
+        click2data = null;
+        click3data = null;
+        if (rect !== null){
+            rect.remove();
+        }
+        rect = null;
+        if (rect1 !== null){
+            rect1.remove();
+        }
+        rect1 = null;
+        clicknum = 1;
+        if (line !== null){
+            line.remove()
+        }
+        line = null;
+        $('.marker').remove();
+    });
 
 	$('#getClick').click(function(e) {
 		var offset = $(this).offset()
@@ -178,6 +201,7 @@ function beginExp() {
 
 
 	$('#getClick').hide();
+	$('#delete').hide();
 	$('.fixation img').attr('src',fixationImage.src);
 	$('.fixation').show();
 	var thisStim = imgFiles_new[trialNumber];
@@ -231,6 +255,7 @@ function showResponse() {
     rect.attr({fill: "white"});
 
 	$('#getClick').show();
+	$('#delete').show();
     $('#trialCounter').show();
 	$('#instruct').html('Put a box around where the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> was!');
 	$('#instruct').show();
@@ -267,9 +292,23 @@ function clicked(pos_x, pos_y, eX, eY) {
 
         } else {
             clicknum = 1;
-            rect = null;
-            rect1 = null;
+
             click3data = { 'X':pos_x, 'Y':pos_y};
+
+            var p0x = 2*imgData[trialNumber]['area_bb_0_x'];
+            var p0y = 2*imgData[trialNumber]['area_bb_0_y'];
+            var p1x = 2*imgData[trialNumber]['area_bb_1_x'];
+            var p1y = 2*imgData[trialNumber]['area_bb_1_y'];
+            var p2x = 2*imgData[trialNumber]['area_bb_2_x'];
+            var p2y = 2*imgData[trialNumber]['area_bb_2_y'];
+            var p3x = 2*imgData[trialNumber]['area_bb_3_x'];
+            var p3y = 2*imgData[trialNumber]['area_bb_3_y'];
+
+            //$('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:blue; position:absolute; z-index:202; top:'+(p0x-2)+'px; left:'+(p0y-2)+'px;"></div>');
+            //R.circle(p0y, p0x, 5);
+            //R.circle(p1y, p1x, 5);
+            //R.circle(p2y, p2x, 5);
+            //R.circle(p3y, p3x, 5);
 
             var dist2 = Math.abs(sdist2);
             var dist1 = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
@@ -278,7 +317,6 @@ function clicked(pos_x, pos_y, eX, eY) {
             var a = sdist2 * sinth;
             var b = -sdist2 * costh;
             console.log(x1 , y1, x1 + a, y1 + b, x2, y2, x2 + a, y2 + b);
-
 
             var dist = 1
             distances.push(dist);
@@ -289,7 +327,13 @@ function clicked(pos_x, pos_y, eX, eY) {
                       'click3': click3data});
 
             setTimeout(function(){
+                rect.remove()
+                rect = null;
+                rect1.remove();
+                rect1 = null;
+                line.remove();
                 $('#getClick').hide();
+                $('#delete').hide()
                 $('#instruct').hide();
                 $('#trialCounter').hide();
                 $('.fixation img').attr('src',fixationImage.src);
@@ -440,7 +484,7 @@ $(document).ready(function() {
 
 	$('.test').hide();
 	$('#warning').hide();
-
+    $('#delete').hide();
 	$("#tutorial").html($("#tutorial_original").html());
 	$("#tutorial").dialog({height:650,
 							width:600,
@@ -468,12 +512,14 @@ $(document).ready(function() {
 <div align="center" id="warning"></div>
 <div align="center"><button id="begintask" value="Begin!">Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
-<div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src="" /></div>
-<div class="test" align="center" style="position:relative; z-index:200; top:75px; left:0px;"><img id="main_test" src="" /></div>
 <div align="center" id="markers">
-	<div id="instruct" style="position:relative; top:-490px; font-size:150%;">Put a bounding box around the object!</div>
+    <div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src="" /></div>
+    <div id="instruct" style="position:relative; top:-490px; font-size:150%;">Put a bounding box around the object!</div>
+    <div class="test" align="center" style="position:relative; height:512px; width:512px"><img id="main_test" src="" /></div>
 	<div id="getClick" align="center" style="position:relative; height:512px; width:512px"></div>
-	<div id="trialCounter" style="position:relative; top:65px; font-size:small;"></div>
+	<div align="center"><button id="delete" style="position:relative; font-size:small;">Delete Points</button></div>
+	<div id="trialCounter" style="position:relative; top:25px; font-size:small;"></div>
+
 </div>
 
 

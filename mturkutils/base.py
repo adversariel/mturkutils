@@ -148,7 +148,8 @@ class Experiment(object):
             mongo_port=None,
             mongo_host=None,
             mongo_dbname=None,
-            collection_name='TEST'):
+            collection_name='TEST',
+            other_quals = None):
 
         if keywords is None:
             keywords = ['']
@@ -166,6 +167,7 @@ class Experiment(object):
         self.frame_height_pix = frame_height_pix
         self.log_prefix = log_prefix
         self.section_name = section_name
+        self.other_quals = other_quals
         self.setQual(90)
         self.bucket_name = bucket_name
 
@@ -198,6 +200,8 @@ class Experiment(object):
         self.collection_name = collection_name
         self.setMongoVars()
         self.conn = self.connect()
+
+
 
     def payBonuses(self, performance_threshold, bonus_threshold, auto_approve=True):
         """
@@ -441,6 +445,9 @@ class Experiment(object):
 
     def setQual(self, performance_thresh=90):
         self.qual = create_qual(performance_thresh)
+        if self.other_quals is not None:
+            for q in self.other_quals:
+                self.qual.add(q)
 
     def URLs(self, secure=False):
         """urls of actual tasks for createHITs
@@ -855,6 +862,9 @@ def parse_human_data_from_HITdata(assignments, HITdata=None, comment='',
             ansdat = json.loads(qfa.fields[0])
             assert len(ansdat) == 1, len(ansdat)        # only this format is supported
             ansdat = ansdat[0]
+            for _r in ansdat['Response']:
+                if '_id' in _r and '$oid' in _r['_id']:
+                    _r['_id'] = _r['_id']['$oid']
             ansdat['AssignmentID'] = a.AssignmentId
             ansdat['WorkerID'] = a.WorkerId
             ansdat['Timestamp'] = a.SubmitTime
