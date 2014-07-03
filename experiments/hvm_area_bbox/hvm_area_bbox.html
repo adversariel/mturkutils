@@ -39,14 +39,16 @@ img {
 
 
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"
+></script>
 <script type="text/javascript" src="raphael.min.js"></script>
+<script type="text/javascript" src="intersect.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
-
 <script type="text/javascript">
 
 ExperimentData = null;
@@ -78,16 +80,18 @@ function getAspectRatio(im) {
 
 function reward_scale(error){
      if (error !== null){
-         var maxdist = Math.sqrt(2);
+         var maxdist = 1;
          return Math.max(((maxdist - error) / maxdist).toPrecision(3), 0)
      } else{
          return 0.0
      }
     };
 
+var LEARNING_PERIOD = 10;
 var reward;
-var R, sdist2, rect = null, rect1 = null;
-var error = null;
+var R, sdist2, line = null, rect = null, rect1 = null;
+var remove_them, c1, c2, c3, c4;
+var error = 1;
 var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
                'Chairs': 'chair', 'Faces': 'face', 'Fruits': 'fruit',
                'Planes': 'plane', 'Tables': 'table'};
@@ -111,6 +115,26 @@ function beginExp() {
 	console.log('beginExp');
 	begin = true;
 	$("#begintask").hide(), $("#_preload").hide();
+
+    $('#delete').click(function(e){
+        click1data = null;
+        click2data = null;
+        click3data = null;
+        if (rect !== null){
+            rect.remove();
+        }
+        rect = null;
+        if (rect1 !== null){
+            rect1.remove();
+        }
+        rect1 = null;
+        clicknum = 1;
+        if (line !== null){
+            line.remove()
+        }
+        line = null;
+        $('.marker').remove();
+    });
 
 	$('#getClick').click(function(e) {
 		var offset = $(this).offset()
@@ -164,25 +188,19 @@ function beginExp() {
     });
 
     R = Raphael("getClick", 512, 512);
-
+    R1 = Raphael("testbox", 512, 512);
 
 	$('#getClick').hide();
+	$('#delete').hide();
 	$('.fixation img').attr('src',fixationImage.src);
 	$('.fixation').show();
 	var thisStim = imgFiles_new[trialNumber];
     window.scrollTo(0, 0);
 	tmpImage = new Image();
 	tmpImage.src = thisStim;
-	$('#main_test').attr('src',thisStim);
+	var img = R1.image(thisStim, 0, 0, 512, 512);
 	//Set proper height/width:
-	if (getAspectRatio(tmpImage) > 1) {
-		//width is longer axis
-		$('#main_test').removeClass().addClass('shrinkwidth');
-	}
-	else {
-		//height is longer axis
-		$('#main_test').removeClass().addClass('shrinkheight');
-	}
+
 
 	setTimeout(function() {
 						showStim();
@@ -192,9 +210,35 @@ function beginExp() {
 function showStim() {
 	console.log('showStim');
 	$('.test').show();
+    var p0y = 2*imgData[trialNumber]['area_bb_0_x'];
+    var p0x = 2*imgData[trialNumber]['area_bb_0_y'];
+    var p1y = 2*imgData[trialNumber]['area_bb_1_x'];
+    var p1x = 2*imgData[trialNumber]['area_bb_1_y'];
+    var p2y = 2*imgData[trialNumber]['area_bb_2_x'];
+    var p2x = 2*imgData[trialNumber]['area_bb_2_y'];
+    var p3y = 2*imgData[trialNumber]['area_bb_3_x'];
+    var p3x = 2*imgData[trialNumber]['area_bb_3_y'];
+    if (trialNumber < LEARNING_PERIOD){
+        var c1 = R1.circle(p0x, p0y, 5);
+        c1.attr({'fill': 'blue'})
+        var c2 = R1.circle(p1x, p1y, 5);
+        c2.attr({'fill': 'blue'})
+        var c3 = R1.circle(p2x, p2y, 5);
+        c3.attr({'fill': 'blue'})
+        var c4 = R1.circle(p3x, p3y, 5);
+        c4.attr({'fill': 'blue'})
+        remove_them = true;
+    } else{
+        remove_them = false;
+    }
+
 	$('.fixation').hide();
+
 	setTimeout(function() {
 						$('.test').hide();
+						if (remove_them){
+						    c1.remove(); c2.remove(); c3.remove(); c4.remove();
+						}
 						setTimeout("showResponse()",ISI);
 						},stimduration);
 }
@@ -219,18 +263,42 @@ function showResponse() {
     var rect = R.rect(0, 0, 512, 512);
     rect.attr({fill: "white"});
 
+
+    var p0y = 2*imgData[trialNumber]['area_bb_0_x'];
+    var p0x = 2*imgData[trialNumber]['area_bb_0_y'];
+    var p1y = 2*imgData[trialNumber]['area_bb_1_x'];
+    var p1x = 2*imgData[trialNumber]['area_bb_1_y'];
+    var p2y = 2*imgData[trialNumber]['area_bb_2_x'];
+    var p2x = 2*imgData[trialNumber]['area_bb_2_y'];
+    var p3y = 2*imgData[trialNumber]['area_bb_3_x'];
+    var p3x = 2*imgData[trialNumber]['area_bb_3_y'];
+
+    if (trialNumber < LEARNING_PERIOD){
+        c1 = R.circle(p0x, p0y, 5);
+        c1.attr({'fill': 'blue'});
+        c2 = R.circle(p1x, p1y, 5);
+        c2.attr({'fill': 'blue'});
+        c3 = R.circle(p2x, p2y, 5);
+        c3.attr({'fill': 'blue'});
+        c4 = R.circle(p3x, p3y, 5);
+        c4.attr({'fill': 'blue'});
+        remove_them = true;
+    } else {
+        remove_them = false;
+    }
+
 	$('#getClick').show();
+	$('#delete').show();
     $('#trialCounter').show();
 	$('#instruct').html('Put a box around where the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> was!');
 	$('#instruct').show();
-
 
 	trialStartTime = new Date();
 
 	if (trialNumber+1 == totalTrials) {}
 	else {
 		var thisStim = imgFiles_new[trialNumber+1];
-		$('#main_test').attr('src',thisStim);
+		var img = R1.image(thisStim, 0, 0, 512, 512);
 		}
 
 }
@@ -256,27 +324,17 @@ function clicked(pos_x, pos_y, eX, eY) {
 
         } else {
             clicknum = 1;
-            rect.remove()
-            rect = null;
-            rect1 = null;
-            rect1.remove();
-            line.remove();
+
             click3data = { 'X':pos_x, 'Y':pos_y};
 
-            var p0x = 2*imgData[trialNumber]['area_bb_0_x'];
-            var p0y = 2*imgData[trialNumber]['area_bb_0_y'];
-            var p1x = 2*imgData[trialNumber]['area_bb_1_x'];
-            var p1y = 2*imgData[trialNumber]['area_bb_1_y'];
-            var p2x = 2*imgData[trialNumber]['area_bb_2_x'];
-            var p2y = 2*imgData[trialNumber]['area_bb_2_y'];
-            var p3x = 2*imgData[trialNumber]['area_bb_3_x'];
-            var p3y = 2*imgData[trialNumber]['area_bb_3_y'];
-
-            //$('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:blue; position:absolute; z-index:202; top:'+(p0x-2)+'px; left:'+(p0y-2)+'px;"></div>');
-            //R.circle(p0y, p0x, 5);
-            //R.circle(p1y, p1x, 5);
-            //R.circle(p2y, p2x, 5);
-            //R.circle(p3y, p3x, 5);
+            var p0y = 2*imgData[trialNumber]['area_bb_0_x'];
+            var p0x = 2*imgData[trialNumber]['area_bb_0_y'];
+            var p1y = 2*imgData[trialNumber]['area_bb_1_x'];
+            var p1x = 2*imgData[trialNumber]['area_bb_1_y'];
+            var p2y = 2*imgData[trialNumber]['area_bb_2_x'];
+            var p2x = 2*imgData[trialNumber]['area_bb_2_y'];
+            var p3y = 2*imgData[trialNumber]['area_bb_3_x'];
+            var p3x = 2*imgData[trialNumber]['area_bb_3_y'];
 
             var dist2 = Math.abs(sdist2);
             var dist1 = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
@@ -284,19 +342,35 @@ function clicked(pos_x, pos_y, eX, eY) {
             var sinth = (y2 - y1) / dist1;
             var a = sdist2 * sinth;
             var b = -sdist2 * costh;
-            console.log(x1 , y1, x1 + a, y1 + b, x2, y2, x2 + a, y2 + b);
 
-            var dist = 1
+            var bbox = [[x1 , y1], [x1 + a, y1 + b], [x2+a, y2+b], [x2, y2]];
+            var rbbox = [[p0x, p0y], [p1x, p1y], [p2x, p2y], [p3x, p3y]];
+
+            var iarea = intersection_area(bbox, rbbox);
+            var area1 = get_convex_area(bbox);
+            var area2 = get_convex_area(rbbox);
+            console.log('IA', iarea, area1, area2, JSON.stringify(bbox), JSON.stringify(rbbox))
+            var dist = 1 - (iarea / (area1 + area2 - iarea));
+            console.log(dist)
             distances.push(dist);
-
 
             pushData({'click1': click1data,
                       'click2': click2data,
                       'click3': click3data});
 
             setTimeout(function(){
+                rect.remove()
+                rect = null;
+                rect1.remove();
+                rect1 = null;
+                line.remove();
+                if (remove_them) {
+                    c1.remove(); c2.remove(); c3.remove(); c4.remove();
+                }
                 $('#getClick').hide();
+                $('#delete').hide()
                 $('#instruct').hide();
+                //$('#instruct').html('');
                 $('#trialCounter').hide();
                 $('.fixation img').attr('src',fixationImage.src);
                 $('.fixation').show();
@@ -371,7 +445,7 @@ function takeABreak() {
 					$('#_preload').hide();
 					$('.fixation').show();
 					var thisStim = imgFiles_new[trialNumber];
-					$('#main_test').attr('src',thisStim)
+					var img = R1.image(thisStim, 0, 0, 512, 512);
 					setTimeout(function() {showStim()},ISI)};
 		};
 
@@ -435,7 +509,7 @@ $(document).ready(function() {
 	$('#tutorial_original').hide();
 	$('#tutorial2').hide();
 	$('#tutorial3').hide();
-
+    $('#instruct').hide();
 	init_vars();
 	preload_resources();
 	preload(stimFiles, function() {
@@ -446,9 +520,9 @@ $(document).ready(function() {
 
 	$('.test').hide();
 	$('#warning').hide();
-
+    $('#delete').hide();
 	$("#tutorial").html($("#tutorial_original").html());
-	$("#tutorial").dialog({height:650,
+	$("#tutorial").dialog({height:'auto',
 							width:600,
 							position:"center",
 							title:"Instructions"
@@ -474,16 +548,18 @@ $(document).ready(function() {
 <div align="center" id="warning"></div>
 <div align="center"><button id="begintask" value="Begin!">Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
-<div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src="" /></div>
-<div class="test" align="center" style="position:relative; z-index:200; top:75px; left:0px;"><img id="main_test" src="" /></div>
 <div align="center" id="markers">
-	<div id="instruct" style="position:relative; top:-490px; font-size:150%;">Put a bounding box around the object!</div>
-	<div id="getClick" align="center" style="position:relative; height:512px; width:512px"></div>
-	<div id="trialCounter" style="position:relative; top:65px; font-size:small;"></div>
+    <div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src="" /></div>
+    <div class="test" id="testbox" align="center" style="position:relative; height:512px; width:512px; top:25px"><img id="main_test" src="" /></div>
+	<div id="getClick" align="center" style="position:relative; height:512px; width:512px; top:25px"></div>
+	<div id="instruct" style="position:relative;top:25px">Put a bounding box around the object!</div>
+	<div align="center"><button id="delete" style="position:relative; font-size:small;top:25px">Delete Points</button></div>
+	<div id="trialCounter" style="position:relative; top:25px; font-size:small;"></div>
+
 </div>
 
 
-<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,	width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
+<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog()"><u>View Instructions</u></div>
 
 <div id="tutorial" style="position:relative; z-index:-1"></div>
 <div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: Instructions have changed, and low performance will lead to rejection: make sure to read!**</b>
@@ -496,13 +572,16 @@ $(document).ready(function() {
 <ul>
 <li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
 <p>
-<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>click on the white canvas in the position where the object was located in the  original image.</b>  For example, if you think you see an elephant located somewhere in the screen, place your click in the center of the elephant.</li>
+<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>identify a <u>rotated</u> bounding box around where the object was the original image.</b>  You will indicate your bounding box by making three clicks on the white canvas:  the first two clicks indicate one side of the rotated bounding box, and the third click indicates where the opposite side is.</li>
 <p>
-<li>The white canvas is of a slightly different size than the original, so you should click in the <b>proportionately</b> correct spot.  That is, if the elephant is half way up and half way to the right side in the original image, then you should click on the white canvas half way up and half way to the right.  Once you click, you will move on to the next image immediately, so be ready.
+<li>The first few examples will show the correct answer indicated with blue points, so you can get a feel for the task.</li>
 <p>
-<li>Even if you're not 100% sure of location of the object, <u><b>make your best guess.</b></u></li>
+<li>Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u></li>
 <p>
-<li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
+<li>If you think you've made a mistake while placing the first two clicks, you can press the "delete points" button below the canvas.  Doing so will remove your clicks and allow you to restart with a white canvas.  After the third click, however, the trial will automatically move on and you will not have a chance to correct your answer.</li>
+<p>
+<li>
+Once you click, you will move on to the next image immediately, so be ready.  When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
 </ul>
 <center><p onclick="$('#tutorial').html($('#tutorial3').html())"><font color=blue><u>Click here to continue reading</u></font></p></center>
 </div>

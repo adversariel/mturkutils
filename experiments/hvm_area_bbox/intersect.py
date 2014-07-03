@@ -110,9 +110,9 @@ def intersection_area(r1, r2):
 
     ppoints = list(set(intersections + inpoints))
     ppoints = counterclockwise(ppoints)
-    print(ppoints)
-
-    area = get_convex_area(ppoints)
-
+    if len(ppoints) > 2:
+        area = get_convex_area(ppoints)
+    else:
+        area = 0
     return area
 

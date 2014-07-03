@@ -42,7 +42,7 @@ img {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"
 ></script>
 <script type="text/javascript" src="raphael.min.js"></script>
-<script type="text/javascript" src="2D.js"></script>
+<script type="text/javascript" src="intersect.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
@@ -92,7 +92,7 @@ function getAspectRatio(im) {
 
 function reward_scale(error){
      if (error !== null){
-         var maxdist = Math.sqrt(2);
+         var maxdist = 1;
          return Math.max(((maxdist - error) / maxdist).toPrecision(3), 0)
      } else{
          return 0.0
@@ -316,11 +316,15 @@ function clicked(pos_x, pos_y, eX, eY) {
             var sinth = (y2 - y1) / dist1;
             var a = sdist2 * sinth;
             var b = -sdist2 * costh;
-            console.log(x1 , y1, x1 + a, y1 + b, x2, y2, x2 + a, y2 + b);
 
-            var dist = 1
+            var bbox = [[x1 , y1], [x1 + a, y1 + b], [x2+a, y2+b], [x2 + a, y2 + b]];
+            var rbbox = [[p0x, p0y], [p1x, p1y], [p2x, p2y], [p3x, p3y]];
+            var iarea = intersection_area(bbox, rbbox);
+            var area1 = get_convex_area(bbox);
+            var area2 = get_convex_area(rbbox);
+            var dist = 1 - (iarea / (area1 + area2 - iarea));
+            console.log(dist)
             distances.push(dist);
-
 
             pushData({'click1': click1data,
                       'click2': click2data,

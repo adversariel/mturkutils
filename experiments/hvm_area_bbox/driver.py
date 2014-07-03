@@ -63,14 +63,14 @@ exp = HvMAreaBBoxExperiment(htmlsrc = 'hvm_area_bbox.html',
                               max_assignments=1,
                               bucket_name='hvm_area_bbox',
                               trials_per_hit=100,
-                              othersrc = ['raphael.min.js'])
+                              othersrc = ['raphael.min.js', 'intersect.js'])
 
 if __name__ == '__main__':
 
     exp.createTrials()
     exp.prepHTMLs()
     exp.testHTMLs()
-    exp.uploadHTMLs()
+    #exp.uploadHTMLs()
     #exp.createHIT()
 
     #hitids = cPickle.load(open('3ARIN4O78FSZNXPJJAE45TI21DLIF1_2014-06-13_16:25:48.143902.pkl'))
