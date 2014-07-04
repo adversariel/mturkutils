@@ -82,6 +82,7 @@ var container, camera, controls, scene, renderer, mesh, jsonLoader, objname, pos
 function animate() {
     requestAnimationFrame( animate );
     controls.update();
+    render_scene();
 }
 
 function createScene( geometry, materials) {
@@ -111,7 +112,6 @@ function createScene( geometry, materials) {
     mesh.translateY(-1 * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
     mesh.translateZ(-1 * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
 
-    render_scene();
     animate();
 	$('#submitResponse').show();
 	$('#responseCanvas').show();
@@ -220,7 +220,6 @@ function onWindowResize() {
 }
 
 function render_scene() {
-    console.log('render')
     renderer.render( scene, camera );
 }
 

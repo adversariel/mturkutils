@@ -199,8 +199,6 @@ function beginExp() {
 	tmpImage = new Image();
 	tmpImage.src = thisStim;
 	var img = R1.image(thisStim, 0, 0, 512, 512);
-	//Set proper height/width:
-
 
 	setTimeout(function() {
 						showStim();
@@ -430,7 +428,7 @@ function endTrial() {
 }
 
 function takeABreak() {
-	$('#main_test').attr('src',breakscreen.src);
+	var img = R1.image(breakscreen.src, 0, 0, 512, 512);
 	$('.fixation').hide();
 	$('.test').show()
 	$('#_preload').html("<font color=red style=background-color:white>You have completed "+Math.round((trialNumber/totalTrials)*100)+"% of the experiment. Be sure to pay attention so that you know you can finish on time!");
@@ -550,7 +548,7 @@ $(document).ready(function() {
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
 <div align="center" id="markers">
     <div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src="" /></div>
-    <div class="test" id="testbox" align="center" style="position:relative; height:512px; width:512px; top:25px"><img id="main_test" src="" /></div>
+    <div class="test" id="testbox" align="center" style="position:relative; height:512px; width:512px; top:25px"></div>
 	<div id="getClick" align="center" style="position:relative; height:512px; width:512px; top:25px"></div>
 	<div id="instruct" style="position:relative;top:25px">Put a bounding box around the object!</div>
 	<div align="center"><button id="delete" style="position:relative; font-size:small;top:25px">Delete Points</button></div>

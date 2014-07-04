@@ -67,14 +67,15 @@ img {
 ExperimentData = null;
 
 
-
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
-var container, camera, scene, renderer, mesh, jsonLoader, objname, posdict, sizes, hvm_equivalents, arot, arotinv, bounding_boxes;
+var container, camera, scene, renderer, mesh, jsonLoader, objname, posdict, sizes, hvm_equivalents, arot, arotinv, bounding_boxes, _FLAG;
 
 function animate() {
     requestAnimationFrame( animate );
+    render_scene();
 }
+
 
 function createScene( geometry, materials) {
     mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
@@ -94,7 +95,6 @@ function createScene( geometry, materials) {
                    mult1 * mult * mesh.scale.y / mesh.geometry.boundingSphere.radius,
                    mult1 * mult * mesh.scale.z / mesh.geometry.boundingSphere.radius);
 
-
     mesh.translateX(-mult1 * mult * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
     mesh.translateY(-mult1 * mult * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
     mesh.translateZ(-mult1 * mult * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
@@ -106,14 +106,20 @@ function createScene( geometry, materials) {
    sizer0x = mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius;
    sizer0y = mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius;
    sizer0z = mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius;
-
-    render_scene();
-
-    $('#slider').slider("option", "value", 50);
     animate();
+
+    if (trialNumber >= LEARNING_PERIOD){
+        $('#slider').slider("option", "value", 50);
+    } else {
+        var realsize = imgData[trialNumber]['s'];
+        $('#slider').slider("option", "value", realsize*50);
+    }
+    $('#slider').trigger('slide')
+
 
     $('#submitResponse').show();
     $('#slider').show();
+    //$('#sliderReport').show();
     $('#responseCanvas').show();
     $('#trialCounter').show();
     $('#instruct').show();
@@ -210,7 +216,6 @@ function onWindowResize() {
 }
 
 function render_scene() {
-    console.log('render')
     renderer.render( scene, camera );
 }
 
@@ -297,10 +302,16 @@ function showStim() {
 	console.log('showStim');
 	$('.test').show();
 	$('.fixation').hide();
+	var _stimduration;
+	if (trialNumber < LEARNING_PERIOD) {
+	    _stimduration = 2000;
+	} else {
+	    _stimduration = stimduration;
+	}
 	setTimeout(function() {
 						$('.test').hide();
 						setTimeout("showResponse()",ISI);
-						},stimduration);
+						}, _stimduration);
 }
 
 
@@ -349,6 +360,7 @@ function clicked() {
         $('#submitResponse').hide();
         $('#instruct').hide();
         $('#slider').hide();
+        //$('#sliderReport').hide();
         $('#trialCounter').hide();
         $('.fixation img').attr('src',fixationImage.src);
         $('.fixation').show();
@@ -461,7 +473,7 @@ function init_vars() {
 	breakscreen.src = "https://s3.amazonaws.com/monkeyimgs/2way_impute/break.png";
 	stimduration = 100;
     imgData = ExperimentData.imgData;
-	ISI = 500;
+	ISI = 750;
 	trialNumber = 0;
 	totalTrials = ExperimentData["imgFiles"].length;
 	BreakTimes = [];
@@ -473,6 +485,7 @@ function init_vars() {
     distances = new Array();
     realvals = new Array();
     vals = new Array();
+    LEARNING_PERIOD = 10;
 }
 
 function preload_resources() {
@@ -488,7 +501,9 @@ $(document).ready(function() {
 	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
     $('#instruct').hide();
     $('#submitResponse').hide();
+    $('#responseCanvas').hide();
     $("#slider").hide();
+    //$('#sliderReport').hide();
     init_vars();
 	preload_resources();
 	preload(stimFiles, function() {
@@ -503,6 +518,7 @@ $(document).ready(function() {
 
     $('#slider').on("slide", function(event, ui){
         var val = $('#slider').slider("option", "value");
+        $('.ui-slider-handle').html(val.toPrecision(2));
         var dil = 0.02 * val;
         mesh.position.setX(0); mesh.position.setY(0); mesh.position.setZ(0);
         mesh.scale.set(dil * size0x, dil * size0y, dil * size0z);
@@ -530,7 +546,7 @@ $(document).ready(function() {
 	$('#warning').hide();
 
 	$("#tutorial").html($("#tutorial_original").html());
-	$("#tutorial").dialog({height:650,
+	$("#tutorial").dialog({height:'auto',
 							width:600,
 							position:"center",
 							title:"Instructions"
@@ -555,15 +571,16 @@ $(document).ready(function() {
 <div style="height:1000px; width:auto;">
 <div align="center" id="warning"></div>
 <div align="center"><button id="begintask" value="Begin!">Begin!</button></div>
-<div align="center"><button id="submitResponse" value="Submit Response">Submit Response</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px; z-index:100"></div>
-<div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src="" /></div>
-<div class="test" align="center" style="position:relative; z-index:200; top:75px; left:0px;"><img id="main_test" src="" /></div>
 
 <div align="center" id="markers">
-<div id="instruct" style="position:relative; z-index:100; top:30px; font-size:150%;">Make the object have the correct size.</div>
-<div id="responseCanvas"></div>
-<div align="center" id="slider" style="position:relative; top:10px; width:700px; "></div>
+    <div class="fixation" align="center" style="position:relative; z-index:201; top:70px; left:0px;"><img id="fixation_dot" src="" /></div>
+    <div class="test" align="center" style="position:relative; z-index:200; top:20px; left:0px;"><img id="main_test" src="" /></div>
+    <div id="instruct" style="position:relative; z-index:100; top:30px; font-size:150%;">Make the object have the correct size.</div>
+    <div id="responseCanvas"></div>
+    <div align="center" id="slider" style="position:relative; top:10px; width:700px; "></div>
+    <!--<div align="center" id="sliderReport" style="position:relative; top:15px; height:15px; width:15px; font-size:200%;"></div> -->
+    <div align="center"><button id="submitResponse" style="position:relative; top:30px; font-size:small;" value="Submit Response">Submit Response</button></div>
 <div id="trialCounter" style="position:relative; top:50px; font-size:small;"></div>
 </div>
 
@@ -583,10 +600,13 @@ $(document).ready(function() {
 <p>
 <li>After you see an image, you will be presented with the object again.  You must then move the slider to enlarge or shrink the object until it has  <b><u>the same size</u> that it did in the original image.</b>  For example, if you thought you saw an elephant that would fill 1 inch on the screen from trunk to tail in the original image, move the response slider until the elephant model is about 1 inch wide.</li>
 <p>
-<li>It does not matter what position the object took on in the original image, or what pose the object was shown in.  All that matters is whether the original size of object has been matched correctly.  Even if you're not 100% sure of the correct answer, <b>make your best guess.</b>
-</li>
+<li>It does not matter what position the object took on in the original image, or what pose the object was shown in.  All that matters is whether the original size of object has been matched correctly.  Also, don't take into account the depth of the object in the scene -- make the assumption that all apparent differences in size are really due the object changing actual size.</li>
 <p>
-<li> When you're happy with your sizing of the object, click the "Submit Response" button at the very top of the screen.  Once you click submit, you will move on to the next image immediately, so <b>be ready!</b></li>
+<li> When you're happy with your sizing of the object, click the "Submit Response" button at the very top of the screen.  ven if you're not 100% sure of the correct answer, <b>make your best guess.</b>  Once you click submit, you will move on to the next image immediately, so <b>be ready!</b></li>
+<p>
+<li>The first 10 trials will be a learning period, that will allow you to get a feel for the task.  During this period, the correct size will be automatically indicated.  During this period, the images will be shown for several seconds each, long enough for you to see them clearly.  During these learning trials, all you have to do is press the submit button to move on to the next trial, but you should try out the slider to see how it works.  Results during the learning period will not affect your bonus.</li>
+<p>
+<li>After the learning period, the size will be set to 50, and you will have to set the position of the slider yourself.  Also, <b>the images will be begin to be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  Once you click, you will move on to the next image immediately.</li>
 <p>
 <li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
 </ul>
@@ -614,4 +634,3 @@ $(document).ready(function() {
 
 </body>
 </html>
-

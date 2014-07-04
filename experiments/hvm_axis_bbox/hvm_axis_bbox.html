@@ -85,6 +85,7 @@ function reward_scale(error){
      }
     };
 
+var LEARNING_PERIOD=10;
 var reward;
 var error = null;
 var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
@@ -109,21 +110,8 @@ function beginExp() {
 	$('#getClick').hide();
 	$('.fixation img').attr('src',fixationImage.src);
 	$('.fixation').show();
-	var thisStim = imgFiles_new[trialNumber];
-    window.scrollTo(0, 0);
-	tmpImage = new Image();
-	tmpImage.src = thisStim;
-	$('#main_test').attr('src',thisStim);
-	//Set proper height/width:
-	if (getAspectRatio(tmpImage) > 1) {
-		//width is longer axis
-		$('#main_test').removeClass().addClass('shrinkwidth');
-	}
-	else {
-		//height is longer axis
-		$('#main_test').removeClass().addClass('shrinkheight');
-	}
 
+    window.scrollTo(0, 0);
 	setTimeout(function() {
 						showStim();
 						},ISI);
@@ -131,12 +119,42 @@ function beginExp() {
 
 function showStim() {
 	console.log('showStim');
-	$('.test').show();
+    var _stimduration;
+    if (trialNumber < LEARNING_PERIOD){
+        _stimduration = 3000;
+    } else {
+        _stimduration = stimduration;
+    }
+
+    canvas1.width = canvas1.width;
+    imageObj1 = new Image();
+    imageObj1.onload = function(){
+        canvas_context1.drawImage(imageObj1, 0, 0, 512, 512);
+        if (trialNumber < LEARNING_PERIOD){
+            var real_left = 2 * imgData[trialNumber]['axis_bb_left'];
+            var real_right = 2 * imgData[trialNumber]['axis_bb_right'];
+            var real_top = 2 * imgData[trialNumber]['axis_bb_top'];
+            var real_bottom = 2 * imgData[trialNumber]['axis_bb_bottom'];
+            canvas_context1.fillStyle="blue";
+            canvas_context1.fillRect(real_left-5, real_top-5, 10, 10);
+            canvas_context1.stroke();
+            canvas_context1.fillRect(real_right-5, real_bottom-5, 10, 10);
+            canvas_context1.stroke();
+            canvas_context1.rect(real_left, real_top, real_right - real_left+1, real_bottom - real_top+1)
+            canvas_context1.lineWidth=1;
+            canvas_context1.stroke();
+        }
+
+    };
+    imageObj1.src = imgFiles_new[trialNumber];
+
+
+	$('#test').show();
 	$('.fixation').hide();
 	setTimeout(function() {
-						$('.test').hide();
+						$('#test').hide();
 						setTimeout("showResponse()",ISI);
-						},stimduration);
+						}, _stimduration);
 }
 
 
@@ -144,11 +162,35 @@ function showResponse() {
 	console.log('showResponse');
     obj = {};
 
-    var imageObj = new Image();
+    /*var imageObj = new Image();
     imageObj.onload = function(){
         canvas_context.drawImage(imageObj, 0, 0);
     };
-    imageObj.src = 'https://s3.amazonaws.com/objectome32/whitebg.png';
+    imageObj.src = 'https://s3.amazonaws.com/objectome32/whitebg.png'; */
+
+    /*canvas_context.beginPath();
+    canvas_context.arc(256, 256, 256, 0, 2 * Math.PI, false);
+    canvas_context.fillStyle = 'white';
+    canvas_context.fill();
+    canvas_context.lineWidth = 0;
+    canvas_context.stroke();*/
+
+    canvas_context.fillStyle = 'white';
+    canvas_context.fillRect(0, 0, 512, 512);
+    canvas_context.fill();
+    canvas_context.stroke();
+
+    if (trialNumber < LEARNING_PERIOD){
+        var real_left = 2 * imgData[trialNumber]['axis_bb_left'];
+        var real_right = 2 * imgData[trialNumber]['axis_bb_right'];
+        var real_top = 2 * imgData[trialNumber]['axis_bb_top'];
+        var real_bottom = 2 * imgData[trialNumber]['axis_bb_bottom'];
+        canvas_context.fillStyle="blue";
+        canvas_context.fillRect(real_left-3, real_top-3, 6, 6);
+        canvas_context.stroke();
+        canvas_context.fillRect(real_right-3, real_bottom-3, 6, 6);
+        canvas_context.stroke();
+    }
 
 	$('#totalSeen').html('Total Objects Seen: 0');
 	if (trialNumber > 0){
@@ -168,11 +210,6 @@ function showResponse() {
 
 	trialStartTime = new Date();
 
-	if (trialNumber+1 == totalTrials) {}
-	else {
-		var thisStim = imgFiles_new[trialNumber+1];
-		$('#main_test').attr('src',thisStim);
-		}
 
 }
 
@@ -186,13 +223,13 @@ function clicked(pos_x, pos_y, eX, eY) {
 
         if (clicknum == 1){
 
-            $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:red; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
+            $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:black; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
  		    click1data = { 'X':pos_x, 'Y':pos_y, 'eX': eX, 'eY': eY,
  		                  'pos_xn': pos_xn, 'pos_yn': pos_yn };
  		    clicknum = 2;
         } else {
             clicknum = 1;
-            $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:blue; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
+            $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:black; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
             var click2data =  {'X':pos_x, 'Y':pos_y, 'eX': eX, 'eY': eY,
  		                  'pos_xn': pos_xn, 'pos_yn': pos_yn };
 
@@ -294,9 +331,14 @@ function endTrial() {
 }
 
 function takeABreak() {
-	$('#main_test').attr('src',breakscreen.src);
+	var imagebreak = new Image();
+    imagebreak.onload = function(){
+        canvas_context1.drawImage(imagebreak, 0, 0, 512, 512);
+    };
+    imagebreak.src = breakscreen.src;
+
 	$('.fixation').hide();
-	$('.test').show()
+	$('#test').show()
 	$('#_preload').html("<font color=red style=background-color:white>You have completed "+Math.round((trialNumber/totalTrials)*100)+"% of the experiment. Be sure to pay attention so that you know you can finish on time!");
 	$('#_preload').show();
 	document.onkeypress = function(e){
@@ -305,11 +347,14 @@ function takeABreak() {
 			var actualKey = String.fromCharCode(unicode);
 				if (actualKey=='z'){
 					trialNumber++;
-					$('.test').hide()
+					$('#test').hide()
 					$('#_preload').hide();
 					$('.fixation').show();
-					var thisStim = imgFiles_new[trialNumber];
-					$('#main_test').attr('src',thisStim)
+					var imageobj = new Image();
+                    imageobj.onload = function(){
+                        canvas_context1.drawImage(imageobj, 0, 0, 512, 512);
+                    };
+                    imageobj.src = imgFiles_new[trialNumber];
 					setTimeout(function() {showStim()},ISI)};
 		};
 
@@ -373,13 +418,17 @@ $(document).ready(function() {
 
     canvas = document.getElementById('getClick');
     canvas_context = canvas.getContext('2d');
-    var imageObj = new Image();
+    /*var imageObj = new Image();
     imageObj.onload = function(){
         canvas_context.drawImage(imageObj, 0, 0);
     };
-    imageObj.src = 'https://s3.amazonaws.com/objectome32/whitebg.png';
+    imageObj.src = 'https://s3.amazonaws.com/objectome32/whitebg.png'; */
+
+    canvas1 = document.getElementById('test');
+    canvas_context1 = canvas1.getContext('2d');
 
 	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
+	$('#getClick').hide(); $('#instruct').hide();
 
 	init_vars();
 	preload_resources();
@@ -389,11 +438,11 @@ $(document).ready(function() {
 															  });
 							   });
 
-	$('.test').hide();
+	$('#test').hide();
 	$('#warning').hide();
 
 	$("#tutorial").html($("#tutorial_original").html());
-	$("#tutorial").dialog({height:650,
+	$("#tutorial").dialog({height:800,
 							width:600,
 							position:"center",
 							title:"Instructions"
@@ -419,12 +468,11 @@ $(document).ready(function() {
 <div align="center" id="warning"></div>
 <div align="center"><button id="begintask" value="Begin!">Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
-<div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src="" /></div>
-<div class="test" align="center" style="position:relative; z-index:200; top:75px; left:0px;"><img id="main_test" src="" /></div>
 <div align="center" id="markers">
-    <canvas id="getClick" width="512" height="512" style="position:relative; top:75px; left:0px;" border=2></canvas>
-
-	<div id="instruct" style="position:relative; top:-490px; font-size:150%;">Put a bounding box around the object!</div>
+    <div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src=""></div>
+    <canvas id="test" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"></canvas>
+    <canvas id="getClick" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"></canvas>
+	<div id="instruct" style="position:relative; top:35px;">Put a bounding box around the object!</div>
 	<div id="trialCounter" style="position:relative; top:65px; font-size:small;"></div>
 </div>
 
@@ -442,9 +490,11 @@ $(document).ready(function() {
 <ul>
 <li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
 <p>
-<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>identify a bounding box around where the object was the original image.</b>  You will indicate your bounding box by making two clicks on the white canvas, one where the upper-left corner of the object was, and the other where the lower-right corner was.</li>
+<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>identify a <u>bounding box</u> around where the object was the original image.</b>  You will indicate the bounding box by making two clicks on the white canvas, one where the upper-left corner of the object was, and the other where the lower-right corner was.  Your clicks will be indicated with black markers on the canvas.</li>
 <p>
-<li>Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  Once you click, you will move on to the next image immediately, so be ready.</li>
+<li>The first 10 trials will be a learning period.  During this period, you will be shown the correct bounding box for that trial using blue markers, so you can learn what this task is about.  In addition, the images will be shown for a longer period of time, so you can see them clearly.</li>
+<p>
+<li>After the learning period, the blue markers will not be shown and <b>the images will be shown <u>very</u> quickly, so be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  Once you click, you will move on to the next image immediately.</li>
 <p>
 <li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
 </ul>
@@ -463,7 +513,6 @@ $(document).ready(function() {
 </ul>
 <center><font color=blue><u><p onclick="$('#tutorial').dialog('close')">Click here to close the instructions</p></u></font></center>
 </div>
-
 </div>
 	<form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
 	<input type="text" name="data" id="data" value="">
