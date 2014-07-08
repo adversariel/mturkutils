@@ -121,7 +121,7 @@ function showStim() {
 	console.log('showStim');
     var _stimduration;
     if (trialNumber < LEARNING_PERIOD){
-        _stimduration = 3000;
+        _stimduration = 2000;
     } else {
         _stimduration = stimduration;
     }
@@ -199,10 +199,15 @@ function showResponse() {
     reward = reward_scale(error);
     console.log('reward', reward)
     var format_error = (100 * error).toPrecision(3);
-    $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
-                 '<br /> Mean Error: '+ format_error +
-                 '<br/> Expected Bonus: $'+ reward
-                 );
+    if (trialNumber < LEARNING_PERIOD){
+        $('#trialCounter').html('<u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left after this.');
+    } else {
+        $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
+                     '<br/> Mean Error: '+ format_error +
+                     '<br/> Expected Bonus: $'+ reward
+                     );
+    }
+
 	$('#getClick').show();
     $('#trialCounter').show();
 	$('#instruct').html('Put a box around where the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> was!');
@@ -490,11 +495,11 @@ $(document).ready(function() {
 <ul>
 <li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
 <p>
-<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>identify a <u>bounding box</u> around where the object was the original image.</b>  You will indicate the bounding box by making two clicks on the white canvas, one where the upper-left corner of the object was, and the other where the lower-right corner was.  Your clicks will be indicated with black markers on the canvas.</li>
+<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>identify a <u>bounding box</u> around where the object was the original image.</b>  You will indicate the bounding box by making two clicks on the white canvas, one for the upper left-hand corner of the object, and the other for the lower right-hand corner.  Your clicks will be indicated with black markers on the canvas.</li>
 <p>
-<li>The first 10 trials will be a learning period.  During this period, you will be shown the correct bounding box for that trial using blue markers, so you can learn what this task is about.  In addition, the images will be shown for a longer period of time, so you can see them clearly.</li>
+<li>The first several trials consist of a learning period.  During this period, the correct answer will be indicated on both the original image and the white answer canvas, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the interface.</li>
 <p>
-<li>After the learning period, the blue markers will not be shown and <b>the images will be shown <u>very</u> quickly, so be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  Once you click, you will move on to the next image immediately.</li>
+<li>After the learning period, the blue markers will no longer be shown and <b>the images will be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  Once you make your second click, you will move on to the next image immediately.</li>
 <p>
 <li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
 </ul>

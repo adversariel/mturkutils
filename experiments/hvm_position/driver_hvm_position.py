@@ -16,7 +16,8 @@ class HvMPositionExperiment(Experiment):
         seed = 0
 
         meta = dataset.meta
-        query_inds = (meta['var'] == 'V6').nonzero()[0]
+        emeta = dataset.extended_meta
+        query_inds = ((meta['var'] == 'V6') & (emeta['centroid_x'] > 0) & (emeta['centroid_y'] > 0)).nonzero()[0]
 
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
@@ -29,14 +30,15 @@ class HvMPositionExperiment(Experiment):
         print('%d blocks' % nblocks)
         imgs = []
         imgData = []
+        additional = ('centroid_x', 'centroid_y')
         for bn in range(nblocks):
             pinds = perm[bsize * bn: bsize * (bn + 1)]
             pinds2 = np.concatenate([pinds, pinds.copy()])
             perm0 = rng.permutation(len(pinds2))
             pinds2 = pinds2[perm0]
-            bmeta = meta[query_inds[pinds2]]
+            bmeta = emeta[query_inds[pinds2]]
             burls = [urls[_i] for _i in pinds2]
-            bmeta = [{df: bm[df] for df in meta.dtype.names} for bm in bmeta]
+            bmeta = [{df: bm[df] for df in meta.dtype.names + additional} for bm in bmeta]
             imgs.extend(burls)
             imgData.extend(bmeta)
         self._trials = {'imgFiles': imgs, 'imgData': imgData}
@@ -55,11 +57,13 @@ exp = HvMPositionExperiment(htmlsrc = 'hvm_position.html',
                               bucket_name='hvm_position',
                               trials_per_hit=100)
 
-exp.createTrials()
-exp.prepHTMLs()
-exp.testHTMLs()
-exp.uploadHTMLs()
-#exp.createHIT()
+if __name__ == '__main__':
+
+    exp.createTrials()
+    exp.prepHTMLs()
+    exp.testHTMLs()
+    exp.uploadHTMLs()
+    #exp.createHIT()
 
 #hitids = ['3YLTXLH3DFGSTOVAX3N7WV2YQWNHP0',
 #          '34ZTTGSNJXYDT0WPXG2WW0S8VS9HQR',

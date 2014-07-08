@@ -232,13 +232,19 @@ function showStim() {
 
 	$('.fixation').hide();
 
+    if (trialNumber < LEARNING_PERIOD){
+        _stimduration = 2000;
+    } else {
+        _stimduration = stimduration;
+    }
+
 	setTimeout(function() {
 						$('.test').hide();
 						if (remove_them){
 						    c1.remove(); c2.remove(); c3.remove(); c4.remove();
 						}
 						setTimeout("showResponse()",ISI);
-						},stimduration);
+						}, _stimduration);
 }
 
 
@@ -253,10 +259,15 @@ function showResponse() {
     reward = reward_scale(error);
     console.log('reward', reward)
     var format_error = (100 * error).toPrecision(3);
-    $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
-                 '<br /> Mean Error: '+ format_error +
-                 '<br/> Expected Bonus: $'+ reward
-                 );
+
+    if (trialNumber < LEARNING_PERIOD){
+        $('#trialCounter').html('<u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left after this.');
+    } else {
+        $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
+                     '<br/> Mean Error: '+ format_error +
+                     '<br/> Expected Bonus: $'+ reward
+                     );
+    }
 
     var rect = R.rect(0, 0, 512, 512);
     rect.attr({fill: "white"});
@@ -570,13 +581,11 @@ $(document).ready(function() {
 <ul>
 <li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
 <p>
-<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>identify a <u>rotated</u> bounding box around where the object was the original image.</b>  You will indicate your bounding box by making three clicks on the white canvas:  the first two clicks indicate one side of the rotated bounding box, and the third click indicates where the opposite side is.</li>
+<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>identify a <u>rotated</u> bounding box around where the object was the original image.</b>  You will indicate your bounding box by making three clicks on the white canvas:  the first two clicks indicate one side of the rotated bounding box, and the third click determines the opposite side.</li>
 <p>
-<li>The first few examples will show the correct answer indicated with blue points, so you can get a feel for the task.</li>
+<li>The first few examples will consist of a learning period.  During this period, the correct answer will be indicated on both the original image and the white answer canvas, and the images will be shown for a longer period of time. You should use this period to get a feel for the task and learn how to use the interface.</li>
 <p>
-<li>Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u></li>
-<p>
-<li>If you think you've made a mistake while placing the first two clicks, you can press the "delete points" button below the canvas.  Doing so will remove your clicks and allow you to restart with a white canvas.  After the third click, however, the trial will automatically move on and you will not have a chance to correct your answer.</li>
+<li>After the learning period, the blue markers will no longer be shown and <b>the images will be shown <u>very</u> quickly.  Be ready!</b>   Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess</b></u>.  If you think you've made a mistake while placing the first two clicks, you can press the "delete points" button below the canvas.  Doing so will remove your clicks and allow you to restart with a white canvas.  After the third click, however, the trial will automatically move on and you will not have a chance to correct your answer.</li>
 <p>
 <li>
 Once you click, you will move on to the next image immediately, so be ready.  When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>

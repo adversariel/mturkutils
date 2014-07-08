@@ -50,7 +50,6 @@ img {
 <script type="text/javascript">
 
 ExperimentData = null;
-
 shuffle = function(o) {
 	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
 	return o;
@@ -107,8 +106,9 @@ function beginExp() {
 	});
 
 	$('#getClick').hide();
-	$('.fixation img').attr('src',fixationImage.src);
-	$('.fixation').show();
+	$('#instruct').hide();
+	$('#fixation img').attr('src',fixationImage.src);
+	$('#fixation').show();
 	var thisStim = imgFiles_new[trialNumber];
     window.scrollTo(0, 0);
 	tmpImage = new Image();
@@ -131,15 +131,23 @@ function beginExp() {
 
 function showStim() {
 	console.log('showStim');
-	$('.test').show();
-	$('.fixation').hide();
+	$('#test').show();
+	$('#fixation').hide();
+
+    if (trialNumber < LEARNING_PERIOD){
+        _stimduration = 2000;
+    } else {
+        _stimduration = stimduration;
+    }
+
 	setTimeout(function() {
-						$('.test').hide();
+						$('#test').hide();
 						setTimeout("showResponse()",ISI);
-						},stimduration);
+						}, _stimduration);
 }
 
 
+LEARNING_PERIOD=10;
 function showResponse() {
 	console.log('showResponse');
     obj = {};
@@ -151,10 +159,29 @@ function showResponse() {
     reward = reward_scale(error);
     console.log('reward', reward)
     var format_error = (100 * error).toPrecision(3);
-    $('#trialCounter').html('Progress: ' + trialNumber + ' of ' + totalTrials  +
-                 '<br /> Mean Error: ' + format_error +
-                 '<br/> Expected Bonus: $' + reward
-                 );
+    if (trialNumber < LEARNING_PERIOD){
+        $('#trialCounter').html('<u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u>  learning trial(s) left after this.');
+    } else {
+        $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
+                     '<br/> Mean Error: '+ format_error +
+                     '<br/> Expected Bonus: $'+ reward
+                     );
+    }
+
+    canvas_context.fillStyle = 'white';
+    canvas_context.fillRect(0, 0, 512, 512);
+    canvas_context.fill();
+    canvas_context.stroke();
+
+    if (trialNumber < LEARNING_PERIOD){
+        var real_posx = 2 * imgData[trialNumber]['centroid_y'] ;
+        var real_posy = 2 * imgData[trialNumber]['centroid_x'];
+        console.log(real_posx, real_posy)
+        canvas_context.fillStyle="blue";
+        canvas_context.fillRect(real_posx-5, real_posy-5, 10, 10);
+        canvas_context.stroke();
+    }
+
 	$('#getClick').show();
     $('#trialCounter').show();
 	$('#instruct').html('Click where the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> was!');
@@ -174,6 +201,9 @@ function clicked(pos_x, pos_y, eX, eY) {
 	console.log('clicked');
 	if (begin) {
  		trialEndTime = new Date();
+
+
+
 
         $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:red; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
 
@@ -218,8 +248,8 @@ trialDurations.push(trialEndTime - trialStartTime);
 }
 
 function endTrial() {
-	$('.fixation img').attr('src',fixationImage.src);
- 	$('.fixation').show();
+	$('#fixation img').attr('src',fixationImage.src);
+ 	$('#fixation').show();
  	$('.marker').remove();
   if (trialNumber >= (totalTrials-1))
   {
@@ -261,8 +291,8 @@ function endTrial() {
 
 function takeABreak() {
 	$('#main_test').attr('src',breakscreen.src);
-	$('.fixation').hide();
-	$('.test').show()
+	$('#fixation').hide();
+	$('#test').show()
 	$('#_preload').html("<font color=red style=background-color:white>You have completed "+Math.round((trialNumber/totalTrials)*100)+"% of the experiment. Be sure to pay attention so that you know you can finish on time!");
 	$('#_preload').show();
 	document.onkeypress = function(e){
@@ -271,9 +301,9 @@ function takeABreak() {
 			var actualKey = String.fromCharCode(unicode);
 				if (actualKey=='z'){
 					trialNumber++;
-					$('.test').hide()
+					$('#test').hide()
 					$('#_preload').hide();
-					$('.fixation').show();
+					$('#fixation').show();
 					var thisStim = imgFiles_new[trialNumber];
 					$('#main_test').attr('src',thisStim)
 					setTimeout(function() {showStim()},ISI)};
@@ -335,6 +365,10 @@ function preload_resources() {
 $(document).ready(function() {
 
 	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
+	$('#instruct').hide();
+
+    canvas = document.getElementById('getClick');
+    canvas_context = canvas.getContext('2d');
 
 	init_vars();
 	preload_resources();
@@ -344,7 +378,7 @@ $(document).ready(function() {
 															  });
 							   });
 
-	$('.test').hide();
+	$('#test').hide();
 	$('#warning').hide();
 
 	$("#tutorial").html($("#tutorial_original").html());
@@ -374,11 +408,11 @@ $(document).ready(function() {
 <div align="center" id="warning"></div>
 <div align="center"><button id="begintask" value="Begin!">Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
-<div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src="" /></div>
-<div class="test" align="center" style="position:relative; z-index:200; top:75px; left:0px;"><img id="main_test" src="" /></div>
 <div align="center" id="markers">
-	<img id="getClick" src="https://s3.amazonaws.com/objectome32/whitebg.png" style="position:relative; top:75px; left:0px;" border=2 height=512 width=512/>
-	<div id="instruct" style="position:relative; top:-490px; font-size:150%;">Click where the object was!</div>
+    <div id="fixation" align="center" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"><img id="fixation_dot" src="" /></div>
+    <div id="test" align="center" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"><img id="main_test" src="" /></div>
+    <canvas id="getClick" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"></canvas>
+	<div id="instruct" style="position:relative; top:25px; font-size:150%;">Click where the object was!</div>
 	<div id="trialCounter" style="position:relative; top:65px; font-size:small;"></div>
 </div>
 
@@ -398,9 +432,9 @@ $(document).ready(function() {
 <p>
 <li>After you see an image, you will be presented with a blank white canvas.  You must then <b>click on the white canvas in the position where the object was located in the  original image.</b>  For example, if you think you see an elephant located somewhere in the screen, place your click in the center of the elephant.</li>
 <p>
-<li>The white canvas is of a slightly different size than the original, so you should click in the <b>proportionately</b> correct spot.  That is, if the elephant is half way up and half way to the right side in the original image, then you should click on the white canvas half way up and half way to the right.  Once you click, you will move on to the next image immediately, so be ready.
+<li>The first several trials consist of a learning period.  During this period, the correct answer will be indicated on the white answer canvas with a blue marker, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the interface.</li>
 <p>
-<li>Even if you're not 100% sure of location of the object, <u><b>make your best guess.</b></u></li>
+<li>After the learning period, the blue markers will no longer be shown, and <b>the images will be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of the correct pose, <u><b>make your best guess.</b></u>  Once you click, you will move on to the next image immediately.</li>
 <p>
 <li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
 </ul>
@@ -428,4 +462,3 @@ $(document).ready(function() {
 
 </body>
 </html>
-

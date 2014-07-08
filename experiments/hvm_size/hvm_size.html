@@ -332,9 +332,16 @@ function showResponse() {
     reward = reward_scale(error);
     console.log('reward', reward)
     var format_error = (1 * error).toPrecision(3);
-    $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
-                 '<br/> Expected Bonus: $'+ reward.toPrecision(2)
-                 );
+    if (trialNumber < LEARNING_PERIOD){
+        $('#trialCounter').html('<u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left after this.');
+    } else {
+        $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
+                     '<br/> Mean Error: '+ format_error +
+                     '<br/> Expected Bonus: $'+ reward
+                     );
+    }
+
+
 	$('#instruct').html('Slide the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> to the correct size!');
 
     objname = hvm_equivalents[imgData[trialNumber]['obj']];
@@ -604,9 +611,9 @@ $(document).ready(function() {
 <p>
 <li> When you're happy with your sizing of the object, click the "Submit Response" button at the very top of the screen.  ven if you're not 100% sure of the correct answer, <b>make your best guess.</b>  Once you click submit, you will move on to the next image immediately, so <b>be ready!</b></li>
 <p>
-<li>The first 10 trials will be a learning period, that will allow you to get a feel for the task.  During this period, the correct size will be automatically indicated.  During this period, the images will be shown for several seconds each, long enough for you to see them clearly.  During these learning trials, all you have to do is press the submit button to move on to the next trial, but you should try out the slider to see how it works.  Results during the learning period will not affect your bonus.</li>
+<li>The first few examples will consist of a learning period.  During this period, the correct size will be automatically selected, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the slider interface.</li>
 <p>
-<li>After the learning period, the size will be set to 50, and you will have to set the position of the slider yourself.  Also, <b>the images will be begin to be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  Once you click, you will move on to the next image immediately.</li>
+<li>After the learning period, you will have to set the position of the slider yourself.  Also, <b>the images will be begin to be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  Once you click, you will move on to the next image immediately.</li>
 <p>
 <li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
 </ul>

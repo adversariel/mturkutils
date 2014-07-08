@@ -85,16 +85,36 @@ function animate() {
     render_scene();
 }
 
+LEARNING_PERIOD = 20;
 function createScene( geometry, materials) {
     mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
     scene.add( mesh );
 
-    randrot = new THREE.Euler((2 * Math.random() - 1) * Math.PI,
+    if (trialNumber < LEARNING_PERIOD){
+        randrot = new THREE.Euler(-rzrot, ryrot, rxrot, 'XYZ');
+    } else {
+        randrot = new THREE.Euler((2 * Math.random() - 1) * Math.PI,
                              (2 * Math.random() - 1) * Math.PI,
                              (2 * Math.random() - 1) * Math.PI, 'XYZ' );
-    mesh.rotateX(randrot.x);
-    mesh.rotateY(randrot.y);
-    mesh.rotateZ(randrot.z);
+        mesh.rotateX(randrot.x);
+        mesh.rotateY(randrot.y);
+        mesh.rotateZ(randrot.z);
+    }
+
+    if (trialNumber < LEARNING_PERIOD){
+
+
+    var rxrot = imgData[trialNumber]['ryz'] / 180 * Math.PI;
+    var ryrot = imgData[trialNumber]['rxz'] / 180 * Math.PI;
+    var rzrot = imgData[trialNumber]['rxy'] / 180 * Math.PI;
+
+        mesh.rotateZ(-rxrot);
+        mesh.rotateY(-ryrot);
+        mesh.rotateX(rzrot);
+
+
+    }
+
     arot = new THREE.Quaternion();
     arot.setFromEuler(randrot);
     arotinv = new THREE.Quaternion();
@@ -105,12 +125,15 @@ function createScene( geometry, materials) {
     mesh.rotateY(-posdict[objname]['y']);
     mesh.rotateX(-posdict[objname]['x']);
 
+
     mesh.scale.set(mesh.scale.x / mesh.geometry.boundingSphere.radius,
                    mesh.scale.y / mesh.geometry.boundingSphere.radius,
                    mesh.scale.z / mesh.geometry.boundingSphere.radius);
     mesh.translateX(-1 * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
     mesh.translateY(-1 * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
     mesh.translateZ(-1 * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+
+
 
     animate();
 	$('#submitResponse').show();
@@ -326,10 +349,17 @@ function showStim() {
 	$('#instruct').hide();
 	$('.test').show();
 	$('.fixation').hide();
+
+    if (trialNumber < LEARNING_PERIOD){
+        _stimduration = 2000;
+    } else {
+        _stimduration = stimduration;
+    }
+
 	setTimeout(function() {
 						$('.test').hide();
 						setTimeout("showResponse()",ISI);
-						},stimduration);
+						}, _stimduration);
 }
 
 
@@ -343,10 +373,16 @@ function showResponse() {
     reward = reward_scale(error);
     console.log('reward', reward)
     var format_error = (1 * error).toPrecision(3);
-    $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
-                 '<br /> Mean Error: '+ format_error +
-                 '<br/> Expected Bonus: $'+ reward
-                 );
+    if (trialNumber < LEARNING_PERIOD){
+        $('#trialCounter').html('<u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left after this.');
+    } else {
+        $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
+                     '<br/> Mean Error: '+ format_error +
+                     '<br/> Expected Bonus: $'+ reward
+                     );
+    }
+
+
 	$('#instruct').html('Rotate the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> to the correct orientation!');
 
     objname = hvm_equivalents[imgData[trialNumber]['obj']];
@@ -610,9 +646,9 @@ $(document).ready(function() {
 <p>
 <li>After you see an image, you will be presented with the object again.  You must then <b>rotate the object into the pose that it had in the first image.</b>  For example, if you thought you saw an elephant pointing up and to the right in the first image, rotate the model elephant until it points up and to the right.</li>
 <p>
-<li> Once you click, you will move on to the next image immediately, so be ready.</li>
+<li>The first several trials will be a learning period.  During this period, the object will be rotated to the correct pose, and the images will be shown for a longer period of time, so you can see them clearly.  You should this period to understand what the task is about, and play around with the interface so you can get used to how to rotate the object around.</li>
 <p>
-<li>Even if you're not 100% sure of pose of the object, <u><b>make your best guess.</b></u></li>
+<li>After the learning period finishes, <b>the images will be shown <u>very</u> quickly, so be ready!</b>  Even if you're not 100% sure of the correct pose, <u><b>make your best guess.</b></u>  Once you click, you will move on to the next image immediately.</li>
 <p>
 <li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
 </ul>
