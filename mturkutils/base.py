@@ -203,7 +203,7 @@ class Experiment(object):
 
 
 
-    def payBonuses(self, performance_threshold, bonus_threshold, auto_approve=True):
+    def payBonuses(self, performance_threshold=None, bonus_threshold=None, auto_approve=True):
         """
         This function approves and grants bonuses on all hits above a certain performance,
         with a bonus (stored in database) under a certain threshold (checked for safety).
@@ -212,23 +212,30 @@ class Experiment(object):
         if auto_approve:
             for doc in coll.find():
                 assignment_id = doc['AssignmentID']
-                assignment_status = self.conn.get_assignment(assignment_id)[0].AssignmentStatus
-                performance = doc['Performance']
-                if performance < performance_threshold:
-                    if assignment_status in ['Submitted']:
-                        self.conn.reject_assignment(assignment_id,
-                                                    feedback='Your performance was significantly '
-                                                             'lower than other subjects')
-                else:
-                    if assignment_status in ['Submitted']:
-                        self.conn.approve_assignment(assignment_id)
+                try: 
+                    assignment_status = self.conn.get_assignment(assignment_id)[0].AssignmentStatus
+                    performance = doc.get('Performance')
+                    if (performance_threshold is not None) and (performance is not None)  and (performance < performance_threshold):
+                        if assignment_status in ['Submitted']:
+                            self.conn.reject_assignment(assignment_id,
+                                                        feedback='Your performance was significantly '
+                                                                 'lower than other subjects')
+                    else:
+                        if assignment_status in ['Submitted']:
+                            self.conn.approve_assignment(assignment_id)
+                except  boto.mturk.connection.MTurkRequestError, e:
+                    print('Error for assignment_id %s' % assignment_id, e)
         for doc in coll.find():
             assignment_id = doc['AssignmentID']
             worker_id = doc['WorkerID']
-            assignment_status = self.conn.get_assignment(assignment_id)[0].AssignmentStatus
-            bonus = doc['Bonus']
-            if assignment_status == 'Approved':
-                if float(bonus) < float(bonus_threshold):
+            try:
+                assignment_status = self.conn.get_assignment(assignment_id)[0].AssignmentStatus
+            except  boto.mturk.connection.MTurkRequestError, e:
+                print('Error for assignment_id %s' % assignment_id, e)
+                continue
+            bonus = doc.get('Bonus')
+            if (bonus is not None) and (assignment_status == 'Approved'):
+                if (bonus_threshold is None) or (float(bonus) < float(bonus_threshold)):
                     if not doc.get('BonusAwarded', False):
                         bonus = np.round(float(bonus)*100)/100
                         if bonus >= 0.01:
@@ -236,7 +243,7 @@ class Experiment(object):
                             print 'award granted'
                             print bonus
                             self.conn.grant_bonus(worker_id, assignment_id, p, "Performance Bonus")
-                            coll.update({'_id': doc['_id']}, {'$set': {'BonusAwarded': True}})
+                            coll.update({'_id': doc['_id']}, {'$set': {'BonusAwarded': True}}, multi=True)
 
     def getBalance(self):
         """Returns the amount of available funds. If you're in Sandbox mode,
@@ -595,7 +602,7 @@ class Experiment(object):
           - overwrite: if True, the existing records will be overwritten.
         """
         if hitids is None:
-            hitids = self.hitids
+            hitids = [h.HITId for h in self.conn.search_hits()]
         return self._updateDBcore(hitids, 'hitids', **kwargs)
 
     def updateDBwithHITslocal(self, datafiles, mode='files', **kwargs):
