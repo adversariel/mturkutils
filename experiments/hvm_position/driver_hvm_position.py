@@ -17,7 +17,7 @@ class HvMPositionExperiment(Experiment):
 
         meta = dataset.meta
         emeta = dataset.extended_meta
-        query_inds = ((meta['var'] == 'V6') & (emeta['centroid_x'] > 0) & (emeta['centroid_y'] > 0)).nonzero()[0]
+        query_inds = ((emeta['centroid_x'] > 0) & (emeta['centroid_y'] > 0)).nonzero()[0]
 
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
@@ -45,24 +45,24 @@ class HvMPositionExperiment(Experiment):
 
 
 exp = HvMPositionExperiment(htmlsrc = 'hvm_position.html',
-                              htmldst = 'hvm_position_var6_n%04d.html',
+                              htmldst = 'hvm_position_n%04d.html',
                               sandbox = True,
                               title = 'Position Judgement',
                               reward = 0.5,
-                              duration=1500,
+                              duration = 1500,
                               description = 'Make position judgements for up to 50 cent bonus',
-                              comment = "Position judgement in HvM dataset (var6)",
+                              comment = "Position judgement in HvM dataset",
                               collection_name = None, #'hvm_position',
                               max_assignments=1,
                               bucket_name='hvm_position',
-                              trials_per_hit=100)
+                              trials_per_hit=120)
 
 if __name__ == '__main__':
 
     exp.createTrials()
     exp.prepHTMLs()
     exp.testHTMLs()
-    #exp.uploadHTMLs()
+    exp.uploadHTMLs()
     #exp.createHIT()
 
 #hitids = ['3YLTXLH3DFGSTOVAX3N7WV2YQWNHP0',

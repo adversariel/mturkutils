@@ -24,22 +24,23 @@ class HvMPoseExperiment(Experiment):
         rng = np.random.RandomState(seed=seed)
         perm = rng.permutation(len(query_inds))
 
-        bsize = 50
+        bsize = 100
         nblocks = int(math.ceil(float(len(perm))/bsize))
         print('%d blocks' % nblocks)
         imgs = []
         imgData = []
         for bn in range(nblocks)[:2]:
             pinds = perm[bsize * bn: bsize * (bn + 1)]
-            pinds2 = np.concatenate([pinds, pinds.copy()])
-            perm0 = rng.permutation(len(pinds2))
-            pinds2 = pinds2[perm0]
-            bmeta = meta[query_inds[pinds2]]
-            burls = [urls[_i] for _i in pinds2]
+            pinds = np.concatenate([pinds, pinds[:20]])
+            assert (bn + 1 == nblocks) or (len(pinds) == 120), len(pinds)
+            rng.shuffle(pinds)
+            bmeta = meta[query_inds[pinds]]
+            burls = [urls[_i] for _i in pinds]
             bmeta = [{df: bm[df] for df in meta.dtype.names} for bm in bmeta]
             imgs.extend(burls)
             imgData.extend(bmeta)
         self._trials = {'imgFiles': imgs, 'imgData': imgData}
+
 
 othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'TrackballControls.js', 'jstat.min.js']
 
@@ -51,7 +52,7 @@ exp = HvMPoseExperiment(htmlsrc = 'hvm_pose.html',
                         reward = 0.5,
                         duration=1500,
                         description = 'Make object 3-d pose judgements for up to 50 cent bonus',
-                        comment = "Pose judgement in HvM dataset (var6)",
+                        comment = "Pose judgement in HvM dataset",
                         collection_name = None,
                         max_assignments=1,
                         bucket_name='hvm_pose',

@@ -17,7 +17,7 @@ class HvMAreaBBoxExperiment(Experiment):
 
         meta = dataset.meta
         extended_meta = dataset.extended_meta
-        query_inds = ((meta['var'] == 'V6') & (extended_meta['axis_bb_top'] > 0)).nonzero()[0]
+        query_inds = (extended_meta['axis_bb_top'] > 0).nonzero()[0]
 
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
@@ -25,44 +25,45 @@ class HvMAreaBBoxExperiment(Experiment):
         rng = np.random.RandomState(seed=seed)
         perm = rng.permutation(len(query_inds))
 
-        bsize = 50
+        bsize = 100
         nblocks = int(math.ceil(float(len(perm))/bsize))
         print('%d blocks' % nblocks)
         additional = ('area_bb_0_x',
-                     'area_bb_0_y',
-                     'area_bb_1_x',
-                     'area_bb_1_y',
-                     'area_bb_2_x',
-                     'area_bb_2_y',
-                     'area_bb_3_x',
-                     'area_bb_3_y')
+                      'area_bb_0_y',
+                      'area_bb_1_x',
+                      'area_bb_1_y',
+                      'area_bb_2_x',
+                      'area_bb_2_y',
+                      'area_bb_3_x',
+                      'area_bb_3_y')
         imgs = []
         imgData = []
         for bn in range(nblocks):
             pinds = perm[bsize * bn: bsize * (bn + 1)]
-            pinds2 = np.concatenate([pinds, pinds.copy()])
-            perm0 = rng.permutation(len(pinds2))
-            pinds2 = pinds2[perm0]
-            bmeta = extended_meta[query_inds[pinds2]]
-            burls = [urls[_i] for _i in pinds2]
+            pinds = np.concatenate([pinds, pinds[:20]])
+            assert (bn + 1 == nblocks) or (len(pinds) == 120), len(pinds)
+            rng.shuffle(pinds)
+            bmeta = extended_meta[query_inds[pinds]]
+            burls = [urls[_i] for _i in pinds]
             bmeta = [{df: bm[df] for df in meta.dtype.names + additional} for bm in bmeta]
             imgs.extend(burls)
             imgData.extend(bmeta)
         self._trials = {'imgFiles': imgs, 'imgData': imgData}
 
 
+
 exp = HvMAreaBBoxExperiment(htmlsrc = 'hvm_area_bbox.html',
-                              htmldst = 'hvm_area_bbox_var6_n%04d.html',
+                              htmldst = 'hvm_area_bbox_n%04d.html',
                               sandbox = True,
                               title = 'Minimum-area Bounding Box Judgement',
                               reward = 0.5,
                               duration=1500,
                               description = 'Make bounding box judgements for up to 50 cent bonus',
-                              comment = "Minimum Area bounding box judgement in HvM dataset (var6)",
+                              comment = "Minimum Area bounding box judgement in HvM dataset",
                               collection_name = None,
                               max_assignments=1,
                               bucket_name='hvm_area_bbox',
-                              trials_per_hit=100,
+                              trials_per_hit=120,
                               othersrc = ['raphael.min.js', 'intersect.js'])
 
 if __name__ == '__main__':
