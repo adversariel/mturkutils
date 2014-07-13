@@ -25,7 +25,7 @@ class HvMPositionExperiment(Experiment):
         rng = np.random.RandomState(seed=seed)
         perm = rng.permutation(len(query_inds))
 
-        bsize = 50
+        bsize = 100
         nblocks = int(math.ceil(float(len(perm))/bsize))
         print('%d blocks' % nblocks)
         imgs = []
@@ -33,11 +33,11 @@ class HvMPositionExperiment(Experiment):
         additional = ('centroid_x', 'centroid_y')
         for bn in range(nblocks):
             pinds = perm[bsize * bn: bsize * (bn + 1)]
-            pinds2 = np.concatenate([pinds, pinds.copy()])
-            perm0 = rng.permutation(len(pinds2))
-            pinds2 = pinds2[perm0]
-            bmeta = emeta[query_inds[pinds2]]
-            burls = [urls[_i] for _i in pinds2]
+            pinds = np.concatenate([pinds, pinds[:20]])
+            assert len(pinds) == 120
+            pinds = rng.shuffle(pinds)
+            bmeta = emeta[query_inds[pinds]]
+            burls = [urls[_i] for _i in pinds]
             bmeta = [{df: bm[df] for df in meta.dtype.names + additional} for bm in bmeta]
             imgs.extend(burls)
             imgData.extend(bmeta)
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     exp.createTrials()
     exp.prepHTMLs()
     exp.testHTMLs()
-    exp.uploadHTMLs()
+    #exp.uploadHTMLs()
     #exp.createHIT()
 
 #hitids = ['3YLTXLH3DFGSTOVAX3N7WV2YQWNHP0',
