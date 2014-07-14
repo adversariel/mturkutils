@@ -317,6 +317,7 @@ var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
 function beginExp() {
 	console.log('beginExp');
 	begin = true;
+	notYetBegun = false;
 	$('#instruct').hide(), $("#begintask").hide(), $("#_preload").hide();
 
 	$('#submitResponse').click(function(e) {
@@ -577,6 +578,7 @@ function init_vars() {
 	exp_type = 'position_with_click';
     imgData = ExperimentData.imgData;
     reward = 0;
+    notYetBegun = true;
     distances = new Array();
 }
 
@@ -592,6 +594,8 @@ $(document).ready(function() {
 
 	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
     $('#instruct').hide();
+    $("#begintask").hide();
+    
     $('#submitResponse').hide();
     $('#endLearningPeriodScreen').hide();
     init_vars();
@@ -614,7 +618,12 @@ $(document).ready(function() {
 	$("#tutorial").dialog({height:'auto',
 							width:650,
 							position:"center",
-							title:"Instructions"
+							title:"Instructions",						
+    						close: function(event, ui){
+						          if (notYetBegun){
+						               $("#begintask").show();
+						          }
+						        }
 							});
 
 	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {

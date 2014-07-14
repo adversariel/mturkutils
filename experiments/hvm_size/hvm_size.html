@@ -269,6 +269,7 @@ var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
 function beginExp() {
 	console.log('beginExp');
 	begin = true;
+	notYetBegun = false;	
 	$('#instruct').hide();
 	$("#begintask").hide();
 	$("#_preload").hide();
@@ -526,6 +527,7 @@ function init_vars() {
     distances = new Array();
     realvals = new Array();
     vals = new Array();
+    notYetBegun = true;
     LEARNING_PERIOD = LEARNINGPERIODNUMBER;
 }
 
@@ -544,6 +546,7 @@ $(document).ready(function() {
     $('#submitResponse').hide();
     $('#responseCanvas').hide();
     $("#slider").hide();
+    $("#begintask").hide();
     $('#endLearningPeriodScreen').hide();
     //$('#sliderReport').hide();
     init_vars();
@@ -606,7 +609,12 @@ $(document).ready(function() {
 	$("#tutorial").dialog({height:'auto',
 							width:600,
 							position:"center",
-							title:"Instructions"
+							title:"Instructions",
+    						close: function(event, ui){
+						          if (notYetBegun){
+						               $("#begintask").show();
+						          }
+						        }
 							});
 
 	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {

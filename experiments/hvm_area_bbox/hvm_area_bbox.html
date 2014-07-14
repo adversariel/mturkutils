@@ -114,6 +114,7 @@ function dpointline(x0, y0, x1, y1, x2, y2) {
 function beginExp() {
 	console.log('beginExp');
 	begin = true;
+	notYetBegun = false;
 	$("#begintask").hide(), $("#_preload").hide();
 
     $('#delete').click(function(e){
@@ -508,6 +509,7 @@ function init_vars() {
 	exp_type = 'position_with_click';
     imgData = ExperimentData.imgData;
     reward = 0;
+    notYetBegun = true;
     distances = new Array();
 }
 
@@ -529,6 +531,7 @@ $(document).ready(function() {
 	$('#tutorial3').hide();
     $('#instruct').hide();
     $('#endLearningPeriodScreen').hide();
+    $("#begintask").hide();
 	init_vars();
 	preload_resources();
 	preload(stimFiles, function() {
@@ -544,7 +547,12 @@ $(document).ready(function() {
 	$("#tutorial").dialog({height:'auto',
 							width:650,
 							position:"center",
-							title:"Instructions"
+							title:"Instructions",
+    						close: function(event, ui){
+						          if (notYetBegun){
+						               $("#begintask").show();
+						          }
+						        }							
 							});
 
 	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
