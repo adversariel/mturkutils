@@ -4,6 +4,11 @@ import numpy as np
 import dldata.stimulus_sets.hvm as hvm
 from mturkutils.base import Experiment
 
+
+LEARNING_PERIOD = 10
+REPEATS = 20
+BSIZE = 100
+
 class HvMPositionExperiment(Experiment):
 
     def createTrials(self):
@@ -25,27 +30,32 @@ class HvMPositionExperiment(Experiment):
         rng = np.random.RandomState(seed=seed)
         perm = rng.permutation(len(query_inds))
 
-        bsize = 100
-        nblocks = int(math.ceil(float(len(perm))/bsize))
+        nblocks = int(math.ceil(float(len(perm))/BSIZE))
         print('%d blocks' % nblocks)
         imgs = []
         imgData = []
-        additional = ('centroid_x', 'centroid_y')
-        for bn in range(nblocks):
-            pinds = perm[bsize * bn: bsize * (bn + 1)]
-            pinds = np.concatenate([pinds, pinds[:20]])
-            assert (bn + 1 == nblocks) or (len(pinds) == 120), len(pinds)
+        for bn in range(nblocks)[:2]:
+            pinds = perm[BSIZE * bn: BSIZE * (bn + 1)]
+            pinds = np.concatenate([pinds, pinds[: REPEATS]])
             rng.shuffle(pinds)
+            if bn == 0:
+                learning = perm[-LEARNING_PERIOD: ]
+            else:
+                learning = perm[BSIZE * bn - LEARNING_PERIOD: BSIZE*bn]
+            pinds = np.concatenate([learning, pinds])
+            assert (bn + 1 == nblocks) or (len(pinds) == BSIZE + REPEATS + LEARNING_PERIOD), len(pinds)
             bmeta = emeta[query_inds[pinds]]
             burls = [urls[_i] for _i in pinds]
-            bmeta = [{df: bm[df] for df in meta.dtype.names + additional} for bm in bmeta]
+            bmeta = [{df: bm[df] for df in meta.dtype.names + ('centroid_x', 'centroid_y')} for bm in bmeta]
             imgs.extend(burls)
             imgData.extend(bmeta)
         self._trials = {'imgFiles': imgs, 'imgData': imgData}
 
-
+additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
+                    'new':  str(LEARNING_PERIOD)}]
 exp = HvMPositionExperiment(htmlsrc = 'hvm_position.html',
                               htmldst = 'hvm_position_n%04d.html',
+                              othersrc = ['raphael.min.js'],
                               sandbox = True,
                               title = 'Position Judgement',
                               reward = 0.5,
@@ -55,7 +65,8 @@ exp = HvMPositionExperiment(htmlsrc = 'hvm_position.html',
                               collection_name = None, #'hvm_position',
                               max_assignments=1,
                               bucket_name='hvm_position',
-                              trials_per_hit=120)
+                              trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD, 
+                              additionalrules=additionalrules)
 
 if __name__ == '__main__':
 

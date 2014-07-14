@@ -145,6 +145,7 @@ class Experiment(object):
             trials_loc='trials.pkl',
             html_data=None,
             otherrules=None,
+            additionalrules=None,
             mongo_port=None,
             mongo_host=None,
             mongo_dbname=None,
@@ -189,6 +190,7 @@ class Experiment(object):
         self.othersrc = othersrc
         self.html_data = html_data
         self.otherrules = otherrules
+        self.additionalrules = additionalrules
 
         self.trials_per_hit = trials_per_hit
 
@@ -349,6 +351,10 @@ class Experiment(object):
                         }
                 sandbox_rules.append(new_sandbox_rule)
                 production_rules.append(new_production_rule)
+                
+        if self.additionalrules is not None:
+            sandbox_rules.extend(self.additionalrules)
+            production_rules.extend(self.additionalrules)
 
         if self.otherrules is not None:
             rulesets = []

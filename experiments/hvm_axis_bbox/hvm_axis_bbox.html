@@ -85,7 +85,7 @@ function reward_scale(error){
      }
     };
 
-var LEARNING_PERIOD=10;
+var LEARNING_PERIOD = LEARNINGPERIODNUMBER;
 var reward;
 var error = null;
 var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
@@ -175,10 +175,10 @@ function showResponse() {
     canvas_context.lineWidth = 0;
     canvas_context.stroke();*/
 
-    canvas_context.fillStyle = 'white';
+    /*canvas_context.fillStyle = 'white';
     canvas_context.fillRect(0, 0, 512, 512);
     canvas_context.fill();
-    canvas_context.stroke();
+    canvas_context.stroke();*/
 
     if (trialNumber < LEARNING_PERIOD){
         var real_left = 2 * imgData[trialNumber]['axis_bb_left'];
@@ -186,9 +186,9 @@ function showResponse() {
         var real_top = 2 * imgData[trialNumber]['axis_bb_top'];
         var real_bottom = 2 * imgData[trialNumber]['axis_bb_bottom'];
         canvas_context.fillStyle="blue";
-        canvas_context.fillRect(real_left-3, real_top-3, 6, 6);
+        canvas_context.fillRect(real_left-5, real_top-5, 10, 10);
         canvas_context.stroke();
-        canvas_context.fillRect(real_right-3, real_bottom-3, 6, 6);
+        canvas_context.fillRect(real_right-5, real_bottom-5, 10, 10);
         canvas_context.stroke();
     }
 
@@ -200,7 +200,7 @@ function showResponse() {
     console.log('reward', reward)
     var format_error = (100 * error).toPrecision(3);
     if (trialNumber < LEARNING_PERIOD){
-        $('#trialCounter').html('<u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left after this.');
+        $('#trialCounter').html('<b><span style="color:red; font-size:large"><u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left</span> after this.</b>');
     } else {
         $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
                      '<br/> Mean Error: '+ format_error +
@@ -278,9 +278,6 @@ function clicked(pos_x, pos_y, eX, eY) {
                 $('#getClick').hide();
                 $('#instruct').hide();
                 $('#trialCounter').hide();
-                $('.fixation img').attr('src',fixationImage.src);
-                $('.fixation').show();
-                $('.marker').remove();
                 endTrial();
             }, 500);
  	   };
@@ -295,8 +292,10 @@ response.push(myval);
 trialDurations.push(trialEndTime - trialStartTime);
 }
 
+
 function endTrial() {
 
+  $('.marker').remove();
   if (trialNumber >= (totalTrials-1))
   {
 	var resultsobj = [];
@@ -331,9 +330,26 @@ function endTrial() {
   else
   {
     trialNumber++;
-    setTimeout(function() {showStim()},ISI);
+    if (trialNumber === LEARNING_PERIOD){
+        endLearningPeriod(); 
+    } else {
+        $('.fixation img').attr('src',fixationImage.src);
+        $('.fixation').show();
+        setTimeout(function() {showStim()}, ISI);
+    }
   }
 }
+
+function endLearningPeriod(){
+    $('#endLearningPeriodScreen').show()
+    var breakperiod=5000;
+    setTimeout(function(){$('#endLearningPeriodScreen').hide();
+                          $('.fixation img').attr('src',fixationImage.src);
+                          $('.fixation').show(); 
+                          setTimeout(showStim, ISI);
+                    }, breakperiod); 
+}
+
 
 function takeABreak() {
 	var imagebreak = new Image();
@@ -423,16 +439,14 @@ $(document).ready(function() {
 
     canvas = document.getElementById('getClick');
     canvas_context = canvas.getContext('2d');
-    /*var imageObj = new Image();
-    imageObj.onload = function(){
-        canvas_context.drawImage(imageObj, 0, 0);
-    };
-    imageObj.src = 'https://s3.amazonaws.com/objectome32/whitebg.png'; */
 
     canvas1 = document.getElementById('test');
     canvas_context1 = canvas1.getContext('2d');
 
-	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
+	$('#tutorial_original').hide();
+    $('#tutorial2').hide();
+    $('#tutorial3').hide();
+	$('#endLearningPeriodScreen').hide();
 	$('#getClick').hide(); $('#instruct').hide();
 
 	init_vars();
@@ -474,7 +488,8 @@ $(document).ready(function() {
 <div align="center"><button id="begintask" value="Begin!">Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
 <div align="center" id="markers">
-    <div class="fixation" align="center" style="position:relative; z-index:201; top:175px; left:0px;"><img id="fixation_dot" src=""></div>
+    <div class="fixation" align="center" style="position:relative; z-index:201; top:115px; left:0px;"><img id="fixation_dot" src=""></div>
+    <div id="endLearningPeriodScreen" align="center" style="position:relative; z-index:200; height=512px; width=512px; top:75px; left:0px;font-size:100px">End of learning period!<br>Trials will commence in 5 seconds.<br>Be ready, as they will be fast!</div>
     <canvas id="test" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"></canvas>
     <canvas id="getClick" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"></canvas>
 	<div id="instruct" style="position:relative; top:35px;">Put a bounding box around the object!</div>
@@ -495,9 +510,9 @@ $(document).ready(function() {
 <ul>
 <li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
 <p>
-<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>identify a <u>bounding box</u> around where the object was the original image.</b>  You will indicate the bounding box by making two clicks on the white canvas, one for the upper left-hand corner of the object, and the other for the lower right-hand corner.  Your clicks will be indicated with black markers on the canvas.</li>
+<li>After you see an image, you will be presented with a blank gray screen.  You must then <b>identify a <u>bounding box</u> around where the object was the original image.</b>  You will indicate the bounding box by making two clicks on the screen, one for the upper left-hand corner of the object, and the other for the lower right-hand corner.  Your clicks will be indicated with black markers on the canvas.</li>
 <p>
-<li>The first several trials consist of a learning period.  During this period, the correct answer will be indicated on both the original image and the white answer canvas, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the interface.</li>
+<li>The first several trials consist of a learning period.  During this period, the correct answer will be indicated on both the original image and the response screen, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the interface.</li>
 <p>
 <li>After the learning period, the blue markers will no longer be shown and <b>the images will be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  Once you make your second click, you will move on to the next image immediately.</li>
 <p>
@@ -508,7 +523,7 @@ $(document).ready(function() {
 <div id="tutorial3" style="position:absolute; z-index:-1;">
 <ul>
 <p>
-<li>Please be sure to maximize your browser window before beginning this experiment. .</li>
+<li>Please be sure to maximize your browser window before beginning this experiment.</li>
 <p>
 <li><b>In total, you will see 100 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
 <p>

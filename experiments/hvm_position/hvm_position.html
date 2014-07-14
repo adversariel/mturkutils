@@ -39,6 +39,7 @@ img {
 
 
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script type="text/javascript" src="raphael.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
@@ -50,6 +51,7 @@ img {
 <script type="text/javascript">
 
 ExperimentData = null;
+
 shuffle = function(o) {
 	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
 	return o;
@@ -64,7 +66,7 @@ Array.prototype.flatten = function flatten(){
    }
    return flat;
 };
-var num_correct = 0
+
 
 function getAspectRatio(im) {
 	//Defining aspect ratio as width/height
@@ -84,6 +86,7 @@ function reward_scale(error){
      }
     };
 
+var imageObj;
 var reward;
 var error = null;
 var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
@@ -107,32 +110,39 @@ function beginExp() {
 
 	$('#getClick').hide();
 	$('#instruct').hide();
-	$('#fixation img').attr('src',fixationImage.src);
+	$('#fixation_dot').attr('src', fixationImage.src);
+	/*$('#fixation_dot').attr('height', 512);
+	$('#fixation_dot').attr('width', 512);*/
 	$('#fixation').show();
 	var thisStim = imgFiles_new[trialNumber];
     window.scrollTo(0, 0);
-	tmpImage = new Image();
-	tmpImage.src = thisStim;
-	$('#main_test').attr('src',thisStim);
-	//Set proper height/width:
-	if (getAspectRatio(tmpImage) > 1) {
-		//width is longer axis
-		$('#main_test').removeClass().addClass('shrinkwidth');
-	}
-	else {
-		//height is longer axis
-		$('#main_test').removeClass().addClass('shrinkheight');
-	}
+    var thisStim = imgFiles_new[trialNumber];	
+    
+    R1 = Raphael("test", 512, 512);
+    R1.image(thisStim, 0, 0, 512, 512);
+    setTimeout(function() {
+        showStim();
+        },ISI);     
+    
 
-	setTimeout(function() {
-						showStim();
-						},ISI);
 }
 
+var b1, remove_them;
 function showStim() {
 	console.log('showStim');
-	$('#test').show();
 	$('#fixation').hide();
+	console.log('hiding fix')
+	$('#test').show();
+	
+    if (trialNumber < LEARNING_PERIOD){
+        var real_posx = 2 * imgData[trialNumber]['centroid_y'] ;
+        var real_posy = 2 * imgData[trialNumber]['centroid_x'];    
+        b1 = R1.rect(real_posx-5, real_posy-5, 10, 10);
+        b1.attr({'fill': 'blue'});
+        remove_them = true;
+    } else{
+        remove_them = false;
+    }
 
     if (trialNumber < LEARNING_PERIOD){
         _stimduration = 2000;
@@ -146,8 +156,7 @@ function showStim() {
 						}, _stimduration);
 }
 
-
-LEARNING_PERIOD=10;
+LEARNING_PERIOD = LEARNINGPERIODNUMBER;
 function showResponse() {
 	console.log('showResponse');
     obj = {};
@@ -160,7 +169,7 @@ function showResponse() {
     console.log('reward', reward)
     var format_error = (100 * error).toPrecision(3);
     if (trialNumber < LEARNING_PERIOD){
-        $('#trialCounter').html('<u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u>  learning trial(s) left after this.');
+        $('#trialCounter').html('<b><span style="color:red; font-size:large"><u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left</span> after this.</b>');
     } else {
         $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
                      '<br/> Mean Error: '+ format_error +
@@ -168,12 +177,9 @@ function showResponse() {
                      );
     }
 
-    canvas_context.fillStyle = 'white';
-    canvas_context.fillRect(0, 0, 512, 512);
-    canvas_context.fill();
-    canvas_context.stroke();
 
     if (trialNumber < LEARNING_PERIOD){
+        b1.remove();
         var real_posx = 2 * imgData[trialNumber]['centroid_y'] ;
         var real_posy = 2 * imgData[trialNumber]['centroid_x'];
         console.log(real_posx, real_posy)
@@ -192,7 +198,7 @@ function showResponse() {
 	if (trialNumber+1 == totalTrials) {}
 	else {
 		var thisStim = imgFiles_new[trialNumber+1];
-		$('#main_test').attr('src',thisStim);
+		R1.image(thisStim, 0, 0, 512, 512);				
 		}
 
 }
@@ -201,9 +207,8 @@ function clicked(pos_x, pos_y, eX, eY) {
 	console.log('clicked');
 	if (begin) {
  		trialEndTime = new Date();
-
-
-
+ 		
+ 		canvas.width = canvas.width;
 
         $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:red; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
 
@@ -222,14 +227,7 @@ function clicked(pos_x, pos_y, eX, eY) {
         //console.log(real_posx, real_posx, pos_x, pos_y, pos_xn, pos_yn, eX, eY, dist);
 
 		//Set proper height/width:
-		if (getAspectRatio(tmpImage) > 1) {
-			//width is longer axis
-			$('#main_test').removeClass().addClass('shrinkwidth');
-		}
-		else {
-			//height is longer axis
-			$('#main_test').removeClass().addClass('shrinkheight');
-		}
+
         setTimeout(function(){
         $('#getClick').hide();
         $('#instruct').hide();
@@ -248,9 +246,8 @@ trialDurations.push(trialEndTime - trialStartTime);
 }
 
 function endTrial() {
-	$('#fixation img').attr('src',fixationImage.src);
- 	$('#fixation').show();
- 	$('.marker').remove();
+
+  $('.marker').remove();
   if (trialNumber >= (totalTrials-1))
   {
 	var resultsobj = [];
@@ -285,8 +282,24 @@ function endTrial() {
   else
   {
     trialNumber++;
-    setTimeout(function() {showStim()},ISI);
+    if (trialNumber === LEARNING_PERIOD){
+        endLearningPeriod(); 
+    } else {
+        $('.fixation img').attr('src',fixationImage.src);
+        $('.fixation').show();
+        setTimeout(function() {showStim()}, ISI);
+    }
   }
+}
+
+function endLearningPeriod(){
+    $('#endLearningPeriodScreen').show()
+    var breakperiod=5000;
+    setTimeout(function(){$('#endLearningPeriodScreen').hide();
+                          $('.fixation img').attr('src',fixationImage.src);
+                          $('.fixation').show(); 
+                          setTimeout(showStim, ISI);
+                    }, breakperiod); 
 }
 
 function takeABreak() {
@@ -305,7 +318,7 @@ function takeABreak() {
 					$('#_preload').hide();
 					$('#fixation').show();
 					var thisStim = imgFiles_new[trialNumber];
-					$('#main_test').attr('src',thisStim)
+					R1.image(thisStim, 0, 0, 512, 512);
 					setTimeout(function() {showStim()},ISI)};
 		};
 
@@ -366,7 +379,7 @@ $(document).ready(function() {
 
 	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
 	$('#instruct').hide();
-
+    $('#endLearningPeriodScreen').hide();
     canvas = document.getElementById('getClick');
     canvas_context = canvas.getContext('2d');
 
@@ -408,14 +421,14 @@ $(document).ready(function() {
 <div align="center" id="warning"></div>
 <div align="center"><button id="begintask" value="Begin!">Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
+<div id="endLearningPeriodScreen" align="center" style="position:relative; z-index:200; height=512px; width=512px; top:75px; left:0px;font-size:100px">End of learning period!<br>Trials will commence in 5 seconds.<br>Be ready, as they will be fast!</div>
 <div align="center" id="markers">
-    <div id="fixation" align="center" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"><img id="fixation_dot" src="" /></div>
-    <div id="test" align="center" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"><img id="main_test" src="" /></div>
+    <div id="fixation" align="center" style="position:relative; z-index:201; top:115px; left:0px;"><img id="fixation_dot" src=""></div>
+    <div id="test" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"></div>
     <canvas id="getClick" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"></canvas>
 	<div id="instruct" style="position:relative; top:25px; font-size:150%;">Click where the object was!</div>
 	<div id="trialCounter" style="position:relative; top:65px; font-size:small;"></div>
 </div>
-
 
 <div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,	width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
 
@@ -430,9 +443,9 @@ $(document).ready(function() {
 <ul>
 <li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
 <p>
-<li>After you see an image, you will be presented with a blank white canvas.  You must then <b>click on the white canvas in the position where the object was located in the  original image.</b>  For example, if you think you see an elephant located somewhere in the screen, place your click in the center of the elephant.</li>
+<li>After you see an image, you will be presented with a blank gray screen.  You must then <b>click on the screen in the position where the object was located in the  original image.</b>  For example, if you think you see an elephant located somewhere in the screen, place your click in the center of the elephant.</li>
 <p>
-<li>The first several trials consist of a learning period.  During this period, the correct answer will be indicated on the white answer canvas with a blue marker, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the interface.</li>
+<li>The first several trials consist of a learning period.  During this period, the correct answer will be indicated on the screen with a blue marker, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the interface.</li>
 <p>
 <li>After the learning period, the blue markers will no longer be shown, and <b>the images will be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of the correct pose, <u><b>make your best guess.</b></u>  Once you click, you will move on to the next image immediately.</li>
 <p>
