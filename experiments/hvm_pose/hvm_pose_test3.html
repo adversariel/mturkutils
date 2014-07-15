@@ -1,0 +1,709 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="https://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Pose Estimation</title>
+
+<style>
+body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana }
+div,pre { margin:0; padding:0 }
+h2 { margin: 20px 0 5px 0; padding: 0 }
+p.intro { margin: 0; padding: 15px; background: #eee; font-size: small; }
+.thumbs { position: absolute; width: 100px; height: 100px;}
+div.thumb { position:absolute; float:left; padding: 1px; width: 64px; height: 64px;}
+div.thumb img { border: 2px solid white; width:64px; height:64px; }
+
+div#tutorial {
+	position:relative;
+	background-color: white;
+	padding: 10px;
+}
+
+img {
+    /*filter: url(http://s3.amazonaws.com/imagenet_psychophysics/filters.svg#grayscale); *//* Firefox 3.5+ */
+    /*filter: gray; *//* IE6-9 */
+    /*-webkit-filter: grayscale(1); *//* Google Chrome & Safari 6+ */
+}
+
+.shrinkwidth {
+	width:512px;
+	height:auto;
+}
+
+.shrinkheight {
+	width:auto;
+	height:512px;
+}
+
+
+#responseCanvas {
+    font-family:Monospace;
+    font-size:13px;
+    text-align:center;
+    font-weight: bold;
+    margin: 0px;
+    overflow: hidden;
+    position: relative;
+    background-color: "#7F7F7F"
+}
+
+</style>
+
+
+<script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/slider-1.0.2.js"></script>
+
+<script src="three.min.js"></script>
+<script src="TrackballControls.js"></script>
+<script src="Detector.js"></script>
+<script src="posdict.js"></script>
+<script src="jstat.min.js"></script>
+
+<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+
+<script type="text/javascript">
+
+ExperimentData = null;
+
+if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+var container, camera, controls, scene, renderer, mesh, jsonLoader, objname, posdict, hvm_equivalents, arot, arotinv, randrot;
+
+function animate() {
+    requestAnimationFrame( animate );
+    controls.update();
+    render_scene();
+}
+
+LEARNING_PERIOD = 100;
+
+function rotateAroundWorldAxis(obj, rotX, rotY, rotZ){
+    var q = new THREE.Quaternion();
+    var axis = new THREE.Vector3(1, 0, 0);
+    axis.normalize();
+    q.setFromAxisAngle( axis, rotX ); // axis must be normalized, angle in radians
+    obj.quaternion.multiplyQuaternions( q, obj.quaternion );
+
+    q = new THREE.Quaternion();
+    axis = new THREE.Vector3(0, 1, 0);
+    axis.normalize();
+    q.setFromAxisAngle( axis, rotY ); // axis must be normalized, angle in radians
+    obj.quaternion.multiplyQuaternions( q, obj.quaternion );
+    
+    q = new THREE.Quaternion();
+    axis = new THREE.Vector3(0, 0, 1);
+    axis.normalize();
+    q.setFromAxisAngle( axis, rotZ ); // axis must be normalized, angle in radians
+    obj.quaternion.multiplyQuaternions( q, obj.quaternion );        
+    
+}
+
+function createScene( geometry, materials) {
+    mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
+    scene.add( mesh );
+
+    mesh.rotateZ(-posdict[objname]['z']);
+    mesh.rotateY(-posdict[objname]['y']);
+    mesh.rotateX(-posdict[objname]['x']); 
+
+    if (trialNumber < LEARNING_PERIOD){
+
+        var rxrot = imgData[trialNumber]['ryz'] / 180 * Math.PI;
+        var ryrot = imgData[trialNumber]['rxz'] / 180 * Math.PI;
+        var rzrot = imgData[trialNumber]['rxy'] / 180 * Math.PI;
+        rotateAroundWorldAxis(mesh, rzrot, -ryrot, -rxrot)
+    }
+
+    randrot = new THREE.Euler(0, 0, 0, 'XYZ');
+    arot = new THREE.Quaternion();
+    arot.setFromEuler(randrot);
+    arotinv = new THREE.Quaternion();
+    arotinv.copy(arot);
+    arotinv.inverse();
+
+    mesh.scale.set(2 * mesh.scale.x / mesh.geometry.boundingSphere.radius,
+                   2 * mesh.scale.y / mesh.geometry.boundingSphere.radius,
+                   2 * mesh.scale.z / mesh.geometry.boundingSphere.radius);
+    mesh.translateX(-2 * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
+    mesh.translateY(-2 * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
+    mesh.translateZ(-2 * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+
+
+
+    animate();
+	$('#submitResponse').show();
+	$('#responseCanvas').show();
+    $('#trialCounter').show();
+	$('#instruct').show();
+
+	trialStartTime = new Date();
+
+	if (trialNumber+1 == totalTrials) {}
+	else {
+		var thisStim = imgFiles_new[trialNumber+1];
+		$('#main_test').attr('src',thisStim);
+		}
+
+    }
+
+function replace_scene(){
+    scene.remove(mesh);
+    controls.reset();
+    jsonLoader.loadAjaxJSON( jsonLoader, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/" + objname + ".js",
+              createScene, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/",
+        function( progress, result ) {});
+    }
+
+function init_scene() {
+
+    camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
+    camera.position.z = 5;
+
+    controls = new THREE.TrackballControls( camera );
+
+    controls.rotateSpeed = 2.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.8;
+
+    controls.noZoom = false;
+    controls.noPan = false;
+
+    controls.staticMoving = true;
+    controls.dynamicDampingFactor = 0.3;
+
+    controls.keys = [ 65, 83, 68 ];
+
+    controls.addEventListener( 'change', render_scene);
+
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2( 0xcccccc, 0.0002 );
+
+    jsonLoader = new THREE.JSONLoader();
+    jsonLoader.crossOrigin = "anonymous";
+
+    // lights
+    light = new THREE.DirectionalLight( 0xaaaaaa);
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa);
+    light.position.set( 1, 1, -1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( 1, -1, 1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( -1, 1, 1 );
+    scene.add( light );
+
+    light.position.set( -1, 1, -1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( -1, -1, -1 );
+    scene.add( light );
+
+    //light = new THREE.DirectionalLight( 0x002288 );
+    //light.position.set( -1, -1, -1 );
+    //scene.add( light );
+
+    light = new THREE.AmbientLight( 0xffffff );
+    scene.add( light );
+
+
+    // renderer
+
+    renderer = new THREE.WebGLRenderer( { antialias: false } );
+    //renderer.setClearColor( scene.fog.color, 1 );
+    renderer.setClearColor("#7F7F7F", 1);
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    var ratio = window.innerWidth / window.innerHeight;
+    var _width = ratio * 512;
+    renderer.setSize(_width , 512);
+
+    container = $('#responseCanvas');
+    container.append( renderer.domElement );
+
+    window.addEventListener( 'resize', onWindowResize, false );
+
+}
+
+function onWindowResize() {
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    var ratio = window.innerWidth / window.innerHeight;
+    var _width = ratio * 512;
+    renderer.setSize(_width , 512);
+    render_scene();
+
+}
+
+
+
+function render_scene() {
+    renderer.render( scene, camera );
+}
+
+
+shuffle = function(o) {
+	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+	return o;
+  };
+
+
+Array.prototype.flatten = function flatten(){
+   var flat = [];
+   for (var i = 0, l = this.length; i < l; i++){
+       var type = Object.prototype.toString.call(this[i]).split(' ').pop().split(']').shift().toLowerCase();
+       if (type) { flat = flat.concat(/^(array|collection|arguments|object)$/.test(type) ? flatten.call(this[i]) : this[i]); }
+   }
+   return flat;
+};
+var num_correct = 0
+
+function getAspectRatio(im) {
+	//Defining aspect ratio as width/height
+	var width = im.naturalWidth;
+	var height = im.naturalHeight;
+	var ar = width/height;
+	//console.log(ar)
+	return ar
+}
+
+/* function reward_scale(error){
+    var maxdist = 180 * 3;
+    var randomerror = 230;  //empirically observed random error
+    console.log('error', error);
+    if (error !== null){
+        var _score = ((maxdist - error) / maxdist);
+        var _randscore = ((maxdist - randomerror) / maxdist);
+        var _scorediff = (_score - _randscore) / (1 - _randscore);
+        _score = Math.max(_scorediff, 0).toPrecision(2);
+        return _score
+     } else{
+        return 0;
+     }
+    }; */
+
+
+function reward_scale(error){
+    var maxdist = 1;
+    var randomerror = .4;  //empirically observed random error
+    console.log('error', error);
+    if (error !== null){
+        var _score = ((maxdist - error) / maxdist);
+        var _randscore = ((maxdist - randomerror) / maxdist);
+        var _scorediff = (_score - _randscore) / (1 - _randscore);
+        _score = Math.max(_scorediff, 0).toPrecision(2);
+        return _score
+     } else{
+        return 0;
+     }
+    };
+
+var reward;
+var error = null;
+var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
+               'Chairs': 'chair', 'Faces': 'face', 'Fruits': 'fruit',
+               'Planes': 'plane', 'Tables': 'table'};
+
+
+//!!==BEGIN DYNAMIC TRIAL CODE==!!//
+
+function beginExp() {
+	console.log('beginExp');
+	begin = true;
+	$('#instruct').hide(), $("#begintask").hide(), $("#_preload").hide();
+
+	$('#submitResponse').click(function(e) {
+		clicked();
+	});
+
+	$('#responseCanvas').hide();
+	$('.fixation img').attr('src',fixationImage.src);
+	$('.fixation').show();
+	var thisStim = imgFiles_new[trialNumber];
+    window.scrollTo(0, 0);
+	tmpImage = new Image();
+	tmpImage.src = thisStim;
+	$('#main_test').attr('src',thisStim);
+	//Set proper height/width:
+	if (getAspectRatio(tmpImage) > 1) {
+		//width is longer axis
+		$('#main_test').removeClass().addClass('shrinkwidth');
+	}
+	else {
+		//height is longer axis
+		$('#main_test').removeClass().addClass('shrinkheight');
+	}
+
+	setTimeout(function() {
+						showStim();
+						},ISI);
+}
+
+function showStim() {
+	console.log('showStim');
+	$('#instruct').hide();
+	$('.test').show();
+	$('.fixation').hide();
+
+    if (trialNumber < LEARNING_PERIOD){
+        _stimduration = 2000;
+    } else {
+        _stimduration = stimduration;
+    }
+
+	setTimeout(function() {
+						$('.test').hide();
+						setTimeout("showResponse()",ISI);
+						}, _stimduration);
+}
+
+
+function showResponse() {
+	console.log('showResponse');
+
+	$('#totalSeen').html('Total Objects Seen: 0');
+	if (trialNumber > 0){
+    	error = (trialNumber / (trialNumber + 1)) * error + (1 / (trialNumber + 1)) * distances[trialNumber-1];
+    };
+    reward = reward_scale(error);
+    console.log('reward', reward)
+    var format_error = (1 * error).toPrecision(3);
+    if (trialNumber < LEARNING_PERIOD){
+        $('#trialCounter').html('<b><span style="color:red; font-size:large"><u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left</span> after this.</b>');
+    } else {
+        $('#trialCounter').html('Progress: ' + trialNumber+' of ' + totalTrials  +
+                     '<br/> Mean Error: '+ format_error +
+                     '<br/> Expected Bonus: $'+ reward
+                     );
+    }
+
+
+	$('#instruct').html('Rotate the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> to the correct orientation!');
+
+    objname = hvm_equivalents[imgData[trialNumber]['obj']];
+    replace_scene();
+
+
+
+}
+
+function clicked() {
+	console.log('clicked');
+	if (begin) {
+ 		trialEndTime = new Date();
+
+        var _q = controls.object.quaternion;
+        _v = new THREE.Euler();
+        _v.setFromQuaternion(_q);
+
+        var newrot = new THREE.Quaternion();
+        newrot.copy(arotinv);
+        newrot.multiply(_q);
+        var _v1 = new THREE.Euler();
+        _v1.setFromQuaternion(newrot);
+        xrotdeg = 180 * _v1.x / Math.PI;
+        yrotdeg = 180 * _v1.y / Math.PI;
+        zrotdeg = 180 * _v1.z / Math.PI;
+
+        var rxrotdeg = imgData[trialNumber]['ryz'];
+        var ryrotdeg = imgData[trialNumber]['rxz'];
+        var rzrotdeg = imgData[trialNumber]['rxy'];
+
+        var _t = new THREE.Euler(-Math.PI * rzrotdeg / 180,
+                                  Math.PI * ryrotdeg / 180,
+                                  Math.PI * rxrotdeg / 180);
+        var _tq = new THREE.Quaternion();
+        _tq.setFromEuler(_t);
+        _tq.inverse();
+        _tq.multiply(newrot);
+        _tq.normalize();
+        //var _tqd = Math.sqrt(Math.pow(_tq.x, 2) + Math.pow(_tq.y, 2) + Math.pow(_tq.z, 2));
+        //var _tqd = (Math.abs(_tq.x) + Math.abs(_tq.y) + Math.abs(_tq.z)) / 3;
+        var _tqd = jStat.geomean([Math.abs(_tq.x) , Math.abs(_tq.y) ,  Math.abs(_tq.z)]);
+
+        console.log('tqd', _tqd, _tq);
+
+        console.log(xrotdeg, yrotdeg, zrotdeg, rxrotdeg, ryrotdeg, rzrotdeg);
+
+        //var dist = Math.min(Math.abs(zrotdeg - rxrotdeg), Math.abs(360 + zrotdeg - rxrotdeg))  + Math.min(Math.abs(yrotdeg - ryrotdeg), Math.abs(360 + yrotdeg - ryrotdeg))  + Math.min(Math.abs(xrotdeg + rzrotdeg), Math.abs(360 + xrotdeg + rxrotdeg))
+
+        var dist = _tqd;
+
+        distances.push(dist);
+
+        pushData({"ryz": zrotdeg, "rxz": yrotdeg, "rxy": -xrotdeg,
+                  "randrotx": randrot.x, "randroty": randrot.y, "randrotz": randrot.z});
+
+        $('#responseCanvas').hide();
+        $('#submitResponse').hide();
+        $('#instruct').hide();
+        $('#trialCounter').hide();
+        $('.marker').remove();
+
+        endTrial();
+
+ 	}
+ else { }
+}
+
+function pushData(myval) {
+	console.log('pushData');
+StimDone.push(imgFiles_new[trialNumber]);
+response.push(myval);
+trialDurations.push(trialEndTime - trialStartTime);
+}
+
+function endTrial() {
+
+  if (trialNumber >= (totalTrials-1))
+  {
+	var resultsobj = [];
+	resultsobj.push({
+					Response:response,
+					ImgOrder:imgFiles_new,
+					StimShown:StimDone,
+					StimDuration:stimduration,
+					RT:trialDurations,
+					Condition:exp_type,
+					Zoom:zoom,
+					IPaddress:user_IP,
+					Browser:BrowserDetect.browser,
+					Version:BrowserDetect.version,
+					OpSys:BrowserDetect.OS,
+					WindowHeight:winH,
+					WindowWidth:winW,
+					ScreenHeight:vertical,
+					ScreenWidth:horizontal,
+                    ImgData:imgData,
+                    "Error":error,
+                    Bonus:reward
+					});
+
+	document.getElementById("assignmentId").value = aID;
+	document.getElementById("data").value = JSON.stringify(resultsobj);
+	//document.getElementById("postdata").submit();
+  }
+    else if (jQuery.inArray(trialNumber,BreakTimes) > -1) {
+	  takeABreak();
+  }
+  else
+  {
+    trialNumber++;
+    if (trialNumber === LEARNING_PERIOD){
+        endLearningPeriod(); 
+    } else {
+        $('.fixation img').attr('src',fixationImage.src);
+        $('.fixation').show();
+        setTimeout(function() {showStim()}, ISI);
+    }
+  }
+}
+
+function endLearningPeriod(){
+    $('#endLearningPeriodScreen').show()
+    var breakperiod=5000;
+    setTimeout(function(){$('#endLearningPeriodScreen').hide();
+                          $('.fixation img').attr('src',fixationImage.src);
+                          $('.fixation').show(); 
+                          setTimeout(showStim, ISI);
+                    }, breakperiod); 
+}
+
+function takeABreak() {
+	$('#main_test').attr('src',breakscreen.src);
+	$('.fixation').hide();
+	$('.test').show()
+	$('#_preload').html("<font color=red style=background-color:white>You have completed "+Math.round((trialNumber/totalTrials)*100)+"% of the experiment. Be sure to pay attention so that you know you can finish on time!");
+	$('#_preload').show();
+	document.onkeypress = function(e){
+			var evtobj = window.event? event : e;
+			var unicode = evtobj.charCode? evtobj.charCode : evtobj.keyCode;
+			var actualKey = String.fromCharCode(unicode);
+				if (actualKey=='z'){
+					trialNumber++;
+					$('.test').hide()
+					$('#_preload').hide();
+					$('.fixation').show();
+					var thisStim = imgFiles_new[trialNumber];
+					$('#main_test').attr('src',thisStim)
+					setTimeout(function() {showStim()},ISI)};
+		};
+
+}
+
+//!!==END DYNAMIC TRIAL CODE==!!//
+
+function gup( name )
+{
+  name = name.replace(/[\[]/,"\[").replace(/[\]]/,"\]");
+  var regexS = "[\?&]"+name+"=([^&#]*)";
+  var regex = new RegExp( regexS );
+  var param = regex.exec( window.location.href );
+  if( param == null )
+    return "";
+  else
+    return param[1];
+}
+
+function init_vars() {
+    clicknum = 1;
+    click1data = null;
+    zoom = DetectZoom.zoom();
+	aID = gup("assignmentId");
+	response = new Array();
+	trialDurations = new Array();
+	trialStartTime = new Date();
+	StimDone = new Array();
+	imgFiles_new = new Array();
+	fixationImage = new Image;
+	fixationImage.src = "https://s3.amazonaws.com/human_training/fixation.png";
+	breakscreen = new Image;
+	breakscreen.src = "https://s3.amazonaws.com/monkeyimgs/2way_impute/break.png";
+	stimduration = 100;
+    imgData = ExperimentData.imgData;
+	ISI = 500;
+	trialNumber = 0;
+	totalTrials = ExperimentData["imgFiles"].length;
+	BreakTimes = [];
+	begin = false;
+	startpoint = 0
+	exp_type = 'position_with_click';
+    imgData = ExperimentData.imgData;
+    reward = 0;
+    notYetBegun = true;
+    distances = new Array();
+}
+
+function preload_resources() {
+    imgFiles_new = ExperimentData.imgFiles;
+
+	stimFiles = imgFiles_new.map(function(a) {
+		return a;
+	});
+}
+
+$(document).ready(function() {
+
+	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
+    $('#instruct').hide();
+     $("#begintask").hide();
+    
+    $('#submitResponse').hide();
+    $('#endLearningPeriodScreen').hide();
+    init_vars();
+	preload_resources();
+	preload(stimFiles, function() {
+							   $("#begintask").click(function(){
+															  beginExp();
+															  });
+							   });
+
+
+    init_scene();
+    hvm_equivalents = model_data["hvm_equivalents"];
+    posdict = model_data["posdict"];
+
+	$('.test').hide();
+	$('#warning').hide();
+
+	$("#tutorial").html($("#tutorial_original").html());
+	$("#tutorial").dialog({height:'auto',
+							width:650,
+							position:"center",
+							title:"Instructions",						
+    						close: function(event, ui){
+						          if (notYetBegun){
+						               $("#begintask").show();
+						          }
+						        }
+							});
+
+	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
+		$('#warning').show();
+		$('#warning').html("<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>")
+	}
+	if (BrowserDetect.browser == 'Explorer') {
+		$('#warning').show();
+		$('#warning').append("<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT. Thank you!</b></font></span>");
+	}
+
+});
+
+</script>
+
+</head>
+
+<body bgcolor="#7F7F7F">
+<div style="height:1000px; width:auto;">
+<div align="center" id="warning"></div>
+<div align="center"><button id="begintask" value="Begin!">Begin!</button></div>
+<div id="_preload" align="center" style="position:fixed; top:0px; left:10px; z-index:100"></div>
+<div class="fixation" align="center" style="position:relative; z-index:201; top:115px; left:0px;"><img id="fixation_dot" src="" /></div>
+<div class="test" align="center" style="position:relative; z-index:200; top:75px; left:0px;"><img id="main_test" src="" /></div>
+<div id="endLearningPeriodScreen" align="center" style="position:relative; z-index:200; height=512px; width=512px; top:75px; left:0px;font-size:100px">End of learning period!<br>Trials will commence in 5 seconds.<br>Be ready, as they will be fast!</div>
+
+<div align="center" id="markers">
+<div id="instruct" style="position:relative; z-index:100; top:30px; font-size:150%;">Rotate the object into the correct pose.</div>
+<div id="responseCanvas"></div>
+<div align="center" style="position:relative; top:10px;"><button id="submitResponse" value="Submit Response">Submit Response</button></div>
+<div id="trialCounter" style="position:relative; top:55px; font-size:small;"></div>
+</div>
+
+<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,	width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
+
+<div id="tutorial" style="position:relative; z-index:-1"></div>
+<div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: Instructions have changed, and low performance will lead to rejection: make sure to read!**</b>
+<p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
+<p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
+<p><font color=red><b>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</b></font></p>
+<p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
+<center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
+<div id="tutorial2" style="position:absolute; z-index:-1;">
+<ul>
+<li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
+<p>
+<li>After you see an image, you will be presented with the object again.  You must then <b>rotate the object into the pose that it had in the first image.</b>  For example, if you thought you saw an elephant pointing up and to the right in the first image, rotate the model elephant until it points up and to the right.</li>
+<p>
+<li>The first several trials will be a learning period.  During this period, the object will be rotated to the correct pose, and the images will be shown for a longer period of time, so you can see them clearly.  You should this period to understand what the task is about, and play around with the interface so you can get used to how to rotate the object around.</li>
+<p>
+<li>After the learning period finishes, <b>the images will be shown <u>very</u> quickly, so be ready!</b>  Even if you're not 100% sure of the correct pose, <u><b>make your best guess.</b></u>  Once you click, you will move on to the next image immediately.</li>
+<p>
+<li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
+</ul>
+<center><p onclick="$('#tutorial').html($('#tutorial3').html())"><font color=blue><u>Click here to continue reading</u></font></p></center>
+</div>
+<div id="tutorial3" style="position:absolute; z-index:-1;">
+<ul>
+<p>
+<li>Please be sure to maximize your browser window before beginning this experiment. .</li>
+<p>
+<li><b>In total, you will see 100 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
+<p>
+<li>When you are ready to begin, click the "Begin" button at the very top of the screen. <b>Be prepared to see the first image -- it happens very fast!</b></li>
+<p>
+<li>If you have questions or concerns about this HIT, feel free to contact the requester. You can re-read these instructions at any time by clicking the link in the upper right-hand corner of the screen. Good luck!</li>
+</ul>
+<center><font color=blue><u><p onclick="$('#tutorial').dialog('close')">Click here to close the instructions</p></u></font></center>
+</div>
+
+</div>
+	<form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
+	<input type="text" name="data" id="data" value="">
+    <input type="text" name="assignmentId" id="assignmentId" value="">
+	</form>
+
+</body>
+</html>
+
