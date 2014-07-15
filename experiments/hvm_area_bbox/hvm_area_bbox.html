@@ -118,6 +118,7 @@ function beginExp() {
 	$("#begintask").hide(), $("#_preload").hide();
 
     $('#delete').click(function(e){
+        clicknum = 1;
         click1data = null;
         click2data = null;
         click3data = null;
@@ -129,7 +130,6 @@ function beginExp() {
             rect1.remove();
         }
         rect1 = null;
-        clicknum = 1;
         if (line !== null){
             line.remove()
         }

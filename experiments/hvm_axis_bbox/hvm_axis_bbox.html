@@ -108,7 +108,16 @@ function beginExp() {
 		clicked(pos_x, pos_y, e.pageX, e.pageY);
 	});
 
+    $('#delete').click(function(e){
+        clicknum = 1;
+        click1data = null;
+        click2data = null;
+        //canvas.width = canvas.width;
+        $('.realclick').remove();
+    });
+
 	$('#getClick').hide();
+	$('#delete').hide();
 	$('.fixation img').attr('src',fixationImage.src);
 	$('.fixation').show();
 
@@ -210,6 +219,7 @@ function showResponse() {
     }
 
 	$('#getClick').show();
+	$('#delete').show();
     $('#trialCounter').show();
 	$('#instruct').html('Put a box around where the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> was!');
 	$('#instruct').show();
@@ -229,7 +239,7 @@ function clicked(pos_x, pos_y, eX, eY) {
 
         if (clicknum == 1){
 
-            $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:black; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
+            $('body').prepend('<div class="marker realclick" style="width:10px; height:10px; background-color:black; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
  		    click1data = { 'X':pos_x, 'Y':pos_y, 'eX': eX, 'eY': eY,
  		                  'pos_xn': pos_xn, 'pos_yn': pos_yn };
  		    clicknum = 2;
@@ -277,6 +287,7 @@ function clicked(pos_x, pos_y, eX, eY) {
                 //canvas_context.clearRect(0, 0, canvas.width, canvas.height);
                 //canvas_context.restore();
                 $('#getClick').hide();
+                $('#delete').hide()
                 $('#instruct').hide();
                 $('#trialCounter').hide();
                 endTrial();
@@ -462,7 +473,7 @@ $(document).ready(function() {
 
 	$('#test').hide();
 	$('#warning').hide();
-
+    $('#delete').hide();
 	$("#tutorial").html($("#tutorial_original").html());
 	$("#tutorial").dialog({height:'auto',
 							width:650,
@@ -500,6 +511,7 @@ $(document).ready(function() {
     <div id="endLearningPeriodScreen" align="center" style="position:relative; z-index:200; height=512px; width=512px; top:75px; left:0px;font-size:100px">End of learning period!<br>Trials will commence in 5 seconds.<br>Be ready, as they will be fast!</div>
     <canvas id="test" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"></canvas>
     <canvas id="getClick" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"></canvas>
+    <div align="center"><button id="delete" style="position:relative; font-size:small;top:25px">Delete First Point</button></div>
 	<div id="instruct" style="position:relative; top:35px;">Put a bounding box around the object!</div>
 	<div id="trialCounter" style="position:relative; top:65px; font-size:small;"></div>
 </div>
@@ -522,7 +534,7 @@ $(document).ready(function() {
 <p>
 <li>The first several trials consist of a learning period.  During this period, the correct answer will be indicated on both the original image and the response screen, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the interface.</li>
 <p>
-<li>After the learning period, the blue markers will no longer be shown and <b>the images will be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  Once you make your second click, you will move on to the next image immediately.</li>
+<li>After the learning period, the blue markers will no longer be shown and <b>the images will be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  If you think you've made a mistake while placing the first click, you can press the "Delete First Point" button below the canvas.  Doing so will remove your click and allow you to restart with a blank screen.  After the second click, however, the trial will automatically move on and you will not have a chance to correct your answer.</li>
 <p>
 <li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
 </ul>

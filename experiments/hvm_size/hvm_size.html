@@ -357,14 +357,14 @@ function showResponse() {
 function get_val(val){
     //return val * 0.02;
     val = (val - 50.0) / 50.0;
-    return Math.pow(2, val)
+    return Math.pow(1.6, val)
     
 }
 
 
 function get_val_inverse(val){
     //return val * 0.02;    
-    val = Math.log(val) / Math.log(2.0);
+    val = Math.log(val) / Math.log(1.6);
     return (50.0 * val) + 50.0
     
 }
@@ -668,7 +668,7 @@ $(document).ready(function() {
 <p>
 <li>It does not matter what position the object took on in the original image, or what pose the object was shown in.  All that matters is whether the original size of object has been matched correctly.  Also, don't take into account the depth of the object in the scene -- make the assumption that all apparent differences in size are really due the object changing actual size.</li>
 <p>
-<li> When you're happy with your sizing of the object, click the "Submit Response" button at the very top of the screen.  ven if you're not 100% sure of the correct answer, <b>make your best guess.</b>  Once you click submit, you will move on to the next image immediately, so <b>be ready!</b></li>
+<li> When you're happy with your sizing of the object, click the "Submit Response" button at the very top of the screen.  Even if you're not 100% sure of the correct answer, <b>make your best guess.</b>  Once you click submit, you will move on to the next image immediately, so <b>be ready!</b></li>
 <p>
 <li>The first few examples will consist of a learning period.  During this period, the correct size will be indicated below the slider, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the slider interface.</li>
 <p>
