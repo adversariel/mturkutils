@@ -22,9 +22,9 @@ class HvMPoseExperiment(Experiment):
         seed = 0
 
         meta = dataset.meta
-        #query_inds = np.arange(len(meta))
-        #query_inds = ((meta['obj'] == 'sopwith') & (meta['var'] == 'V0')).nonzero()[0]
-        query_inds = (meta['var'] == 'V0').nonzero()[0][::10]
+        query_inds = np.arange(len(meta))
+        #query_inds = ((meta['obj'] == 'BAHRAIN') & (meta['var'] == 'V0')).nonzero()[0]
+        #query_inds = (meta['var'] == 'V0').nonzero()[0][::10]
 
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
