@@ -82,26 +82,29 @@ function animate() {
 
 LEARNING_PERIOD = 100;
 
+
 function rotateAroundWorldAxis(obj, rotX, rotY, rotZ){
-    var q = new THREE.Quaternion();
+    var q1 = new THREE.Quaternion();
     var axis = new THREE.Vector3(1, 0, 0);
     axis.normalize();
-    q.setFromAxisAngle( axis, rotX ); // axis must be normalized, angle in radians
-    obj.quaternion.multiplyQuaternions( q, obj.quaternion );
+    q1.setFromAxisAngle( axis, rotX ); // axis must be normalized, angle in radians
 
-    q = new THREE.Quaternion();
+    q2 = new THREE.Quaternion();
     axis = new THREE.Vector3(0, 1, 0);
     axis.normalize();
-    q.setFromAxisAngle( axis, rotY ); // axis must be normalized, angle in radians
-    obj.quaternion.multiplyQuaternions( q, obj.quaternion );
-    
-    q = new THREE.Quaternion();
+    q2.setFromAxisAngle( axis, rotY ); // axis must be normalized, angle in radians
+
+    q3 = new THREE.Quaternion();
     axis = new THREE.Vector3(0, 0, 1);
     axis.normalize();
-    q.setFromAxisAngle( axis, rotZ ); // axis must be normalized, angle in radians
-    obj.quaternion.multiplyQuaternions( q, obj.quaternion );        
-    
+    q3.setFromAxisAngle( axis, rotZ ); // axis must be normalized, angle in radians
+
+    q2.multiplyQuaternions(q2, q1);
+    q3.multiplyQuaternions(q3, q2);
+    obj.quaternion.multiplyQuaternions( q3, obj.quaternion );
+
 }
+
 
 function createScene( geometry, materials) {
     mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
@@ -109,14 +112,25 @@ function createScene( geometry, materials) {
 
     mesh.rotateZ(-posdict[objname]['z']);
     mesh.rotateY(-posdict[objname]['y']);
-    mesh.rotateX(-posdict[objname]['x']); 
+    mesh.rotateX(-posdict[objname]['x']);
 
     if (trialNumber < LEARNING_PERIOD){
 
-        var rxrot = imgData[trialNumber]['ryz'] / 180 * Math.PI;
-        var ryrot = imgData[trialNumber]['rxz'] / 180 * Math.PI;
-        var rzrot = imgData[trialNumber]['rxy'] / 180 * Math.PI;
-        rotateAroundWorldAxis(mesh, rzrot, -ryrot, -rxrot)
+        var rzrot0 = imgData[trialNumber]['ryz0'] / 180 * Math.PI;
+        var ryrot0 = imgData[trialNumber]['rxy0'] / 180 * Math.PI;
+        var rxrot0 = imgData[trialNumber]['rxz0'] / 180 * Math.PI;
+        rotateAroundWorldAxis(mesh, 0, 0, rzrot0)
+        rotateAroundWorldAxis(mesh, -rxrot0, 0, 0)
+        rotateAroundWorldAxis(mesh, 0, ryrot0, 0)
+
+        var rzrot = imgData[trialNumber]['ryz'] / 180 * Math.PI;
+        var ryrot = imgData[trialNumber]['rxy'] / 180 * Math.PI;
+        var rxrot = imgData[trialNumber]['rxz'] / 180 * Math.PI;
+        console.log(rxrot * 180 / Math.PI, ryrot * 180 / Math.PI, rzrot * 180 / Math.PI)
+        rotateAroundWorldAxis(mesh, 0, -ryrot, 0)
+        rotateAroundWorldAxis(mesh, rxrot, 0, 0)
+        rotateAroundWorldAxis(mesh, 0, 0, -rzrot)
+
     }
 
     randrot = new THREE.Euler(0, 0, 0, 'XYZ');
@@ -502,7 +516,7 @@ function endTrial() {
   {
     trialNumber++;
     if (trialNumber === LEARNING_PERIOD){
-        endLearningPeriod(); 
+        endLearningPeriod();
     } else {
         $('.fixation img').attr('src',fixationImage.src);
         $('.fixation').show();
@@ -516,9 +530,9 @@ function endLearningPeriod(){
     var breakperiod=5000;
     setTimeout(function(){$('#endLearningPeriodScreen').hide();
                           $('.fixation img').attr('src',fixationImage.src);
-                          $('.fixation').show(); 
+                          $('.fixation').show();
                           setTimeout(showStim, ISI);
-                    }, breakperiod); 
+                    }, breakperiod);
 }
 
 function takeABreak() {
@@ -599,7 +613,7 @@ $(document).ready(function() {
 	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
     $('#instruct').hide();
      $("#begintask").hide();
-    
+
     $('#submitResponse').hide();
     $('#endLearningPeriodScreen').hide();
     init_vars();
@@ -622,7 +636,7 @@ $(document).ready(function() {
 	$("#tutorial").dialog({height:'auto',
 							width:650,
 							position:"center",
-							title:"Instructions",						
+							title:"Instructions",
     						close: function(event, ui){
 						          if (notYetBegun){
 						               $("#begintask").show();

@@ -9,7 +9,7 @@ othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'TrackballControls.js',
 LEARNING_PERIOD = 20
 REPEATS = 20
 BSIZE = 100
-                   
+
 class HvMPoseExperiment(Experiment):
 
     def createTrials(self):
@@ -22,13 +22,16 @@ class HvMPoseExperiment(Experiment):
         seed = 0
 
         meta = dataset.meta
-      
-        query_inds = ((np.sqrt(meta['rxy']**2) > 0) &  (meta['category'] == 'Animals')).nonzero()[0]
+        query_inds = np.arange(len(meta))
+        #query_inds = ((np.sqrt(meta['rxy']**2) > 30) &  (np.sqrt(meta['rxz']**2) > 30) & (np.sqrt(meta['ryz']**2) > 30)).nonzero()[0]
+        #query_inds = ((meta['var'] == 'V6') &  (meta['category'] == 'Faces')).nonzero()[0]
         #query_inds = ((meta['var'] == 'V6')  & (meta['category'] == 'Faces')).nonzero()[0]
         #query_inds = ((np.sqrt(meta['ryz']**2) > 0) & (np.sqrt((meta['rxy']**2 + meta['rxz']**2)) <  10) &  (meta['category'] == 'Tables')).nonzero()[0]
         #query_inds = ((np.sqrt(meta['ryz']**2) > 0) & (np.sqrt((meta['rxy']**2 + meta['rxz']**2)) <  50) &  (meta['category'] == 'Chairs')).nonzero()[0]
-        #query_inds = (meta['obj'] == 'z3').nonzero()[0]
-        
+        #query_inds = ((meta['var'] == 'V6') & (meta['obj'] == '_01_Airliner_2jetEngines')).nonzero()[0]
+        #query_inds = ((meta['var'] == 'V6') & (meta['obj'] == 'face0001')).nonzero()[0]
+        #aquery_inds = ((meta['var'] == 'V6') &  (meta['obj'] == 'bear')).nonzero()[0]
+
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
 
