@@ -118,8 +118,8 @@ function getQuaternion(rotX, rotY, rotZ, order){
     return q
     }
 
-function rotateAroundWorldAxis(obj, rotX, rotY, rotZ, order){
-    var q = getQuaternion(rotX, rotY, rotZ, order);
+function rotateAroundWorldAxis(obj, rotX, rotY, rotZ){
+    var q = getQuaternion(rotX, rotY, rotZ);
     obj.quaternion.multiplyQuaternions(q, obj.quaternion);
     return q
     }
@@ -152,7 +152,7 @@ function createScene( geometry, materials) {
         var randx = (2 * Math.random() - 1) * Math.PI;
         var randy = (2 * Math.random() - 1) * Math.PI;
         var randz = (2 * Math.random() - 1) * Math.PI;
-        arot = rotateAroundWorldAxis(randx, randy, randz);
+        arot = rotateAroundWorldAxis(mesh, randx, randy, randz);
     }
 
     arotinv = new THREE.Quaternion();
@@ -437,11 +437,10 @@ function clicked() {
 	console.log('clicked');
 	if (begin) {
  		trialEndTime = new Date();
-
+                
         var newrot = new THREE.Quaternion().copy(arotinv);
         newrot.multiply(controls.object.quaternion);
-
-        var _tq = new THREE.Quaternion().copy(realRotation).inverse();
+        var _tq = new THREE.Quaternion().copy(realRotation);
         _tq.multiply(newrot);
         _tq.normalize();
         var dist = jStat.geomean([Math.abs(_tq.x) , Math.abs(_tq.y) ,  Math.abs(_tq.z)]);
