@@ -84,6 +84,8 @@ LEARNING_PERIOD = 100;
 
 
 function rotateAroundWorldAxis(obj, rotX, rotY, rotZ){
+    //rotates in X then Y then Z order
+
     var q1 = new THREE.Quaternion();
     var axis = new THREE.Vector3(1, 0, 0);
     axis.normalize();
@@ -115,14 +117,6 @@ function createScene( geometry, materials) {
     mesh.rotateX(-posdict[objname]['x']);
 
     if (trialNumber < LEARNING_PERIOD){
-
-        var rzrot0 = imgData[trialNumber]['ryz0'] / 180 * Math.PI;
-        var ryrot0 = imgData[trialNumber]['rxy0'] / 180 * Math.PI;
-        var rxrot0 = imgData[trialNumber]['rxz0'] / 180 * Math.PI;
-        rotateAroundWorldAxis(mesh, 0, 0, rzrot0)
-        rotateAroundWorldAxis(mesh, -rxrot0, 0, 0)
-        rotateAroundWorldAxis(mesh, 0, ryrot0, 0)
-
         var rzrot = imgData[trialNumber]['ryz'] / 180 * Math.PI;
         var ryrot = imgData[trialNumber]['rxy'] / 180 * Math.PI;
         var rxrot = imgData[trialNumber]['rxz'] / 180 * Math.PI;

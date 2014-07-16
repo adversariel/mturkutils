@@ -58,14 +58,11 @@ img {
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/slider-1.0.2.js"></script>
-<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js"></script>
+<script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js"></script>
 
 <script src="three.min.js"></script>
-<script src="MTLLoader.js"></script>
-<script src="OBJMTLLoader.js"></script>
 <script src="TrackballControls.js"></script>
 <script src="Detector.js"></script>
-<script src="stats.min.js"></script>
 
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 
@@ -124,8 +121,8 @@ function createScene( geometry, materials ) {
 
 function replace_scene(objname){
     scene.remove(mesh);
-    jsonLoader.load("hvm_js/" + objname + "/" + objname + ".js",
-              createScene, "hvm_js/" + objname + "/");
+    jsonLoader.load("http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/" + objname + ".js",
+              createScene, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/");
 }
 
 function init_scene(objname) {
@@ -153,8 +150,9 @@ function init_scene(objname) {
     scene.fog = new THREE.FogExp2( 0xcccccc, 0.0002 );
 
     jsonLoader = new THREE.JSONLoader();
-    jsonLoader.load("hvm_js/" + objname + "/" + objname + ".js",
-              createScene, "hvm_js/" + objname + "/");
+    jsonLoader.crossOrigin = "anonymous";
+    jsonLoader.load("http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/"+ objname + "/" + objname + ".js",
+              createScene, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/");
 
 
     // lights
@@ -244,11 +242,11 @@ var K, ind, posdict;
 
 function clicked(){
     console.log('clicked');
-    posdict[hvm_equivalents[K[ind]]] = {'x': controls.object.rotation.x,
+    posdict[K[ind]] = {'x': controls.object.rotation.x,
         'y': controls.object.rotation.y, 'z': controls.object.rotation.z};
     ind += 1;
-    $('#trialdesc').html('Equivalent for ' + K[ind] + ': ' + hvm_equivalents[K[ind]]);
-    replace_scene(hvm_equivalents[K[ind]]);
+    $('#trialdesc').html('Object: ' + K[ind]);
+    replace_scene(K[ind]);
     controls.reset();
     render_scene();
 }
@@ -266,12 +264,12 @@ $(document).ready(function() {
             clicked();
     });
 
-    K = _.keys(hvm_equivalents);
+    K = _.uniq(_.values(hvm_equivalents));
     ind = 0;
     posdict = {};
 
-    $('#trialdesc').html('Equivalent for ' + K[ind] + ': ' + hvm_equivalents[K[ind]]);
-    init_scene(hvm_equivalents[K[ind]]);
+    $('#trialdesc').html('Object: ' + K[ind]);
+    init_scene(K[ind]);
     render_scene();
     animate();
 
