@@ -6,7 +6,7 @@ from mturkutils.base import Experiment
 
 othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'TrackballControls.js', 'jstat.min.js']
 
-LEARNING_PERIOD = 20
+LEARNING_PERIOD = 10
 REPEATS = 20
 BSIZE = 100
 

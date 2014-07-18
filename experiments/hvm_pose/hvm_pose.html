@@ -70,7 +70,6 @@ img {
 
 ExperimentData = null;
 
-
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 var container, camera, controls, scene, renderer, mesh, jsonLoader, objname, posdict, hvm_equivalents, arot, arotinv;
@@ -144,21 +143,14 @@ function createScene( geometry, materials) {
     var realRotation3 = getRotationAroundWorldAxis(0, 0, -rzrot);
     realRotation = realRotation2.multiplyQuaternions(realRotation2, realRotation1);
     realRotation = realRotation.multiplyQuaternions(realRotation3, realRotation);
-
-    if (trialNumber < LEARNING_PERIOD){
-        arot = realRotation;
-        mesh.quaternion.multiplyQuaternions(arot, mesh.quaternion);
-    } else {
-        var randx = (2 * Math.random() - 1) * Math.PI;
-        var randy = (2 * Math.random() - 1) * Math.PI;
-        var randz = (2 * Math.random() - 1) * Math.PI;
-        arot = rotateAroundWorldAxis(mesh, randx, randy, randz);
-    }
-
-    arotinv = new THREE.Quaternion();
-    arotinv.copy(arot);
-    arotinv.inverse();
-
+    mesh.quaternion.multiplyQuaternions(realRotation, mesh.quaternion);
+    
+    randx = (2 * Math.random() - 1) * Math.PI;
+    randy = (2 * Math.random() - 1) * Math.PI;
+    randz = (2 * Math.random() - 1) * Math.PI;
+    var M = new THREE.Matrix4().makeRotationFromQuaternion(getQuaternion(randx, randy, randz));
+    camera.position.applyMatrix4(M)
+    
     mesh.scale.set(2 * mesh.scale.x / mesh.geometry.boundingSphere.radius,
                    2 * mesh.scale.y / mesh.geometry.boundingSphere.radius,
                    2 * mesh.scale.z / mesh.geometry.boundingSphere.radius);
@@ -166,13 +158,13 @@ function createScene( geometry, materials) {
     mesh.translateY(-2 * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
     mesh.translateZ(-2 * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
 
-
-
     animate();
 	$('#submitResponse').show();
 	$('#responseCanvas').show();
     $('#trialCounter').show();
 	$('#instruct').show();
+
+    showError();
 
 	trialStartTime = new Date();
 
@@ -195,10 +187,15 @@ function replace_scene(){
 function init_scene() {
 
     camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
-    camera.position.z = 5;
+    camera.position.z = 4.5;
+    camera_pos0 = camera.position.clone();
+    camera_rot0 = new THREE.Quaternion().setFromEuler(camera.rotation);
 
     controls = new THREE.TrackballControls( camera );
-
+    
+    camera1 = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
+    camera1.position.z = 4.5;
+    
     controls.rotateSpeed = 2.0;
     controls.zoomSpeed = 1.2;
     controls.panSpeed = 0.8;
@@ -215,10 +212,7 @@ function init_scene() {
 
     scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2( 0xcccccc, 0.0002 );
-
-    jsonLoader = new THREE.JSONLoader();
-    jsonLoader.crossOrigin = "anonymous";
-
+    
     // lights
     light = new THREE.DirectionalLight( 0xaaaaaa);
     light.position.set( 1, 1, 1 );
@@ -248,8 +242,15 @@ function init_scene() {
     //scene.add( light );
 
     light = new THREE.AmbientLight( 0xffffff );
-    scene.add( light );
+    scene.add( light );    
+    
+    /*scene1 = new THREE.SCene()
+    scene1.fog = new THREE.FogExp2( 0xcccccc, 0.0002 );
+    light1 = new THREE.AmbientLight( 0xffffff );
+    scene1.add( light1);      */  
 
+    jsonLoader = new THREE.JSONLoader();
+    jsonLoader.crossOrigin = "anonymous";
 
     // renderer
 
@@ -283,8 +284,34 @@ function onWindowResize() {
 
 
 function render_scene() {
-    renderer.render( scene, camera );
+    var ratio = window.innerWidth / window.innerHeight;
+    var _width = ratio * 512;
+    if (trialNumber < LEARNING_PERIOD){
+        renderer.setViewport(0, 100,  camera.aspect * 300, 300);
+        renderer.setScissor(0, 100, camera.aspect * 300, 300);
+        renderer.enableScissorTest(false);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.render( scene, camera );
+    
+        renderer.setViewport(400,100, camera.aspect * 300, 300);
+        renderer.setScissor(400, 100, camera.aspect * 300, 300);
+        renderer.enableScissorTest(true);
+        camera1.aspect = window.innerWidth / window.innerHeight;
+        camera1.updateProjectionMatrix();   
+        renderer.render(scene, camera1) 
+    } else {
+        renderer.setViewport(0, 0,  _width, 512);
+        renderer.setScissor(0, 0,  _width, 512);
+        renderer.enableScissorTest(false);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        //camera.position.z = 5
+        camera.updateProjectionMatrix();
+        renderer.render( scene, camera );    
+    }
+
 }
+
 
 
 shuffle = function(o) {
@@ -312,22 +339,6 @@ function getAspectRatio(im) {
 	return ar
 }
 
-/* function reward_scale(error){
-    var maxdist = 180 * 3;
-    var randomerror = 230;  //empirically observed random error
-    console.log('error', error);
-    if (error !== null){
-        var _score = ((maxdist - error) / maxdist);
-        var _randscore = ((maxdist - randomerror) / maxdist);
-        var _scorediff = (_score - _randscore) / (1 - _randscore);
-        _score = Math.max(_scorediff, 0).toPrecision(2);
-        return _score
-     } else{
-        return 0;
-     }
-    }; */
-
-
 function reward_scale(error){
     var maxdist = 1;
     var randomerror = .4;  //empirically observed random error
@@ -352,6 +363,29 @@ var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
 
+var mdown = false;
+
+
+function getDistance(){                  
+    var pos = controls.object.position;
+    var angle = pos.angleTo(camera_pos0);
+    var dist0 = angle / Math.PI;
+    var rot = new THREE.Quaternion().setFromEuler(controls.object.rotation);
+    var rval = new THREE.Quaternion().multiplyQuaternions(rot, camera_rot0);    
+    var dist1 = jStat.mean([Math.abs(rval.x) , Math.abs(rval.y) ,  Math.abs(rval.z)])
+    return (dist0 + dist1) / 2
+    
+    }
+
+function showError(){
+    var e = getDistance();
+    if (e < .03){
+        $('#Error').html("Error: " + e.toFixed(3) + '.  <span style="color:blue">Great job! Go on to the next trial.</span>');
+    } else {
+        $('#Error').html("Error: " + e.toFixed(3) + '.  <span style="color:red">Keep trying!</span>');
+    }
+}
+
 function beginExp() {
 	console.log('beginExp');
 	begin = true;
@@ -361,6 +395,25 @@ function beginExp() {
 	$('#submitResponse').click(function(e) {
 		clicked();
 	});
+
+    $('#responseCanvas').mousemove(function(ev){
+            if (mdown){
+                showError();
+                }
+            }
+    );
+
+    
+    $('#responseCanvas').mousedown(function(ev){
+            mdown = true;
+            }
+    );
+    
+    $('#responseCanvas').mouseup(function(ev){
+            mdown = false;
+            }
+    );
+
 
 	$('#responseCanvas').hide();
 	$('.fixation img').attr('src',fixationImage.src);
@@ -423,8 +476,12 @@ function showResponse() {
                      );
     }
 
-
-	$('#instruct').html('Rotate the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> to the correct orientation!');
+    if (trialNumber < LEARNING_PERIOD) {
+        $("#Error").show();
+        $('#instruct').html('Rotate the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> on the left into the same as the one on the right!');
+    } else {
+    	$('#instruct').html('Rotate the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> to the correct orientation!');
+    }
 
     objname = hvm_equivalents[imgData[trialNumber]['obj']];
     replace_scene();
@@ -437,29 +494,20 @@ function clicked() {
 	console.log('clicked');
 	if (begin) {
  		trialEndTime = new Date();
-                
-        var newrot = new THREE.Quaternion().copy(arotinv);
-        newrot.multiply(controls.object.quaternion);
-        var _tq = new THREE.Quaternion().copy(realRotation);
-        _tq.multiply(newrot);
-        _tq.normalize();
-        var dist = jStat.geomean([Math.abs(_tq.x) , Math.abs(_tq.y) ,  Math.abs(_tq.z)]);
-        distances.push(dist);
-
-        var _v = new THREE.Euler().setFromQuaternion(newrot);
-        xrotdeg = 180 * _v.x / Math.PI;
-        yrotdeg = 180 * _v.y / Math.PI;
-        zrotdeg = 180 * _v.z / Math.PI;
-
-        var randrot = new THREE.Euler().setFromQuaternion(arot, order='XYZ')
-        pushData({"rx": xrotdeg, "ry": yrotdeg, "rz": zrotdeg,
-                  "randrotx": randrot.x, "randroty": randrot.y, "randrotz": randrot.z});
+        var e = getDistance()
+        distances.push(e);
+    
+        pushData({"rand_rot_x": randx, "rand_rot_y": randy, "rand_rot_z": randz,
+                  "camera_pos0": camera_pos0, "camera_rot0": camera_rot0,
+                  "camera_pos": camera.position, "camera_rot": camera.rotation
+                  });
 
         $('#responseCanvas').hide();
         $('#submitResponse').hide();
         $('#instruct').hide();
         $('#trialCounter').hide();
         $('.marker').remove();
+        $('#Error').hide();
 
         endTrial();
 
@@ -521,9 +569,11 @@ function endTrial() {
 }
 
 function endLearningPeriod(){
+    $('#Error').hide();
     $('#endLearningPeriodScreen').show()
     var breakperiod=5000;
     setTimeout(function(){$('#endLearningPeriodScreen').hide();
+                          
                           $('.fixation img').attr('src',fixationImage.src);
                           $('.fixation').show();
                           setTimeout(showStim, ISI);
@@ -666,8 +716,9 @@ $(document).ready(function() {
 <div align="center" id="markers">
 <div id="instruct" style="position:relative; z-index:100; top:30px; font-size:150%;">Rotate the object into the correct pose.</div>
 <div id="responseCanvas"></div>
-<div align="center" style="position:relative; top:10px;"><button id="submitResponse" value="Submit Response">Submit Response</button></div>
-<div id="trialCounter" style="position:relative; top:55px; font-size:small;"></div>
+<div id="Error" style="position:relative; top:-45px; font-size:large;"></div>
+<div align="center" style="position:relative; top:0px;"><button id="submitResponse" value="Submit Response">Submit Response</button></div>
+<div id="trialCounter" style="position:relative; top:15px; font-size:small;"></div>
 </div>
 
 <div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,	width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
