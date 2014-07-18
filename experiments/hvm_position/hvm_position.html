@@ -79,14 +79,17 @@ function getAspectRatio(im) {
 
 function reward_scale(error){
      if (error !== null){
-         var maxdist = Math.sqrt(2);
-         return Math.max(((maxdist - error) / maxdist).toPrecision(3), 0)
+         var random_error = 0.5;
+         var bonus = Math.max((random_error - error) / random_error, 0);
      } else{
-         return 0.0
+         bonus = 0.0
      }
+     return bonus.toFixed(2)
     };
 
+
 var imageObj;
+var _stimduration;
 var reward;
 var error = null;
 var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
@@ -117,14 +120,14 @@ function beginExp() {
 	$('#fixation').show();
 	var thisStim = imgFiles_new[trialNumber];
     window.scrollTo(0, 0);
-    var thisStim = imgFiles_new[trialNumber];	
-    
+    var thisStim = imgFiles_new[trialNumber];
+
     R1 = Raphael("test", 512, 512);
     R1.image(thisStim, 0, 0, 512, 512);
     setTimeout(function() {
         showStim();
-        },ISI);     
-    
+        },ISI);
+
 
 }
 
@@ -134,10 +137,10 @@ function showStim() {
 	$('#fixation').hide();
 	console.log('hiding fix')
 	$('#test').show();
-	
+
     if (trialNumber < LEARNING_PERIOD){
         var real_posx = 2 * imgData[trialNumber]['centroid_y'] ;
-        var real_posy = 2 * imgData[trialNumber]['centroid_x'];    
+        var real_posy = 2 * imgData[trialNumber]['centroid_x'];
         b1 = R1.rect(real_posx-5, real_posy-5, 10, 10);
         b1.attr({'fill': 'blue'});
         remove_them = true;
@@ -199,7 +202,7 @@ function showResponse() {
 	if (trialNumber+1 == totalTrials) {}
 	else {
 		var thisStim = imgFiles_new[trialNumber+1];
-		R1.image(thisStim, 0, 0, 512, 512);				
+		R1.image(thisStim, 0, 0, 512, 512);
 		}
 
 }
@@ -208,7 +211,7 @@ function clicked(pos_x, pos_y, eX, eY) {
 	console.log('clicked');
 	if (begin) {
  		trialEndTime = new Date();
- 		
+
  		canvas.width = canvas.width;
 
         $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:red; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
@@ -217,7 +220,7 @@ function clicked(pos_x, pos_y, eX, eY) {
         var pos_yn = -1.2 * (pos_y - 256) / 256.;
 
  		pushData({ 'X':pos_x, 'Y':pos_y, 'eX': eX, 'eY': eY,
- 		           'pos_xn': pos_xn, 'pos_yn': pos_yn })
+ 		           'pos_xn': pos_xn, 'pos_yn': pos_yn, '_stimduration': _stimduration})
 
         var real_posx = -imgData[trialNumber]['ty'];
         var real_posy = imgData[trialNumber]['tz'];
@@ -270,12 +273,13 @@ function endTrial() {
 					ScreenWidth:horizontal,
                     ImgData:imgData,
                     "Error":error,
-                    Bonus:reward
+                    Bonus:reward,
+                    LearningPeriod: LEARNING_PERIOD
 					});
 
 	document.getElementById("assignmentId").value = aID;
 	document.getElementById("data").value = JSON.stringify(resultsobj);
-	//document.getElementById("postdata").submit();
+	document.getElementById("postdata").submit();
   }
     else if (jQuery.inArray(trialNumber,BreakTimes) > -1) {
 	  takeABreak();
@@ -284,7 +288,7 @@ function endTrial() {
   {
     trialNumber++;
     if (trialNumber === LEARNING_PERIOD){
-        endLearningPeriod(); 
+        endLearningPeriod();
     } else {
         $('.fixation img').attr('src',fixationImage.src);
         $('.fixation').show();
@@ -298,9 +302,9 @@ function endLearningPeriod(){
     var breakperiod=5000;
     setTimeout(function(){$('#endLearningPeriodScreen').hide();
                           $('.fixation img').attr('src',fixationImage.src);
-                          $('.fixation').show(); 
+                          $('.fixation').show();
                           setTimeout(showStim, ISI);
-                    }, breakperiod); 
+                    }, breakperiod);
 }
 
 function takeABreak() {

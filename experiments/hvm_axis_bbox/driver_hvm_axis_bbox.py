@@ -25,7 +25,7 @@ class HvMAxisBBoxExperiment(Experiment):
         query_inds = (extended_meta['axis_bb_top'] > 0).nonzero()[0]
 
         additional = ('axis_bb_left', 'axis_bb_top', 'axis_bb_right', 'axis_bb_bottom')
-        
+
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
 
@@ -58,6 +58,7 @@ additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
                     'new':  str(LEARNING_PERIOD)}]
 exp = HvMAxisBBoxExperiment(htmlsrc='hvm_axis_bbox.html',
                               htmldst='hvm_axis_bbox_n%04d.html',
+                              othersrc =  ['intersect.js'],
                               sandbox=True,
                               title='Axis-aligned Bounding Box Judgement',
                               reward=0.5,
@@ -75,7 +76,7 @@ if __name__ == '__main__':
     exp.createTrials()
     exp.prepHTMLs()
     exp.testHTMLs()
-    #exp.uploadHTMLs()
+    exp.uploadHTMLs()
     #exp.createHIT()
 
     #hitids = cPickle.load(open('3ARIN4O78FSZNXPJJAE45TI21DLIF1_2014-06-13_16:25:48.143902.pkl'))

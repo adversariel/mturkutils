@@ -34,7 +34,7 @@ class HvMPositionExperiment(Experiment):
         print('%d blocks' % nblocks)
         imgs = []
         imgData = []
-        for bn in range(nblocks)[:2]:
+        for bn in range(nblocks):
             pinds = perm[BSIZE * bn: BSIZE * (bn + 1)]
             pinds = np.concatenate([pinds, pinds[: REPEATS]])
             rng.shuffle(pinds)
@@ -56,16 +56,16 @@ additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
 exp = HvMPositionExperiment(htmlsrc = 'hvm_position.html',
                               htmldst = 'hvm_position_n%04d.html',
                               othersrc = ['raphael.min.js'],
-                              sandbox = True,
+                              sandbox = False,
                               title = 'Position Judgement',
                               reward = 0.5,
                               duration = 1500,
                               description = 'Make position judgements for up to 50 cent bonus',
                               comment = "Position judgement in HvM dataset",
-                              collection_name = None, #'hvm_position',
+                              collection_name = 'hvm_position',
                               max_assignments=1,
                               bucket_name='hvm_position',
-                              trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD, 
+                              trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD,
                               additionalrules=additionalrules)
 
 if __name__ == '__main__':
@@ -74,7 +74,10 @@ if __name__ == '__main__':
     exp.prepHTMLs()
     exp.testHTMLs()
     exp.uploadHTMLs()
-    #exp.createHIT()
+    exp.createHIT()
+    #exp.updateDBwithHITs()
+    #exp.payBonuses()
+
 
 #hitids = ['3YLTXLH3DFGSTOVAX3N7WV2YQWNHP0',
 #          '34ZTTGSNJXYDT0WPXG2WW0S8VS9HQR',

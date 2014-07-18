@@ -39,6 +39,8 @@ img {
 
 
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"
+></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
@@ -46,6 +48,8 @@ img {
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/slider-1.0.2.js"></script>
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+
+<script type="text/javascript" src="intersect.js"></script>
 
 <script type="text/javascript">
 
@@ -78,12 +82,14 @@ function getAspectRatio(im) {
 
 function reward_scale(error){
      if (error !== null){
-         var maxdist = Math.sqrt(2);
-         return Math.max(((maxdist - error) / maxdist).toPrecision(3), 0)
+         var random_error = 0.9;
+         var bonus = Math.max((random_error - error) / random_error, 0);
      } else{
-         return 0.0
+         bonus = 0.0
      }
+     return bonus.toFixed(2)
     };
+
 
 var LEARNING_PERIOD = LEARNINGPERIODNUMBER;
 var reward;
@@ -127,9 +133,9 @@ function beginExp() {
 						},ISI);
 }
 
+var _stimduration;
 function showStim() {
 	console.log('showStim');
-    var _stimduration;
     if (trialNumber < LEARNING_PERIOD){
         _stimduration = 2000;
     } else {
@@ -241,35 +247,32 @@ function clicked(pos_x, pos_y, eX, eY) {
 
             $('body').prepend('<div class="marker realclick" style="width:10px; height:10px; background-color:black; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
  		    click1data = { 'X':pos_x, 'Y':pos_y, 'eX': eX, 'eY': eY,
- 		                  'pos_xn': pos_xn, 'pos_yn': pos_yn };
+ 		                   'pos_xn': pos_xn, 'pos_yn': pos_yn };
  		    clicknum = 2;
         } else {
             clicknum = 1;
             $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:black; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
             var click2data =  {'X':pos_x, 'Y':pos_y, 'eX': eX, 'eY': eY,
- 		                  'pos_xn': pos_xn, 'pos_yn': pos_yn };
+ 		                       'pos_xn': pos_xn, 'pos_yn': pos_yn };
 
             var left = Math.min(click1data['X'], click2data['X']);
             var right = Math.max(click1data['X'], click2data['X']);
             var top = Math.min(click1data['Y'], click2data['Y']);
             var bottom = Math.max(click1data['Y'], click2data['Y']);
+            var bbox = [[left, top], [right, top], [right, bottom], [left, bottom]];
 
-            var left_n = Math.min(click1data['pos_xn'], click2data['pos_xn']);
-            var right_n = Math.max(click1data['pos_xn'], click2data['pos_xn']);
-            var top_n = Math.max(click1data['pos_yn'], click2data['pos_yn']);
-            var bottom_n = Math.min(click1data['pos_yn'], click2data['pos_yn']);
-            var response_bbox_n = [left_n, top_n, right_n, bottom_n];
+            var real_left = 2 * imgData[trialNumber]['axis_bb_left'];
+            var real_right = 2 * imgData[trialNumber]['axis_bb_right'];
+            var real_top = 2 * imgData[trialNumber]['axis_bb_top'];
+            var real_bottom = 2 * imgData[trialNumber]['axis_bb_bottom'];
+            var rbbox = [[real_left, real_top], [real_right, real_top], [real_right, real_bottom], [real_left, real_bottom]];
 
-            var real_left = (imgData[trialNumber]['axis_bb_left'] - 128) / 128;
-            var real_right = (imgData[trialNumber]['axis_bb_right'] - 128) / 128;
-            var real_top = (128 - imgData[trialNumber]['axis_bb_top']) / 128;
-            var real_bottom = (128 - imgData[trialNumber]['axis_bb_bottom']) / 128;
-            var real_bbox_n = [real_left, real_top, real_right, real_bottom];
-
-            var diff1 = Math.sqrt(Math.pow(left_n - real_left, 2) + Math.pow(top_n - real_top, 2));
-            var diff2 = Math.sqrt(Math.pow(right_n - real_right, 2) + Math.pow(bottom_n - real_bottom, 2));
-
-            var dist = (diff1 + diff2) / 2;
+            var iarea = intersection_area(bbox, rbbox);
+            var area1 = get_convex_area(bbox);
+            var area2 = get_convex_area(rbbox);
+            console.log('IA', iarea, area1, area2, JSON.stringify(bbox), JSON.stringify(rbbox))
+            var dist = 1 - (iarea / (area1 + area2 - iarea));
+            console.log(dist)
             distances.push(dist);
 
             console.log(left, top, right, bottom);
@@ -277,9 +280,11 @@ function clicked(pos_x, pos_y, eX, eY) {
             canvas_context.strokeStyle="black";
             canvas_context.stroke();
 
-            pushData({'click1': click1data, 'click2': click2data,
-                      'response_bbox_n': response_bbox_n,
-                      'real_bbox_n': real_bbox_n});
+            pushData({'click1': click1data,
+                      'click2': click2data,
+                      'response_bbox_n': bbox,
+                      'real_bbox_n': rbbox,
+                      '_stimduration': _stimduration});
 
             setTimeout(function(){
                 canvas.width = canvas.width;
@@ -329,7 +334,8 @@ function endTrial() {
 					ScreenWidth:horizontal,
                     ImgData:imgData,
                     "Error":error,
-                    Bonus:reward
+                    Bonus:reward,
+                    LearningPeriod: LEARNING_PERIOD
 					});
 
 	document.getElementById("assignmentId").value = aID;
@@ -343,7 +349,7 @@ function endTrial() {
   {
     trialNumber++;
     if (trialNumber === LEARNING_PERIOD){
-        endLearningPeriod(); 
+        endLearningPeriod();
     } else {
         $('.fixation img').attr('src',fixationImage.src);
         $('.fixation').show();
@@ -357,9 +363,9 @@ function endLearningPeriod(){
     var breakperiod=5000;
     setTimeout(function(){$('#endLearningPeriodScreen').hide();
                           $('.fixation img').attr('src',fixationImage.src);
-                          $('.fixation').show(); 
+                          $('.fixation').show();
                           setTimeout(showStim, ISI);
-                    }, breakperiod); 
+                    }, breakperiod);
 }
 
 
