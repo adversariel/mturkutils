@@ -425,6 +425,7 @@ function beginExp() {
 						},ISI);
 }
 
+var _stimduration;
 function showStim() {
 	console.log('showStim');
 	$('#instruct').hide();
@@ -486,7 +487,8 @@ function clicked() {
 
         pushData({"rand_rot_x": randx, "rand_rot_y": randy, "rand_rot_z": randz,
                   "camera_pos0": camera_pos0, "camera_rot0": camera_rot0,
-                  "camera_pos": camera.position, "camera_rot": camera.rotation
+                  "camera_pos": camera.position, "camera_rot": camera.rotation,
+                  '_stimduration': _stimduration
                   });
 
         $('#responseCanvas').hide();
@@ -532,7 +534,8 @@ function endTrial() {
 					ScreenWidth:horizontal,
                     ImgData:imgData,
                     "Error":error,
-                    Bonus:reward
+                    Bonus:reward,
+                    LearningPeriod: LEARNING_PERIOD
 					});
 
 	document.getElementById("assignmentId").value = aID;

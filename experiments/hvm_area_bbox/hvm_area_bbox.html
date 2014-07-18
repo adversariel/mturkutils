@@ -204,7 +204,7 @@ function beginExp() {
 						},ISI);
 }
 
-var pts;
+var pts, _stimduration;
 function showStim() {
 	console.log('showStim');
 	$('.test').show();
@@ -215,12 +215,12 @@ function showStim() {
     p2y = 2*imgData[trialNumber]['area_bb_2_x'];
     p2x = 2*imgData[trialNumber]['area_bb_2_y'];
     p3y = 2*imgData[trialNumber]['area_bb_3_x'];
-    p3x = 2*imgData[trialNumber]['area_bb_3_y'];    
+    p3x = 2*imgData[trialNumber]['area_bb_3_y'];
     var pts = counterclockwise([[p0x, p0y], [p1x, p1y], [p2x, p2y], [p3x, p3y]]);
     p0x = pts[0][0];  p0y = pts[0][1];
     p1x = pts[1][0];  p1y = pts[1][1];
     p2x = pts[2][0];  p2y = pts[2][1];
-    p3x = pts[3][0];  p3y = pts[3][1];    
+    p3x = pts[3][0];  p3y = pts[3][1];
     if (trialNumber < LEARNING_PERIOD){
         c1 = R1.circle(p0x, p0y, 5);
         c1.attr({'fill': 'blue'})
@@ -294,7 +294,7 @@ function showResponse() {
         l2 = R.path( ["M", p1x, p1y, "L", p2x, p2y ] );
         l3 = R.path( ["M", p2x, p2y, "L", p3x, p3y ] );
         l4 = R.path( ["M", p3x, p3y, "L", p0x, p0y ] );
-        remove_them = true;        
+        remove_them = true;
     } else {
         remove_them = false;
     }
@@ -309,7 +309,7 @@ function showResponse() {
 
 	if (trialNumber+1 == totalTrials) {}
 	else {
-	
+
 		var thisStim = imgFiles_new[trialNumber+1];
 		var img = R1.image(thisStim, 0, 0, 512, 512);
 		}
@@ -360,7 +360,11 @@ function clicked(pos_x, pos_y, eX, eY) {
 
             pushData({'click1': click1data,
                       'click2': click2data,
-                      'click3': click3data});
+                      'click3': click3data,
+                      'bbox': bbox,
+                      'rbbox': rbbox,
+                      'intersection_area': iarea,
+                      '_stimduration': _stimduration});
 
             setTimeout(function(){
                 rect.remove()
@@ -414,7 +418,8 @@ function endTrial() {
 					ScreenWidth:horizontal,
                     ImgData:imgData,
                     "Error":error,
-                    Bonus:reward
+                    Bonus:reward,
+                    LearningPeriod: LEARNING_PERIOD
 					});
 
 	document.getElementById("assignmentId").value = aID;
@@ -428,7 +433,7 @@ function endTrial() {
   {
     trialNumber++;
     if (trialNumber === LEARNING_PERIOD){
-        endLearningPeriod(); 
+        endLearningPeriod();
     } else {
         $('.fixation img').attr('src',fixationImage.src);
         $('.fixation').show();
@@ -442,9 +447,9 @@ function endLearningPeriod(){
     var breakperiod=5000;
     setTimeout(function(){$('#endLearningPeriodScreen').hide();
                           $('.fixation img').attr('src',fixationImage.src);
-                          $('.fixation').show(); 
+                          $('.fixation').show();
                           setTimeout(showStim, ISI);
-                    }, breakperiod); 
+                    }, breakperiod);
 }
 
 
@@ -552,7 +557,7 @@ $(document).ready(function() {
 						          if (notYetBegun){
 						               $("#begintask").show();
 						          }
-						        }							
+						        }
 							});
 
 	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {

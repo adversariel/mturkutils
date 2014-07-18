@@ -111,7 +111,7 @@ function createScene( geometry, materials) {
     animate();
 
     $('#slider').slider("option", "value", 50);
-    
+
     $('#slider').trigger('slide')
 
     var realsize = imgData[trialNumber]['s'].toFixed(2);
@@ -269,7 +269,7 @@ var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
 function beginExp() {
 	console.log('beginExp');
 	begin = true;
-	notYetBegun = false;	
+	notYetBegun = false;
 	$('#instruct').hide();
 	$("#begintask").hide();
 	$("#_preload").hide();
@@ -301,11 +301,12 @@ function beginExp() {
 						},ISI);
 }
 
+var _stimduration;
 function showStim() {
 	console.log('showStim');
 	$('.test').show();
 	$('.fixation').hide();
-	var _stimduration;
+	_stimduration;
 	if (trialNumber < LEARNING_PERIOD) {
 	    _stimduration = 2000;
 	    $('#correctBox').show()
@@ -358,15 +359,15 @@ function get_val(val){
     //return val * 0.02;
     val = (val - 50.0) / 50.0;
     return Math.pow(1.6, val)
-    
+
 }
 
 
 function get_val_inverse(val){
-    //return val * 0.02;    
+    //return val * 0.02;
     val = Math.log(val) / Math.log(1.6);
     return (50.0 * val) + 50.0
-    
+
 }
 
 function clicked() {
@@ -374,22 +375,23 @@ function clicked() {
 	if (begin) {
  		trialEndTime = new Date();
         var val = $('#slider').slider("option", "value");
-        val = get_val(val) 
-        
+        val = get_val(val)
+
         var realsize = imgData[trialNumber]['s'];
         console.log(realsize, val)
         distances.push(Math.abs(realsize - val));
         realvals.push(realsize);
         vals.push(val);
 
-        pushData({"size": val});
+        pushData({"size": val,
+                 '_stimduration': _stimduration});
 
         $('#responseCanvas').hide();
         $('#submitResponse').hide();
         $('#instruct').hide();
         $('#slider').hide();
         //$('#sliderReport').hide();
-        $('#trialCounter').hide();        
+        $('#trialCounter').hide();
         scene.remove(mesh);
 
         render_scene();
@@ -429,7 +431,8 @@ function endTrial() {
 					ScreenWidth:horizontal,
                     ImgData:imgData,
                     "Error":error,
-                    Bonus:reward
+                    Bonus:reward,
+                    LearningPeriod: LEARNING_PERIOD
 					});
 
 	document.getElementById("assignmentId").value = aID;
@@ -443,7 +446,7 @@ function endTrial() {
   {
     trialNumber++;
     if (trialNumber === LEARNING_PERIOD){
-        endLearningPeriod(); 
+        endLearningPeriod();
     } else {
         $('.fixation img').attr('src',fixationImage.src);
         $('.fixation').show();
@@ -457,9 +460,9 @@ function endLearningPeriod(){
     var breakperiod=5000;
     setTimeout(function(){$('#endLearningPeriodScreen').hide();
                           $('.fixation img').attr('src',fixationImage.src);
-                          $('.fixation').show(); 
+                          $('.fixation').show();
                           setTimeout(showStim, ISI);
-                    }, breakperiod); 
+                    }, breakperiod);
 }
 
 
@@ -575,9 +578,9 @@ $(document).ready(function() {
         $('.ui-slider-handle').width(30)
         $('.ui-slider-handle').html('<div align="center">' + dil.toFixed(2) + '</div>');
         var realsize = imgData[trialNumber]['s'].toFixed(2);
-        $('#correctBox').width(35)        
+        $('#correctBox').width(35)
         $('#correctBox').html('<div align="center" style="color:red"><b>' + realsize + '</b></div>');
-                
+
         mesh.position.setX(0); mesh.position.setY(0); mesh.position.setZ(0);
         mesh.scale.set(dil * size0x, dil * size0y, dil * size0z);
         var mult = sizes[imgData[trialNumber]['obj']] / 100;

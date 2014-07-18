@@ -282,8 +282,9 @@ function clicked(pos_x, pos_y, eX, eY) {
 
             pushData({'click1': click1data,
                       'click2': click2data,
-                      'response_bbox_n': bbox,
-                      'real_bbox_n': rbbox,
+                      'bbox': bbox,
+                      'rbbox': rbbox,
+                      'intersection_area': iarea,
                       '_stimduration': _stimduration});
 
             setTimeout(function(){
