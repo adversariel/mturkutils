@@ -285,6 +285,8 @@ function clicked(pos_x, pos_y, eX, eY) {
                       'bbox': bbox,
                       'rbbox': rbbox,
                       'intersection_area': iarea,
+                      'bbox_area': area1, 
+                      'rbbox_area': area2, 
                       '_stimduration': _stimduration});
 
             setTimeout(function(){
@@ -341,7 +343,7 @@ function endTrial() {
 
 	document.getElementById("assignmentId").value = aID;
 	document.getElementById("data").value = JSON.stringify(resultsobj);
-	//document.getElementById("postdata").submit();
+	document.getElementById("postdata").submit();
   }
     else if (jQuery.inArray(trialNumber,BreakTimes) > -1) {
 	  takeABreak();
@@ -541,7 +543,9 @@ $(document).ready(function() {
 <p>
 <li>The first several trials consist of a learning period.  During this period, the correct answer will be indicated on both the original image and the response screen, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the interface.</li>
 <p>
-<li>After the learning period, the blue markers will no longer be shown and <b>the images will be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  If you think you've made a mistake while placing the first click, you can press the "Delete First Point" button below the canvas.  Doing so will remove your click and allow you to restart with a blank screen.  After the second click, however, the trial will automatically move on and you will not have a chance to correct your answer.</li>
+<li>After the learning period, the blue markers will no longer be shown and <b>the images will be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  If you make a mistake on first click, press the "Delete First Point" button below the canvas to try again. After the second click, the trial will move on immediately.</li>
+<p>
+<li>You will be assigned a bonus based on your performance. <b>The better your performance, the larger the bonus will be.</b>  Please be careful that you <b>don't cut off object corners</b>.  Many people have a tendency to underestimate the size of the box by clicking a bit to "conservatively in" toward the center of the object.</li>
 <p>
 <li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
 </ul>
