@@ -1,7 +1,6 @@
 import math
 import numpy as np
 
-import dldata.stimulus_sets.hvm as hvm
 from mturkutils.base import Experiment
 
 userid = 'A1J98D0GPAKZN4'
