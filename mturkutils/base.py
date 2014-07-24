@@ -205,7 +205,7 @@ class Experiment(object):
 
 
 
-    def payBonuses(self, performance_threshold=None, bonus_threshold=None, auto_approve=True):
+    def payBonuses(self, performance_threshold=None, performance_key='Performance', performance_error = False, bonus_threshold=None, auto_approve=True):
         """
         This function approves and grants bonuses on all hits above a certain performance,
         with a bonus (stored in database) under a certain threshold (checked for safety).
@@ -216,10 +216,11 @@ class Experiment(object):
                 assignment_id = doc['AssignmentID']
                 try: 
                     assignment_status = self.conn.get_assignment(assignment_id)[0].AssignmentStatus
-                    performance = doc.get('Performance')
-                    if (performance_threshold is not None) and (performance is not None)  and (performance < performance_threshold):
-                        if assignment_status in ['Submitted']:
-                            self.conn.reject_assignment(assignment_id,
+                    performance = doc.get(performance_key)
+                    if (performance_threshold is not None) and (performance is not None):
+                        if (performance_error and performance > performance_threshold) or (performance < performance_threshold):
+                            if assignment_status in ['Submitted']:
+                                self.conn.reject_assignment(assignment_id,
                                                         feedback='Your performance was significantly '
                                                                  'lower than other subjects')
                     else:

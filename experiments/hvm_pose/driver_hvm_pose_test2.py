@@ -4,20 +4,13 @@ import numpy as np
 import dldata.stimulus_sets.hvm as hvm
 from mturkutils.base import Experiment
 
-"""
-TODOs (From Judy's suggestions):
-   reduce lags between stim presentation!!! fix this
-   longer ISI?
-   surface texture doesn't come immediately
-   better instructions about angle and real size and depth
-   move submit button to near the bar?
-"""
+othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'TrackballControls.js', 'jstat.min.js']
 
-LEARNING_PERIOD = 10
+LEARNING_PERIOD = 20
 REPEATS = 20
 BSIZE = 100
 
-class HvMSizeExperiment(Experiment):
+class HvMPoseExperiment(Experiment):
 
     def createTrials(self):
 
@@ -30,7 +23,14 @@ class HvMSizeExperiment(Experiment):
 
         meta = dataset.meta
         query_inds = np.arange(len(meta))
-        #query_inds = ((meta['obj'] == 'LIONESS') & (meta['var'] == 'V0')).nonzero()[0]
+        #query_inds = ((np.sqrt(meta['rxy']**2) > 30) &  (np.sqrt(meta['rxz']**2) > 30) & (np.sqrt(meta['ryz']**2) > 30)).nonzero()[0]
+        #query_inds = ((meta['var'] == 'V6') &  (meta['category'] == 'Faces')).nonzero()[0]
+        #query_inds = ((meta['var'] == 'V6')  & (meta['category'] == 'Faces')).nonzero()[0]
+        #query_inds = ((np.sqrt(meta['ryz']**2) > 0) & (np.sqrt((meta['rxy']**2 + meta['rxz']**2)) <  10) &  (meta['category'] == 'Tables')).nonzero()[0]
+        #query_inds = ((np.sqrt(meta['ryz']**2) > 0) & (np.sqrt((meta['rxy']**2 + meta['rxz']**2)) <  50) &  (meta['category'] == 'Chairs')).nonzero()[0]
+        #query_inds = ((meta['var'] == 'V6') & (meta['obj'] == '_01_Airliner_2jetEngines')).nonzero()[0]
+        #query_inds = ((meta['var'] == 'V6') & (meta['obj'] == 'face0001')).nonzero()[0]
+        #aquery_inds = ((meta['var'] == 'V6') &  (meta['obj'] == 'bear')).nonzero()[0]
 
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
@@ -42,7 +42,7 @@ class HvMSizeExperiment(Experiment):
         print('%d blocks' % nblocks)
         imgs = []
         imgData = []
-        for bn in range(nblocks)[:1]:
+        for bn in range(nblocks)[:2]:
             pinds = perm[BSIZE * bn: BSIZE * (bn + 1)]
             pinds = np.concatenate([pinds, pinds[: REPEATS]])
             rng.shuffle(pinds)
@@ -59,23 +59,21 @@ class HvMSizeExperiment(Experiment):
             imgData.extend(bmeta)
         self._trials = {'imgFiles': imgs, 'imgData': imgData}
 
-othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'jstat.min.js']
-
 additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
                     'new':  str(LEARNING_PERIOD)}]
-exp = HvMSizeExperiment(htmlsrc = 'hvm_size.html',
-                        htmldst = 'hvm_size_n%04d.html',
+exp = HvMPoseExperiment(htmlsrc = 'hvm_pose_test4.html',
+                        htmldst = 'hvm_pose_test_n%04d.html',
                         othersrc = othersrc,
-                        sandbox = False,
-                        title = 'Size Judgement',
-                        reward = 1.00,
-                        duration = 3000,
-                        description = 'Make object size judgements for up to 50 cent bonus',
-                        comment = "Size judgement in HvM dataset",
-                        collection_name = "hvm_size_test",
+                        sandbox = True,
+                        title = 'Pose Judgement',
+                        reward = 0.5,
+                        duration=1500,
+                        description = 'Make object 3-d pose judgements for up to 50 cent bonus',
+                        comment = "Pose judgement in HvM dataset",
+                        collection_name = None,
                         max_assignments=1,
-                        bucket_name='hvm_size_judgements',    
-                        trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD, 
+                        bucket_name='hvm_pose',
+                        trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD,
                         additionalrules=additionalrules)
 
 if __name__ == '__main__':
@@ -83,8 +81,8 @@ if __name__ == '__main__':
     exp.createTrials()
     exp.prepHTMLs()
     exp.testHTMLs()
-    exp.uploadHTMLs()
-    exp.createHIT()
+    #exp.uploadHTMLs()
+    #exp.createHIT()
 
     #hitids = cPickle.load(open('3ARIN4O78FSZNXPJJAE45TI21DLIF1_2014-06-13_16:25:48.143902.pkl'))
     #exp.disableHIT(hitids=hitids)

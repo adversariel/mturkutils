@@ -52,7 +52,9 @@ var Detector = {
 		element = Detector.getWebGLErrorMessage();
 		element.id = id;
 
-		parent.appendChild( element );
+       $(document.body).append(element)
+        
+		//parent.appendChild( element );
 
 	}
 

@@ -41,13 +41,16 @@ img {
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"
 ></script>
-<script type="text/javascript" src="raphael.min.js"></script>
-<script type="text/javascript" src="intersect.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
+
+<script type="text/javascript" src="raphael.min.js"></script>
+<script type="text/javascript" src="intersect.js"></script>
+
+
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript">
 
@@ -111,6 +114,21 @@ function dpointline(x0, y0, x1, y1, x2, y2) {
     return num/denom
 }
 
+
+function get_pos(e, offset){
+    var pos_x, posy;
+    if (e.offsetX == undefined){
+        pos_x = e.pageX - offset.left;
+        pos_y = e.pageY - offset.top;        
+        
+    }  else {
+        pos_x = e.offsetX;
+        pos_y = e.offsetY;
+    }
+    return [pos_x, pos_y]
+}
+
+
 function beginExp() {
 	console.log('beginExp');
 	begin = true;
@@ -137,18 +155,24 @@ function beginExp() {
         $('.marker').remove();
     });
 
+    var pos_x, pos_y, pos;
+
 	$('#getClick').click(function(e) {
-		var offset = $(this).offset()
-		var pos_x = e.offsetX;
-		var pos_y = e.offsetY;
+    	var offset = $(this).offset();
+		pos = get_pos(e, offset);
+		pos_x = pos[0];
+		pos_y = pos[1];
+		console.log(pos)
 		clicked(pos_x, pos_y, e.pageX, e.pageY);
 	});
 
     $('#getClick').mousemove(function(e){
 
         if (clicknum === 3){
-            var eX = e.offsetX;
-            var eY = e.offsetY;
+            var offset = $(this).offset();
+            pos = get_pos(e, offset)
+            var eX = pos[0];
+            var eY = pos[1];
             x1 = click1data['X'];
             y1 = click1data['Y'];
             x2 = click2data['X'];
@@ -326,20 +350,18 @@ function clicked(pos_x, pos_y, eX, eY) {
             $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:red; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
  		    click1data = { 'X':pos_x, 'Y':pos_y, };
  		    clicknum = 2;
+ 		    
         } else if (clicknum == 2) {
 
             $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:red; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
  		    click2data = { 'X':pos_x, 'Y':pos_y,  };
  		    clicknum = 3;
-
  		    line = R.path( ["M", click1data['X'], click1data['Y'], "L", click2data['X'], click2data['Y'] ] );
-
-
+            
         } else {
             clicknum = 1;
 
             click3data = { 'X':pos_x, 'Y':pos_y};
-
             var dist2 = Math.abs(sdist2);
             var dist1 = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
             var costh = (x2 - x1) / dist1;
@@ -364,6 +386,8 @@ function clicked(pos_x, pos_y, eX, eY) {
                       'bbox': bbox,
                       'rbbox': rbbox,
                       'intersection_area': iarea,
+                      'bbox_area': area1,
+                      'rbbox_area': area2,
                       '_stimduration': _stimduration});
 
             setTimeout(function(){
@@ -424,7 +448,7 @@ function endTrial() {
 
 	document.getElementById("assignmentId").value = aID;
 	document.getElementById("data").value = JSON.stringify(resultsobj);
-	//document.getElementById("postdata").submit();
+	document.getElementById("postdata").submit();
   }
     else if (jQuery.inArray(trialNumber,BreakTimes) > -1) {
 	  takeABreak();

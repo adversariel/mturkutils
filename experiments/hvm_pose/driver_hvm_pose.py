@@ -23,7 +23,7 @@ class HvMPoseExperiment(Experiment):
 
         meta = dataset.meta
         query_inds = np.arange(len(meta))
-        query_inds = (meta['var'] == 'V0').nonzero()[0][::10]
+        #query_inds = (meta['var'] == 'V0').nonzero()[0][::10]
 
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
