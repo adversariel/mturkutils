@@ -120,6 +120,7 @@ function rotateAroundWorldAxis(obj, rotX, rotY, rotZ){
     return q
     }
 
+var mult, mult1, bpp, bsize;
 
 function createScene( geometry, materials) {
     mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
@@ -129,11 +130,10 @@ function createScene( geometry, materials) {
     rotateAroundWorldAxis(mesh, 0, -posdict[objname]['y'], 0);
     rotateAroundWorldAxis(mesh, -posdict[objname]['x'], 0, 0)
 
-    var mult = sizes[imgData[trialNumber]['obj']] / 100;
-
-    var bpp = bounding_boxes[imgData[trialNumber]['obj']];
-    var bsize = Math.max(bpp['h'], bpp['w']) / 2;
-    var mult1 = 100 / bsize;
+    mult = sizes[imgData[trialNumber]['obj']] / 100;
+    bpp = bounding_boxes[imgData[trialNumber]['obj']];
+    bsize = Math.max(bpp['h'], bpp['w']) / 2;
+    mult1 = 100 / bsize;
 
     mesh.scale.set(mult1 * mult * mesh.scale.x / mesh.geometry.boundingSphere.radius,
                    mult1 * mult * mesh.scale.y / mesh.geometry.boundingSphere.radius,
@@ -147,9 +147,9 @@ function createScene( geometry, materials) {
     size0y = mesh.scale.y;
     size0z = mesh.scale.z;
 
-   sizer0x = mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius;
-   sizer0y = mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius;
-   sizer0z = mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius;
+    sizer0x = mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius;
+    sizer0y = mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius;
+    sizer0z = mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius;
     animate();
 
     $('#slider').slider("option", "value", 50);
@@ -290,12 +290,13 @@ function getAspectRatio(im) {
 }
 
 function reward_scale(error){
-    console.log('error', error);
-    if (error !== null){
-        return Math.max(1 - error, 0)
+     if (error !== null){
+         var random_error = 0.25;
+         var bonus = Math.max((random_error - error) / random_error, 0);
      } else{
-        return 0;
+         bonus = 0.0
      }
+     return bonus.toFixed(2)
 }
 
 
@@ -424,9 +425,13 @@ function clicked() {
         distances.push(Math.abs(realsize - val));
         realvals.push(realsize);
         vals.push(val);
-
+        
         pushData({"size": val,
-                 '_stimduration': _stimduration});
+                 '_stimduration': _stimduration,
+                 'mult': mult, 
+                 'bpp': bpp, 
+                 'bsize': bsize, 
+                 'mult1': mult1});
 
         $('#responseCanvas').hide();
         $('#submitResponse').hide();
@@ -625,12 +630,10 @@ $(document).ready(function() {
 
         mesh.position.setX(0); mesh.position.setY(0); mesh.position.setZ(0);
         mesh.scale.set(dil * size0x, dil * size0y, dil * size0z);
-        var mult = sizes[imgData[trialNumber]['obj']] / 100;
-
-        var bpp = bounding_boxes[imgData[trialNumber]['obj']];
-        var bsize = Math.max(bpp['h'], bpp['w']) / 2;
-        var mult1 = 100 / bsize;
-
+        mult = sizes[imgData[trialNumber]['obj']] / 100;
+        bpp = bounding_boxes[imgData[trialNumber]['obj']];
+        bsize = Math.max(bpp['h'], bpp['w']) / 2;
+        mult1 = 100 / bsize;
         mesh.translateX(-mult1 * mult * dil * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
         mesh.translateY(-mult1 * mult * dil * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
         mesh.translateZ(-mult1 * mult * dil * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
@@ -704,9 +707,7 @@ $(document).ready(function() {
 <p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
 <b>IMPORTANT: doing this task <u>requires</u> you to have WebGL enabled in your browser.</b>  If your web browser does not have WebGL capabilities, you <b>cannot</b> do this task.  If your browser does have WebGL capabilities, you must still <b>make sure that WebGL is enabled</b> in your browser.  To do so, go to your favorite web search engine, perform a search for "webgl + [your browser name]," and follow instructions.
 <p>
-Your computer also must also have a modern and fast internet connection, and have sufficient memory resources.   If you're unsure if your computer meets the requirements for this task, try the first few trials.  If the trials run very slowly, your computer is not sufficiently powerful and you should <b>not</b> do this task.  (If your computer seems too slow, please do <b>NOT</b> keep going.  If the trials run too slowly we will not be able to the results, and we will be forced to reject your work even if you complete the task.  Sorry!)
-<p>
-<p><font color=red><b>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</b></font></p>
+Your computer also must also have a modern and fast internet connection, and have sufficient memory resources.   If you're unsure if your computer meets the requirements for this task, try the first few trials. If this task is not working properly for you, <font color=red><b>please send us an email at dlmug@mit.edu explain the problem</b></font>. Give us details about the issue as well as the browser and Operating System you're using.</p>
 <p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
 <center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
 <div id="tutorial2" style="position:absolute; z-index:-1;">

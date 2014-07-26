@@ -13,9 +13,9 @@ TODOs (From Judy's suggestions):
    move submit button to near the bar?
 """
 
-LEARNING_PERIOD = 10
-REPEATS = 20
-BSIZE = 100
+LEARNING_PERIOD = 5
+REPEATS = 5
+BSIZE = 65
 
 class HvMSizeExperiment(Experiment):
 
@@ -30,7 +30,7 @@ class HvMSizeExperiment(Experiment):
 
         meta = dataset.meta
         query_inds = np.arange(len(meta))
-        #query_inds = ((meta['obj'] == 'LIONESS') & (meta['var'] == 'V0')).nonzero()[0]
+        #query_inds = ((meta['obj'] == '_11') & (meta['var'] == 'V3')).nonzero()[0]
 
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
@@ -66,10 +66,10 @@ additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
 exp = HvMSizeExperiment(htmlsrc = 'hvm_size.html',
                         htmldst = 'hvm_size_n%04d.html',
                         othersrc = othersrc,
-                        sandbox = False,
-                        title = 'Size Judgement',
-                        reward = 1.00,
-                        duration = 3000,
+                        sandbox = True,
+                        title = 'Size Judgement, New Version',
+                        reward = 1.50,
+                        duration = 3500,
                         description = 'Make object size judgements for up to 50 cent bonus',
                         comment = "Size judgement in HvM dataset",
                         collection_name = "hvm_size_test",
@@ -84,7 +84,7 @@ if __name__ == '__main__':
     exp.prepHTMLs()
     exp.testHTMLs()
     exp.uploadHTMLs()
-    exp.createHIT()
+    exp.createHIT(hits_per_url=1)
 
     #hitids = cPickle.load(open('3ARIN4O78FSZNXPJJAE45TI21DLIF1_2014-06-13_16:25:48.143902.pkl'))
     #exp.disableHIT(hitids=hitids)
