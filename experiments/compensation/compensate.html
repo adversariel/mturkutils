@@ -85,22 +85,25 @@ String.prototype.repeat = function(times) {
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
 
-function beginExp() {
-	console.log('beginExp');
-	console.log(aID);
-	console.log(wID);
-	begin = true;
 
-	$("#begintask").hide();
-	$("#instruction").hide();
-	trialNumber=1;
-	endTrial();
+
+//!!==END DYNAMIC TRIAL CODE==!!//
+
+function init_vars() {
+	zoom = DetectZoom.zoom();
+	wID = gup("workerId");
+	aID = gup("assignmentId");
+	trialNumber = 0;
+	exp_type = 'compensate';
 }
 
-
-function endTrial() {
-	if (trialNumber == 1) {
-		console.log('End');
+$(document).ready(function() {
+	init_vars();
+	$("#accepttext").hide();
+	$("#rejecttext").hide();
+	if (inArrayStrSloppy(wID, acceptID) > -1){
+		console.log('accept');
+		$("#accepttext").show();
 		resultsobj = [];
 		resultsobj.push({
 					WorkerID:wID,
@@ -114,42 +117,13 @@ function endTrial() {
 					ScreenHeight:vertical,
 					ScreenWidth:horizontal
 					});
-
 		document.getElementById("assignmentId").value = aID;
 		document.getElementById("data").value = JSON.stringify(resultsobj);
 		document.getElementById("postdata").submit();
 	}
 	else {
-		console.log(trialNumber);
-		console.log('Not clicked');
-	}
-}
-
-//!!==END DYNAMIC TRIAL CODE==!!//
-
-function init_vars() {
-	zoom = DetectZoom.zoom();
-	wID = gup("workerId");
-	aID = gup("assignmentId");
-	trialNumber = 0;
-	exp_type = 'compensate';
-}
-
-$(document).ready(function() {
-	$("#generaltext").show();
-	init_vars();
-
-	if (inArrayStrSloppy(wID, acceptID) > -1){
-				$("#generaltext").hide();
-				$("#begintask").click(function() {
-					beginExp();
-					});
-	}
-	else {
 		console.log('reject');
-		$("#begintask").hide();
-		$("#generaltext").show();
-		$("#instruction").hide();
+		$("#rejecttext").show();
 	}
 	$('#warning').hide();
 	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE"){
@@ -163,17 +137,18 @@ $(document).ready(function() {
 </head>
 
 <body bgcolor="#7F7F7F">
-<div style="height:1000px; width:auto;">
-<div align="center" id="warning"></div>
-<div align="center"><button id="begintask" value="Get Compensation" style="height:35px; width:170px;" >Get Compensation</button></div>
-<div id="general" align="center" style="position:relative; top:100px;">
-	<p id="generaltext"><font color=#9e1316><b>This HIT is for invited workers only.</font> <br /><br /><br />If you are not invited, you will NOT be able to begin/submit this task, so please do not accept this HIT.<br /><br /><br />You are, however, welcome to accept other HITs from the same requester.</b></p>
-</div>
-<div id="instruction" align="center" style="position:relative; top:200px;">Please click on the "Get Compensation" button at the top. <br /><br /><br /> This HIT will submit itself, and you will get compensated shortly.<br /><br /><br />If you have other questions, please contact the requester.</b></div>
-	<form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
-	<input type="hidden" name="data" id="data" value="" />
-    	<input type="hidden" name="assignmentId" id="assignmentId" value="" />
-	</form>
+    <div style="height:1000px; width:auto;">
+        <div align="center" id="warning"></div>
+        <div id="general" align="center" style="position:relative; top:100px;">
+            <p id="rejecttext"><font color=#9e1316><b>This HIT is for invited workers only.</font> <br /><br /><br />If you are not invited, you will NOT be able to begin/submit this task, so please do not accept this HIT.<br /><br /><br />You are, however, welcome to accept other HITs from the same requester.</b></p>
+            <p id="accepttext"><font color=#9e1316>Your compensation task has been submitted.</p>
+        </div>
+
+        <form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
+        <input type="hidden" name="data" id="data" value="" />
+            <input type="hidden" name="assignmentId" id="assignmentId" value="" />
+        </form>
+    </div>
 </body>
 </html>
 
