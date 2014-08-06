@@ -44,6 +44,8 @@ S3HTTPBASE = 'http://s3.amazonaws.com/'
 S3HTTPSBASE = 'https://s3.amazonaws.com/'
 LOG_PREFIX = './'
 LOOKUP_FIELD = 'id'
+BACKUP_ALGO_VER = 1
+
 
 PREP_RULE_SIMPLE_RSVP_SANDBOX = [
         {
@@ -125,14 +127,14 @@ class Experiment(object):
         You can retrieve data from any hit published in the past using these
         IDs (within the Experiment object, the IDs are also saved in 'hitids').
     """
-    
+
     def __init__(self, htmlsrc, htmldst, othersrc=None,
             sandbox=True, keywords=None, lifetime=1209600,
             max_assignments=1, title='TEST', reward=0.01, duration=1500,
             approval_delay=172800, description='TEST', frame_height_pix=1000,
             comment='TEST', collection_name='TEST', meta=None,
             log_prefix=LOG_PREFIX, section_name=MTURK_CRED_SECTION,
-            bucket_name=None, 
+            bucket_name=None,
             trials_per_hit=100,
             tmpdir='tmp',
             productionpath='html',
@@ -143,7 +145,7 @@ class Experiment(object):
             tmpdir_sandbox=None,
             trials_loc='trials.pkl',
             html_data=None):
-            
+
         if keywords is None:
             keywords = ['']
         self.sandbox = sandbox
@@ -165,61 +167,69 @@ class Experiment(object):
 
         self.tmpdir = tmpdir
         self.productionpath = productionpath
-        self.sandboxpath  =sandboxpath
+        self.sandboxpath = sandboxpath
         if tmpdir_production is None:
-             tmpdir_production = os.path.join(tmpdir, productionpath)
+            tmpdir_production = os.path.join(tmpdir, productionpath)
         self.tmpdir_production = tmpdir_production
         if tmpdir_sandbox is None:
             tmpdir_sandbox = os.path.join(tmpdir, sandboxpath)
         self.tmpdir_sandbox = tmpdir_sandbox
-        self.trials_loc = trials_loc 
+        self.trials_loc = trials_loc
         self.sandbox_prefix = sandbox_prefix
         self.production_prefix = production_prefix
-    
+
         self.htmlsrc = htmlsrc
         self.htmldst = htmldst
         self.othersrc = othersrc
         self.html_data = html_data
-        
+
         self.trials_per_hit = trials_per_hit
 
         self.setMongoVars(collection_name, comment, meta)
         self.conn = self.connect()
 
-    def payBonuses(self, performance_threshold, bonus_threshold, auto_approve=True):
+    def payBonuses(self, performance_threshold, bonus_threshold,
+            auto_approve=True):
         """
-        This function approves and grants bonuses on all hits above a certain performance,
-        with a bonus (stored in database) under a certain threshold (checked for safety).
+        This function approves and grants bonuses on all hits above a certain
+        performance, with a bonus (stored in database) under a certain
+        threshold (checked for safety).
         """
         coll = self.db[self.collection_name]
         if auto_approve:
             for doc in coll.find():
                 assignment_id = doc['AssignmentID']
-                assignment_status = self.conn.get_assignment(assignment_id)[0].AssignmentStatus
+                assignment_status = \
+                    self.conn.get_assignment(assignment_id)[0].AssignmentStatus
                 performance = doc['Performance']
                 if performance < performance_threshold:
                     if assignment_status in ['Submitted']:
                         self.conn.reject_assignment(assignment_id,
-                                                    feedback='Your performance was significantly '
-                                                             'lower than other subjects')
+                            feedback='Your performance was significantly '
+                                     'lower than other subjects')
                 else:
                     if assignment_status in ['Submitted']:
                         self.conn.approve_assignment(assignment_id)
         for doc in coll.find():
             assignment_id = doc['AssignmentID']
             worker_id = doc['WorkerID']
-            assignment_status = self.conn.get_assignment(assignment_id)[0].AssignmentStatus
+            assignment_status = \
+                    self.conn.get_assignment(assignment_id)[0].AssignmentStatus
             bonus = doc['Bonus']
             if assignment_status == 'Approved':
                 if float(bonus) < float(bonus_threshold):
                     if not doc.get('BonusAwarded', False):
-                        bonus = np.round(float(bonus)*100)/100
+                        bonus = np.round(float(bonus) * 100) / 100
                         if bonus >= 0.01:
                             p = boto.mturk.price.Price(bonus)
                             print 'award granted'
                             print bonus
-                            self.conn.grant_bonus(worker_id, assignment_id, p, "Performance Bonus")
-                            coll.update({'_id': doc['_id']}, {'$set': {'BonusAwarded': True}})
+                            self.conn.grant_bonus(worker_id,
+                                    assignment_id,
+                                    p,
+                                    "Performance Bonus")
+                            coll.update({'_id': doc['_id']},
+                                    {'$set': {'BonusAwarded': True}})
 
     def getBalance(self):
         """Returns the amount of available funds. If you're in Sandbox mode,
@@ -274,23 +284,23 @@ class Experiment(object):
         self.mongo_conn = pymongo.Connection(port=MONGO_PORT, host=MONGO_HOST)
         self.db = self.mongo_conn[MONGO_DBNAME]
         self.collection = self.db[collection_name]
-        
+
     def createTrials(self):
         raise NotImplementedError
 
     def prepHTMLs(self):
         trials = self._trials
-        
+
         n_per_file = self.trials_per_hit
         htmlsrc = self.htmlsrc
         htmldst = self.htmldst
         othersrc = self.othersrc
-      
+
         tmpdir = self.tmpdir
         tmpdir_sandbox = self.tmpdir_sandbox
         tmpdir_production = self.tmpdir_production
         trials_loc = self.trials_loc
-        
+
         for label, rules, dstdir in [
                 ('sandbox', PREP_RULE_SIMPLE_RSVP_SANDBOX, tmpdir_sandbox),
                 ('production', PREP_RULE_SIMPLE_RSVP_PRODUCTION,
@@ -303,15 +313,15 @@ class Experiment(object):
 
         # save trials for future reference
         pk.dump(trials, open(os.path.join(tmpdir, trials_loc), 'wb'))
-        
+
     def testHTMLs(self):
         """Test and validates the written html files"""
-        
+
         tmpdir = self.tmpdir
         tmpdir_sandbox = self.tmpdir_sandbox
         tmpdir_production = self.tmpdir_production
         trials_loc = self.trials_loc
-        
+
         trials_org = pk.load(open(os.path.join(tmpdir, trials_loc)))
 
         fns_sandbox = sorted(glob.glob(os.path.join(
@@ -329,25 +339,23 @@ class Experiment(object):
                 trials_org=trials_org)
 
     def uploadHTMLs(self):
-        tmpdir = self.tmpdir
         tmpdir_sandbox = self.tmpdir_sandbox
         tmpdir_production = self.tmpdir_production
-        trials_loc = self.trials_loc
         sandbox_prefix = self.sandbox_prefix
         production_prefix = self.production_prefix
         bucket_name = self.bucket_name
-        
+
         """Upload generated web files into S3"""
         print '* Uploading sandbox...'
         fns = glob.glob(os.path.join(tmpdir_sandbox, '*.*'))
-        upload_files(fns, bucket_name, dstprefix=sandbox_prefix + '/', test=True,
-                verbose=10)
+        upload_files(fns, bucket_name, dstprefix=sandbox_prefix + '/',
+                test=True, verbose=10)
 
         print '* Uploading production...'
         fns = glob.glob(os.path.join(tmpdir_production, '*.*'))
-        upload_files(fns, bucket_name, dstprefix=production_prefix + '/', test=True,
-                verbose=10)        
-        
+        upload_files(fns, bucket_name, dstprefix=production_prefix + '/',
+                test=True, verbose=10)
+
     def connect(self):
         """Establishes connection to MTurk for publishing HITs and getting
         data. Pass sandbox=True if you want to use sandbox mode.
@@ -363,14 +371,12 @@ class Experiment(object):
 
     def setQual(self, performance_thresh=90):
         self.qual = create_qual(performance_thresh)
-        
+
     def URLs(self):
-        tmpdir = self.tmpdir
         tmpdir_sandbox = self.tmpdir_sandbox
         tmpdir_production = self.tmpdir_production
         sandbox_prefix = self.sandbox_prefix
         production_prefix = self.production_prefix
-        trials_loc = self.trials_loc
         bucket_name = self.bucket_name
 
         if self.sandbox:
@@ -379,10 +385,11 @@ class Experiment(object):
         else:
             prefix = production_prefix
             fns = glob.glob(os.path.join(tmpdir_production, '*.*'))
-            
-        return ['https://s3.amazonaws.com/' + bucket_name + '/' + prefix + '/' + \
-                                         fn.split('/')[-1] for fn in fns]
-        
+
+        return ['https://s3.amazonaws.com/' + bucket_name + '/' +
+                                        prefix + '/' +
+                                        fn.split('/')[-1] for fn in fns]
+
     def createHIT(self, URLlist=None, verbose=True, hitidslog=None):
         """
         - Pass a list of URLs (check that they work first!) for each one to be
@@ -395,7 +402,7 @@ class Experiment(object):
         """
         if URLlist is None:
             URLlist = self.URLs()
-            
+
         if self.sandbox:
             print('**WORKING IN SANDBOX MODE**')
 
@@ -531,9 +538,8 @@ class Experiment(object):
     def getHITdata(self, hitid, verbose=True, full=False):
         assignments, HITdata = self.getHITdataraw(hitid)
         return parse_human_data_from_HITdata(assignments, HITdata,
-                                            comment=self.comment, description=self.description, full=full,
-                                            verbose=verbose)
-
+                    comment=self.comment, description=self.description,
+                    full=full, verbose=verbose)
 
 
 class MatchToSampleFromDLDataExperiment(Experiment):
@@ -541,7 +547,7 @@ class MatchToSampleFromDLDataExperiment(Experiment):
     def createTrials(self):
 
         html_data = self.html_data
-        
+
         dataset = html_data['dataset']
         preproc = html_data['preproc']
         meta_query = html_data['meta_query']
@@ -553,13 +559,13 @@ class MatchToSampleFromDLDataExperiment(Experiment):
         combs = html_data['combs']
         labelfunc = html_data['labelfunc']
         seed = html_data['seed']
-        
+
         meta = dataset.meta
         if meta_query is not None:
             query_inds = set(np.ravel(np.argwhere(map(meta_query, meta))))
         else:
             query_inds = set(range(len(meta)))
-        
+
         category_occurences = Counter(itertools.chain.from_iterable(combs))
         synset_urls = defaultdict(list)
         img_inds = []
@@ -568,21 +574,22 @@ class MatchToSampleFromDLDataExperiment(Experiment):
         category_meta_dicts = defaultdict(list)
         if response_images is None:
             num_per_category = int(np.ceil(float(k) / n) * (n + 1))
-            response_images = [None]*len(combs)
+            response_images = [None] * len(combs)
         else:
             num_per_category = int(np.ceil(float(k) / n))
-            
+
         rng = np.random.RandomState(seed=seed)
         for category in category_occurences.keys():
             cat_inds = set(np.ravel(np.argwhere(meta[meta_field] == category)))
             inds = list(query_inds & cat_inds)
             num_sample = category_occurences[category] * num_per_category
             assert len(inds) >= num_per_category, "Category %s has %s images, %s are required for this experiment" % \
-                                                  (category, len(inds), num_sample)
-            
-            img_inds.extend(list(np.array(inds)[rng.permutation(len(inds))[: num_sample]]))
+                (category, len(inds), num_sample)
 
-        urls = dataset.publish_images(img_inds, preproc, image_bucket_name, dummy_upload=dummy_upload)
+            img_inds.extend(list(np.array(inds)[rng.permutation(len(inds))[:num_sample]]))
+
+        urls = dataset.publish_images(img_inds, preproc,
+                image_bucket_name, dummy_upload=dummy_upload)
         for url, img_ind in zip(urls, img_inds):
             meta_entry = meta[img_ind]
             category = meta_entry[meta_field]
@@ -609,27 +616,29 @@ class MatchToSampleFromDLDataExperiment(Experiment):
                     if ri is None:
                         if labels is None:
                             labels.append([''] * len(test_meta))
-                        labels.append([labelfunc(meta_dict, dataset) for meta_dict in test_meta])
+                        labels.append([labelfunc(meta_dict, dataset)
+                            for meta_dict in test_meta])
                     else:
                         labels.append(ri['labels'])
 
         for list_data in [imgs, imgData, labels]:
             rng = np.random.RandomState(seed=seed)
             rng.shuffle(list_data)
-            
+
         self._trials = {'imgFiles': imgs, 'imgData': imgData, 'labels': labels,
                                'meta_field': [meta_field] * len(labels)}
-        
+
 
 class MatchToSampleFromDLDataExperimentWithTiming(MatchToSampleFromDLDataExperiment):
-    def createTrials(self):
+    def createTrials(self, presentation_time=None):
+        if presentation_time is None:
+            presentation_time = self.presentation_time
         MatchToSampleFromDLDataExperiment.createTrials(self)
         N = len(self._trials['imgFiles'])
         self._trials['stimduration'] = [presentation_time] * N
-        
+
 
 class MatchToSampleFromDLDataExperimentWithReward(MatchToSampleFromDLDataExperiment):
-
         def createTrials(self):
             MatchToSampleFromDLDataExperiment.createTrials(self)
             html_data = self.html_data
@@ -637,8 +646,8 @@ class MatchToSampleFromDLDataExperimentWithReward(MatchToSampleFromDLDataExperim
             acc = np.linspace(0, 1, 100)
             n = float(len(combs[0]))
             print n
-            fudged_hr = (acc/n)/(1/n)
-            fudged_fa = ((1/n)-acc/n)/(1-1/n)
+            fudged_hr = (acc / n) / (1 / n)
+            fudged_fa = ((1 / n) - acc / n) / (1 - 1 / n)
             fudged_hr[0] = 1. / (2 * 100)
             fudged_fa[0] = 1 - 1. / (2 * 100)
             fudged_fa[-1] = 1. / (2 * 100)
@@ -647,8 +656,9 @@ class MatchToSampleFromDLDataExperimentWithReward(MatchToSampleFromDLDataExperim
             reward = dprime
             reward[reward < 0] = 0
             reward_scale = html_data['reward_scale']
-            reward = list(reward/max(reward)*reward_scale)
-            self._trials['reward_scale'] = [reward] * len(self._trials['imgFiles'])        
+            reward = list(reward / max(reward) * reward_scale)
+            self._trials['reward_scale'] = \
+                [reward] * len(self._trials['imgFiles'])
 
 
 # -- helper functions
@@ -990,8 +1000,8 @@ def upload_files(srcfiles, bucketname, dstprefix='',
             print 'At:', i_fn, 'out of', len(srcfiles)
 
     return keys
-    
-    
+
+
 def download_results(hitids, dstprefix=None, sandbox=True,
         replstr='${HIT_ID}', verbose=False, full=False):
     """Download all assignment results in `hittids` and save one pickle file
@@ -1008,7 +1018,7 @@ def download_results(hitids, dstprefix=None, sandbox=True,
     n_total = len(hitids)
     n_hits = 0
     n_assgns = 0
-    meta = {'boto_version': boto_version,
+    meta = {'boto_version': boto.__version__,
             'backup_algo_version': BACKUP_ALGO_VER}
 
     for hitid in hitids:
@@ -1034,7 +1044,6 @@ def download_results(hitids, dstprefix=None, sandbox=True,
         return res, n_hits, n_assgns
     if dstprefix is None:
         return res
-
 
 
 def connect_s3(section_name=MTURK_CRED_SECTION, accesskey=None,
@@ -1080,4 +1089,3 @@ def exists_s3(bucketname_or_bucket, keyname, section_name=MTURK_CRED_SECTION,
     k = Key(bucket)
     k.key = keyname
     return k.exists()
-

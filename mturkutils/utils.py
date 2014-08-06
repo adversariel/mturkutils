@@ -3,9 +3,6 @@ import os
 import json
 import shutil as sh
 import cPickle as pk
-from boto import __version__ as boto_version
-
-BACKUP_ALGO_VER = 1
 
 
 def chunker(seq, size):
