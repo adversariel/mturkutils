@@ -304,7 +304,7 @@ class Experiment(object):
         # save trials for future reference
         pk.dump(trials, open(os.path.join(tmpdir, trials_loc), 'wb'))
         
-    def testHTMLs(self, full=False):
+    def testHTMLs(self):
         """Test and validates the written html files"""
         
         tmpdir = self.tmpdir
@@ -327,17 +327,6 @@ class Experiment(object):
         ut.validate_html_files(fns_production,
                 rules=PREP_RULE_SIMPLE_RSVP_PRODUCTION,
                 trials_org=trials_org)
-
-        if full:
-            ids = [e[0].split('/')[-1] for e in trials_org]
-            ids = np.unique(ids)
-            print '* Making sure all images are there:', len(ids)
-            _, bucket = connect_s3(section_name='MTurkCredentials_esolomon',  ##whats this ???
-                    bucketname=S3BUCKET_FULLOBJT)  ##and this??
-            for i, e in enumerate(ids):
-                assert exists_s3(bucket, e)
-                if i % 100 == 0:
-                    print ' ->', i
 
     def uploadHTMLs(self):
         tmpdir = self.tmpdir
