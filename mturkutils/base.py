@@ -583,10 +583,13 @@ class MatchToSampleFromDLDataExperiment(Experiment):
             cat_inds = set(np.ravel(np.argwhere(meta[meta_field] == category)))
             inds = list(query_inds & cat_inds)
             num_sample = category_occurences[category] * num_per_category
-            assert len(inds) >= num_per_category, "Category %s has %s images, %s are required for this experiment" % \
-                (category, len(inds), num_sample)
+            if len(inds) < num_per_category:
+                raise ValueError(("Category %s has %s images, "
+                        "%s are required for this experiment") %
+                        (category, len(inds), num_sample))
 
-            img_inds.extend(list(np.array(inds)[rng.permutation(len(inds))[:num_sample]]))
+            img_inds.extend(list(
+                np.array(inds)[rng.permutation(len(inds))[:num_sample]]))
 
         urls = dataset.publish_images(img_inds, preproc,
                 image_bucket_name, dummy_upload=dummy_upload)
@@ -629,7 +632,9 @@ class MatchToSampleFromDLDataExperiment(Experiment):
                                'meta_field': [meta_field] * len(labels)}
 
 
-class MatchToSampleFromDLDataExperimentWithTiming(MatchToSampleFromDLDataExperiment):
+class MatchToSampleFromDLDataExperimentWithTiming(
+        MatchToSampleFromDLDataExperiment):
+
     def createTrials(self, presentation_time=None):
         if presentation_time is None:
             presentation_time = self.presentation_time
@@ -638,7 +643,9 @@ class MatchToSampleFromDLDataExperimentWithTiming(MatchToSampleFromDLDataExperim
         self._trials['stimduration'] = [presentation_time] * N
 
 
-class MatchToSampleFromDLDataExperimentWithReward(MatchToSampleFromDLDataExperiment):
+class MatchToSampleFromDLDataExperimentWithReward(
+        MatchToSampleFromDLDataExperiment):
+
         def createTrials(self):
             MatchToSampleFromDLDataExperiment.createTrials(self)
             html_data = self.html_data
