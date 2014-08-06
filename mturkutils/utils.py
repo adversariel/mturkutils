@@ -2,7 +2,6 @@
 import os
 import json
 import shutil as sh
-import cPickle as pk
 
 
 def chunker(seq, size):
@@ -11,7 +10,8 @@ def chunker(seq, size):
 
 def dictchunker(seqdict, size):
     L = len(seqdict[seqdict.keys()[0]])
-    return ({k: seqdict[k][pos:pos + size] for k in seqdict.keys()} for pos in xrange(0, L, size))
+    return ({k: seqdict[k][pos:pos + size] for k in seqdict.keys()}
+            for pos in xrange(0, L, size))
 
 
 def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
@@ -48,8 +48,12 @@ def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
     html_src = open(src, 'rt').read()   # entire file content
     for rule in rules:
         if 'n' not in rule:
+            # skips the following safety mechanism.
             continue
-        assert html_src.count(rule['old']) == rule['n'], (html_src.count(rule['old']), rule['n'])
+        if html_src.count(rule['old']) != rule['n']:
+            raise ValueError('Mismatch in replace rules. ' +
+                    '# expected = %d, # actual = %d' %
+                    (rule['n'], html_src.count(rule['old'])))
 
     for i_chunk, chunk in enumerate(chunkerfunc(trials, n_per_file)):
         if verbose and i_chunk % n_per_file == 0:
@@ -74,6 +78,7 @@ def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
             sh.copy(fn, dstdir)
 
     return dst_fns
+
 
 def validate_html_files(filenames, rules,
         trials_org=None):
@@ -132,5 +137,3 @@ def mkdirs(pth):
     """Make the directory recursively"""
     if not os.path.exists(pth):
         os.makedirs(pth)
-
-
