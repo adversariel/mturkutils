@@ -288,8 +288,12 @@ class Experiment(object):
     def createTrials(self):
         raise NotImplementedError
 
-    def prepHTMLs(self):
+    def prepHTMLs(self, chunkerfunc=None):
         trials = self._trials
+        if hasattr(self, '_chunkerfunc'):
+            chunkerfunc = self._chunkerfunc
+        elif chunkerfunc is None:
+            chunkerfunc = ut.dictchunker
 
         n_per_file = self.trials_per_hit
         htmlsrc = self.htmlsrc
@@ -309,7 +313,7 @@ class Experiment(object):
             ut.prep_web_simple(trials, htmlsrc, dstdir, dstpatt=htmldst,
                     rules=rules, auxfns=othersrc,
                     n_per_file=n_per_file, verbose=True,
-                    chunkerfunc=ut.dictchunker)
+                    chunkerfunc=chunkerfunc)
 
         # save trials for future reference
         pk.dump(trials, open(os.path.join(tmpdir, trials_loc), 'wb'))
