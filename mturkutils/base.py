@@ -4,6 +4,7 @@ MTurk. Contact Ethan Solomon (esolomon@mit.edu), Diego Ardila (ardila@mit.edu),
 or Ha Hong (hahong@mit.edu) for help!
 """
 import pymongo
+import copy
 import glob
 import urllib
 import os.path
@@ -132,7 +133,7 @@ class Experiment(object):
             sandbox=True, keywords=None, lifetime=1209600,
             max_assignments=1, title='TEST', reward=0.01, duration=1500,
             approval_delay=172800, description='TEST', frame_height_pix=1000,
-            comment='TEST', collection_name='TEST', meta=None,
+            comment='TEST', meta=None,
             log_prefix=LOG_PREFIX, section_name=MTURK_CRED_SECTION,
             bucket_name=None,
             trials_per_hit=100,
@@ -144,7 +145,14 @@ class Experiment(object):
             tmpdir_production=None,
             tmpdir_sandbox=None,
             trials_loc='trials.pkl',
-            html_data=None):
+            html_data=None,
+            otherrules=None,
+            additionalrules=None,
+            mongo_port=None,
+            mongo_host=None,
+            mongo_dbname=None,
+            collection_name='TEST',
+            other_quals=None):
 
         if keywords is None:
             keywords = ['']
@@ -162,6 +170,7 @@ class Experiment(object):
         self.frame_height_pix = frame_height_pix
         self.log_prefix = log_prefix
         self.section_name = section_name
+        self.other_quals = other_quals
         self.setQual(90)
         self.bucket_name = bucket_name
 
@@ -182,13 +191,22 @@ class Experiment(object):
         self.htmldst = htmldst
         self.othersrc = othersrc
         self.html_data = html_data
+        self.otherrules = otherrules
+        self.additionalrules = additionalrules
 
         self.trials_per_hit = trials_per_hit
 
-        self.setMongoVars(collection_name, comment, meta)
+        self.comment = comment
+        self.meta = meta
+        self.mongo_port = mongo_port
+        self.mongo_host = mongo_host
+        self.mongo_dbname = mongo_dbname
+        self.collection_name = collection_name
+        self.setMongoVars()
         self.conn = self.connect()
 
-    def payBonuses(self, performance_threshold, bonus_threshold,
+    def payBonuses(self, performance_threshold=None, bonus_threshold=None,
+            performance_key='Performance', performance_error=False,
             auto_approve=True):
         """
         This function approves and grants bonuses on all hits above a certain
@@ -199,25 +217,39 @@ class Experiment(object):
         if auto_approve:
             for doc in coll.find():
                 assignment_id = doc['AssignmentID']
-                assignment_status = \
-                    self.conn.get_assignment(assignment_id)[0].AssignmentStatus
-                performance = doc['Performance']
-                if performance < performance_threshold:
-                    if assignment_status in ['Submitted']:
-                        self.conn.reject_assignment(assignment_id,
-                            feedback='Your performance was significantly '
-                                     'lower than other subjects')
-                else:
-                    if assignment_status in ['Submitted']:
-                        self.conn.approve_assignment(assignment_id)
+                try:
+                    assignment_status = \
+                            self.conn.get_assignment(assignment_id
+                                    )[0].AssignmentStatus
+                    performance = doc.get(performance_key)
+                    if (performance_threshold is not None) and \
+                            (performance is not None):
+                        if (performance_error and
+                                performance > performance_threshold) or \
+                                        (performance < performance_threshold):
+                            if assignment_status in ['Submitted']:
+                                self.conn.reject_assignment(assignment_id,
+                                    feedback='Your performance was '
+                                    'significantly lower than other subjects')
+                    else:
+                        if assignment_status in ['Submitted']:
+                            self.conn.approve_assignment(assignment_id)
+                except boto.mturk.connection.MTurkRequestError, e:
+                    print('Error for assignment_id %s' % assignment_id, e)
         for doc in coll.find():
             assignment_id = doc['AssignmentID']
             worker_id = doc['WorkerID']
-            assignment_status = \
-                    self.conn.get_assignment(assignment_id)[0].AssignmentStatus
-            bonus = doc['Bonus']
-            if assignment_status == 'Approved':
-                if float(bonus) < float(bonus_threshold):
+            try:
+                assignment_status = \
+                        self.conn.get_assignment(assignment_id
+                                )[0].AssignmentStatus
+            except boto.mturk.connection.MTurkRequestError, e:
+                print('Error for assignment_id %s' % assignment_id, e)
+                continue
+            bonus = doc.get('Bonus')
+            if (bonus is not None) and (assignment_status == 'Approved'):
+                if (bonus_threshold is None) or (float(bonus) <
+                        float(bonus_threshold)):
                     if not doc.get('BonusAwarded', False):
                         bonus = np.round(float(bonus) * 100) / 100
                         if bonus >= 0.01:
@@ -229,7 +261,8 @@ class Experiment(object):
                                     p,
                                     "Performance Bonus")
                             coll.update({'_id': doc['_id']},
-                                    {'$set': {'BonusAwarded': True}})
+                                    {'$set': {'BonusAwarded': True}},
+                                    multi=True)
 
     def getBalance(self):
         """Returns the amount of available funds. If you're in Sandbox mode,
@@ -237,7 +270,7 @@ class Experiment(object):
         """
         return self.conn.get_account_balance()[0].amount
 
-    def setMongoVars(self, collection_name, comment, meta):
+    def setMongoVars(self):
         """Establishes connection to database
 
         :param collection_name: You must specify a valid collection name. If it
@@ -254,11 +287,25 @@ class Experiment(object):
         otherwise specified).
         """
 
-        self.collection_name = collection_name
-        self.comment = comment
         self.mongo_conn = None
         self.db = None
         self.collection = None
+
+        meta = self.meta
+        collection_name = self.collection_name
+
+        if self.mongo_port is None:
+            mongo_port = MONGO_PORT
+        else:
+            mongo_port = self.mongo_port
+        if self.mongo_host is None:
+            mongo_host = MONGO_HOST
+        else:
+            mongo_host = self.mongo_host
+        if self.mongo_dbname is None:
+            mongo_dbname = MONGO_DBNAME
+        else:
+            mongo_dbname = self.mongo_dbname
 
         if isinstance(meta, tabarray):
             print('Converting tabarray to dictionary for speed. '
@@ -281,8 +328,8 @@ class Experiment(object):
                     'database collection name.')
 
         #Connect to pymongo database for MTurk results.
-        self.mongo_conn = pymongo.Connection(port=MONGO_PORT, host=MONGO_HOST)
-        self.db = self.mongo_conn[MONGO_DBNAME]
+        self.mongo_conn = pymongo.Connection(host=mongo_host, port=mongo_port)
+        self.db = self.mongo_conn[mongo_dbname]
         self.collection = self.db[collection_name]
 
     def createTrials(self):
@@ -298,23 +345,71 @@ class Experiment(object):
         n_per_file = self.trials_per_hit
         htmlsrc = self.htmlsrc
         htmldst = self.htmldst
-        othersrc = self.othersrc
+        auxfns = self.othersrc
 
         tmpdir = self.tmpdir
         tmpdir_sandbox = self.tmpdir_sandbox
         tmpdir_production = self.tmpdir_production
         trials_loc = self.trials_loc
+        sandbox_prefix = self.sandbox_prefix
+        production_prefix = self.production_prefix
+        bucket_name = self.bucket_name
 
-        for label, rules, dstdir in [
-                ('sandbox', PREP_RULE_SIMPLE_RSVP_SANDBOX, tmpdir_sandbox),
-                ('production', PREP_RULE_SIMPLE_RSVP_PRODUCTION,
-                    tmpdir_production)]:
-            print '  ->', label
-            ut.prep_web_simple(trials, htmlsrc, dstdir, dstpatt=htmldst,
-                    rules=rules, auxfns=othersrc,
+        sandbox_rules = copy.deepcopy(PREP_RULE_SIMPLE_RSVP_SANDBOX)
+        production_rules = copy.deepcopy(PREP_RULE_SIMPLE_RSVP_PRODUCTION)
+
+        if auxfns is not None:
+            for auxfn in auxfns:
+                auxroot = os.path.split(auxfn)[1]
+                new_sandbox_rule = {
+                'old': auxroot,
+                'new': 'https://s3.amazonaws.com/' + bucket_name + '/' +
+                        sandbox_prefix + '/' + auxroot,
+                        }
+                new_production_rule = {
+                'old': auxroot,
+                'new': 'https://s3.amazonaws.com/' + bucket_name + '/' +
+                        production_prefix + '/' + auxroot,
+                        }
+                sandbox_rules.append(new_sandbox_rule)
+                production_rules.append(new_production_rule)
+
+        if self.additionalrules is not None:
+            sandbox_rules.extend(self.additionalrules)
+            production_rules.extend(self.additionalrules)
+
+        if self.otherrules is not None:
+            rulesets = []
+            for label, ruleset in self.otherrules:
+                srules = copy.deepcopy(sandbox_rules)
+                srules.extend(ruleset)
+                prules = copy.deepcopy(production_rules)
+                prules.extend(ruleset)
+                rulesets.append(('sandbox_%s' % label,
+                    srules, tmpdir_sandbox, label))
+                rulesets.append(('production_%s' % label,
+                    prules, tmpdir_production, label))
+
+        else:
+            rulesets = [('sandbox', sandbox_rules, tmpdir_sandbox, None),
+                        ('production', production_rules, tmpdir_production,
+                            None)]
+
+        self.base_URLs = []
+        self.final_rules = []
+        for label, rules, dstdir, pfix in rulesets:
+            print ('  ->', label, pfix)
+            new_urls = ut.prep_web_simple(trials, htmlsrc,
+                    dstdir, dstpatt=htmldst,
+                    rules=rules, auxfns=auxfns,
                     n_per_file=n_per_file, verbose=True,
-                    chunkerfunc=chunkerfunc)
+                    chunkerfunc=chunkerfunc,
+                    prefix=pfix)
+            self.base_URLs += new_urls
+            self.final_rules.extend([rules for _ind in range(len(new_urls))])
 
+        assert len(self.final_rules) == len(self.base_URLs)
+        self.final_rules = dict(zip(self.base_URLs, self.final_rules))
         # save trials for future reference
         pk.dump(trials, open(os.path.join(tmpdir, trials_loc), 'wb'))
 
@@ -335,11 +430,11 @@ class Experiment(object):
 
         print '* Testing sandbox...'
         ut.validate_html_files(fns_sandbox,
-                rules=PREP_RULE_SIMPLE_RSVP_SANDBOX,
+                ruledict=self.final_rules,
                 trials_org=trials_org)
         print '* Testing production...'
         ut.validate_html_files(fns_production,
-                rules=PREP_RULE_SIMPLE_RSVP_PRODUCTION,
+                ruledict=self.final_rules,
                 trials_org=trials_org)
 
     def uploadHTMLs(self):
@@ -352,13 +447,14 @@ class Experiment(object):
         """Upload generated web files into S3"""
         print '* Uploading sandbox...'
         fns = glob.glob(os.path.join(tmpdir_sandbox, '*.*'))
-        upload_files(fns, bucket_name, dstprefix=sandbox_prefix + '/',
-                test=True, verbose=10)
+        keys = upload_files(fns, bucket_name,
+                dstprefix=sandbox_prefix + '/', test=True, verbose=10)
 
         print '* Uploading production...'
         fns = glob.glob(os.path.join(tmpdir_production, '*.*'))
-        upload_files(fns, bucket_name, dstprefix=production_prefix + '/',
-                test=True, verbose=10)
+        keys += upload_files(fns, bucket_name,
+                dstprefix=production_prefix + '/', test=True, verbose=10)
+        return keys
 
     def connect(self):
         """Establishes connection to MTurk for publishing HITs and getting
@@ -375,26 +471,37 @@ class Experiment(object):
 
     def setQual(self, performance_thresh=90):
         self.qual = create_qual(performance_thresh)
+        if self.other_quals is not None:
+            for q in self.other_quals:
+                self.qual.add(q)
 
-    def URLs(self):
-        tmpdir_sandbox = self.tmpdir_sandbox
-        tmpdir_production = self.tmpdir_production
+    def URLs(self, secure=False):
+        """urls of actual tasks for createHITs
+           prepHTMLs must be run first
+        """
         sandbox_prefix = self.sandbox_prefix
         production_prefix = self.production_prefix
         bucket_name = self.bucket_name
 
         if self.sandbox:
             prefix = sandbox_prefix
-            fns = glob.glob(os.path.join(tmpdir_sandbox, '*.*'))
         else:
             prefix = production_prefix
-            fns = glob.glob(os.path.join(tmpdir_production, '*.*'))
 
-        return ['https://s3.amazonaws.com/' + bucket_name + '/' +
-                                        prefix + '/' +
-                                        fn.split('/')[-1] for fn in fns]
+        if secure:
+            urlbase = S3HTTPSBASE
+        else:
+            urlbase = S3HTTPBASE
 
-    def createHIT(self, URLlist=None, verbose=True, hitidslog=None):
+        base_URLs = [fn.split('/')[-1] for fn in self.base_URLs]
+        base_URLs = [b for (i, b) in enumerate(base_URLs)
+                if b not in base_URLs[:i]]
+
+        return [urlbase + bucket_name + '/' + prefix + '/' + b
+                for b in base_URLs]
+
+    def createHIT(self, URLlist=None, verbose=True, hitidslog=None,
+                  secure=False, hits_per_url=1):
         """
         - Pass a list of URLs (check that they work first!) for each one to be
           published as a HIT. If you've used mturkutils to upload HTML, those
@@ -405,7 +512,9 @@ class Experiment(object):
           if given, `hitidslog`.
         """
         if URLlist is None:
-            URLlist = self.URLs()
+            URLlist = self.URLs(secure=secure)
+
+        URLlist = URLlist * hits_per_url
 
         if self.sandbox:
             print('**WORKING IN SANDBOX MODE**')
@@ -500,7 +609,7 @@ class Experiment(object):
         self.all_data = all_data
         return all_data
 
-    def updateDBwithHITs(self, **kwargs):
+    def updateDBwithHITs(self, hitids=None, **kwargs):
         """
         - Takes a list of HIT IDs, gets data from MTurk, attaches metadata (if
           necessary) and puts results in dicarlo2 database.
@@ -512,7 +621,9 @@ class Experiment(object):
           - verbose: show the progress of db update
           - overwrite: if True, the existing records will be overwritten.
         """
-        return self._updateDBcore(self.hitids, 'hitids', **kwargs)
+        if hitids is None:
+            hitids = [h.HITId for h in self.conn.search_hits()]
+        return self._updateDBcore(hitids, 'hitids', **kwargs)
 
     def updateDBwithHITslocal(self, datafiles, mode='files', **kwargs):
         """
@@ -786,8 +897,12 @@ def parse_human_data_from_HITdata(assignments, HITdata=None, comment='',
             qfa = a.answers[0][0]
             assert len(qfa.fields) == 1     # must be...?
             ansdat = json.loads(qfa.fields[0])
-            assert len(ansdat) == 1         # only this format is supported
+            assert len(ansdat) == 1, \
+                    len(ansdat)             # only this format is supported
             ansdat = ansdat[0]
+            for _r in ansdat['Response']:
+                if '_id' in _r and '$oid' in _r['_id']:
+                    _r['_id'] = _r['_id']['$oid']
             ansdat['AssignmentID'] = a.AssignmentId
             ansdat['WorkerID'] = a.WorkerId
             ansdat['Timestamp'] = a.SubmitTime
@@ -1005,7 +1120,7 @@ def upload_files(srcfiles, bucketname, dstprefix='',
             s = k.get_contents_as_string()
             k.close()
             assert s == open(fn).read()
-        keys.append(key_dst)
+        keys.append(k)
 
         if verbose and i_fn % verbose == 0:
             print 'At:', i_fn, 'out of', len(srcfiles)

@@ -7,4 +7,5 @@
 .*swp
 papers/*/output
 tmp/
+*.pkl
 tmp.?/

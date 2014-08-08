@@ -2,6 +2,7 @@
 import os
 import json
 import shutil as sh
+from yamutils.mongo import SONify
 
 
 def chunker(seq, size):
@@ -17,7 +18,8 @@ def dictchunker(seqdict, size):
 def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
         auxfns=None,
         n_per_file=100, verbose=False,
-        chunkerfunc=chunker):
+        chunkerfunc=chunker,
+        prefix=None):
     """Prepare web files for publishing.
 
     This function does the following things:
@@ -51,9 +53,9 @@ def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
             # skips the following safety mechanism.
             continue
         if html_src.count(rule['old']) != rule['n']:
-            raise ValueError('Mismatch in replace rules. ' +
+            raise ValueError('Mismatch in replace rule "%s": ' +
                     '# expected = %d, # actual = %d' %
-                    (rule['n'], html_src.count(rule['old'])))
+                    (rule['old'], rule['n'], html_src.count(rule['old'])))
 
     for i_chunk, chunk in enumerate(chunkerfunc(trials, n_per_file)):
         if verbose and i_chunk % n_per_file == 0:
@@ -64,10 +66,13 @@ def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
             sold = rule['old']
             snew = rule['new']
             if '${CHUNK}' in snew:
-                snew = snew.replace('${CHUNK}', json.dumps(chunk))
+                snew = snew.replace('${CHUNK}', json.dumps(SONify(chunk)))
             html_dst = html_dst.replace(sold, snew)
 
-        dst_fn = dstpatt % i_chunk
+        if prefix is None:
+            dst_fn = dstpatt % i_chunk
+        else:
+            dst_fn = dstpatt % (prefix, i_chunk)
         dst_fn = os.path.join(dstdir, dst_fn)
         open(dst_fn, 'wt').write(html_dst)
         dst_fns.append(dst_fn)
@@ -80,7 +85,7 @@ def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
     return dst_fns
 
 
-def validate_html_files(filenames, rules,
+def validate_html_files(filenames, ruledict,
         trials_org=None):
     """Validates `filenames` by running simple tests
 
@@ -98,16 +103,18 @@ def validate_html_files(filenames, rules,
     sep_end = None
     n_occ = 0
 
-    for rule in rules:
-        if '${CHUNK}' not in rule['new']:
-            continue
-        seps = rule['new'].split('${CHUNK}')
-        sep_begin, sep_end = seps[0], seps[1]
-        n_occ = rule['n']
-        break
+    for rules in ruledict.values():
+        for rule in rules:
+            if '${CHUNK}' not in rule['new']:
+                continue
+            seps = rule['new'].split('${CHUNK}')
+            sep_begin, sep_end = seps[0], seps[1]
+            n_occ = rule['n']
+            break
 
     for fn in filenames:
         # pass 1
+        rules = ruledict[fn]
         html = open(fn).read()
         for rule in rules:
             if 'n' not in rule or '${CHUNK}' in rule['new']:
@@ -130,7 +137,12 @@ def validate_html_files(filenames, rules,
                 trials[_k] = trials0[_k]
 
     if trials_org is not None:
-        assert trials_org == trials
+        assert trials_org.keys() == trials.keys()
+        for ind in trials_org:
+            assert len(trials[ind]) % len(trials_org[ind]) == 0
+            mult = len(trials[ind]) / len(trials_org[ind])
+            assert mult * trials_org[ind] == trials[ind], \
+                    (ind, len(trials_org[ind]), len(trials[ind]))
 
 
 def mkdirs(pth):
