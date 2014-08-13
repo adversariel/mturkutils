@@ -732,10 +732,11 @@ class MatchToSampleFromDLDataExperiment(Experiment):
                     imgs.append([sample, test])
                     imgData.append({"Sample": sample_meta, "Test": test_meta})
                     if ri is None:
-                        if labels is None:
+                        if labelfunc is None:
                             labels.append([''] * len(test_meta))
-                        labels.append([labelfunc(meta_dict, dataset)
-                            for meta_dict in test_meta])
+                        else:
+                            labels.append([labelfunc(meta_dict, dataset)
+                                for meta_dict in test_meta])
                     else:
                         labels.append(ri['labels'])
 
