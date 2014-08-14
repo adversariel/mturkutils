@@ -38,6 +38,7 @@ img {
 </style>
 
 
+<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
@@ -45,14 +46,13 @@ img {
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/slider-1.0.2.js"></script>
-<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 
 <script type="text/javascript">
 
 ExperimentData = null;
 
 shuffle = function(o) {
-	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x = o[--i], o[i] = o[j], o[j] = x);
 	return o;
   };
 
@@ -79,7 +79,7 @@ function beginExp() {
 	$('.fixation img').attr('src',fixationImage.src);
 	$('.fixation').show();
 	var thisStim = imgFiles_new[trialNumber][0];
-    window.scrollTo(0, 0);
+	window.scrollTo(0, 0);
 	tmpImage = new Image();
 	tmpImage.src = thisStim;
 	$('#main_test').attr('src',thisStim);
@@ -116,21 +116,23 @@ function getAspectRatio(im) {
 	var height = im.naturalHeight;
 	var ar = width/height;
 	//console.log(ar)
-	return ar
+	return ar;
 }
-var reward
-var acc
+
+var reward;
+var acc;
 function showResponse() {
 	console.log('showResponse');
-    $('#label1').html(labels[trialNumber][0]);
-    $('#label2').html(labels[trialNumber][1]);
+	/* hahong: simplify
+	$('#label1').html(labels[trialNumber][0]);
+	$('#label2').html(labels[trialNumber][1]);
 	$('#totalSeen').html('Total Objects Seen: 0');
-    acc = parseFloat(num_correct)/Math.max(1,trialNumber)
-    format_acc = (acc*100).toPrecision(3);
-    reward = reward_scale[trialNumber][Math.floor(acc*99)].toPrecision(2);
-    $('#trialCounter').html('Progress:<br /> '+trialNumber+' of '+totalTrials+
-                 '<br /> Accuracy:<br /> '+ format_acc+'%'+
-                 '<br/> Bonus:<br />'+ reward + '$');
+	*/
+	/* hahong: reward related
+	acc = parseFloat(num_correct) / Math.max(1,trialNumber);
+	format_acc = (acc * 100).toPrecision(3);
+	reward = reward_scale[trialNumber][Math.floor(acc*99)].toPrecision(2); */
+	$('#trialCounter').html('Progress:<br /> '+trialNumber+' of '+ totalTrials);
 	$('#group_container').show();
 	trialStartTime = new Date();
 
@@ -148,15 +150,16 @@ function clicked(myval, index) {
 	console.log('clicked');
 	if (begin) {
  		trialEndTime = new Date();
+	/* hahong: reward related
         var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
         var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
-        console.log(index)
-        console.log(meta_correct)
-        console.log(meta_response)
+        console.log(index);
+        console.log(meta_correct);
+        console.log(meta_response);
         if(meta_correct == meta_response){
-            num_correct++
-        }
- 		pushData(myval)
+            num_correct++;
+        } */
+ 		pushData(myval);
  		$('.fixation img').attr('src',fixationImage.src);
  		$('#group_container').hide();
  		$('.fixation').show();
@@ -205,8 +208,9 @@ function endTrial() {
 					ScreenHeight:vertical,
 					ScreenWidth:horizontal,
                     ImgData: imgData,
-                    Performance:acc,
-                    Bonus:reward
+		    /* hahong: reward related
+		    Performance:acc,
+                    Bonus:reward */
 					});
 
 	document.getElementById("assignmentId").value = aID;
@@ -226,7 +230,7 @@ function endTrial() {
 function takeABreak() {
 	$('#main_test').attr('src',breakscreen.src);
 	$('.fixation').hide();
-	$('.test').show()
+	$('.test').show();
 	$('#_preload').html("<font color=red style=background-color:white>You have completed "+Math.round((trialNumber/totalTrials)*100)+"% of the experiment. Be sure to pay attention so that you know you can finish on time!");
 	$('#_preload').show();
 	document.onkeypress = function(e){
@@ -235,28 +239,28 @@ function takeABreak() {
 			var actualKey = String.fromCharCode(unicode);
 				if (actualKey=='z'){
 					trialNumber++;
-					$('.test').hide()
+					$('.test').hide();
 					$('#_preload').hide();
 					$('.fixation').show();
 					var thisStim = imgFiles_new[trialNumber];
-					$('#main_test').attr('src',thisStim)
-					setTimeout(function() {showStim()},ISI)};
-		};
+					$('#main_test').attr('src',thisStim);
+					setTimeout(function() {showStim();},ISI);
+				}
+		}
 
 }
 
 //!!==END DYNAMIC TRIAL CODE==!!//
 
-function gup( name )
-{
-  name = name.replace(/[\[]/,"\[").replace(/[\]]/,"\]");
-  var regexS = "[\?&]"+name+"=([^&#]*)";
-  var regex = new RegExp( regexS );
-  var param = regex.exec( window.location.href );
-  if( param == null )
-    return "";
-  else
-    return param[1];
+function gup(name) {
+    name = name.replace(/[\[]/,"\\[").replace(/[\]]/,"\\]");
+    var regexS = "[\\?&]"+name+"=([^&#]*)";
+    var regex = new RegExp( regexS );
+    var results = regex.exec(window.location.href);
+    if (results === null)
+        return "";
+    else
+        return results[1];
 }
 
 function init_vars() {
@@ -268,21 +272,22 @@ function init_vars() {
 	StimDone = new Array();
 	imgFiles_new = new Array();
 	fixationImage = new Image;
-	fixationImage.src = "https://s3.amazonaws.com/human_training/fixation.png";
+	fixationImage.src = "https://s3.amazonaws.com/task_images/fixation.png";
 	breakscreen = new Image;
-	breakscreen.src = "https://s3.amazonaws.com/monkeyimgs/2way_impute/break.png";
+	breakscreen.src = "https://s3.amazonaws.com/task_images/break.png";
 	stimduration = 100;
-    labels = ExperimentData.labels;
+	// hahong: simplyfy: labels = ExperimentData.labels;
 	ISI = 500;
 	trialNumber = 0;
 	totalTrials = ExperimentData["imgFiles"].length;
 	BreakTimes = [];
 	begin = false;
 	startpoint = 0
-	exp_type = 'two_way_with_reward';
+	exp_type = 'two_way';
     imgData = ExperimentData.imgData;
+    /* hahong: reward related
     reward = 0;
-    reward_scale = ExperimentData.reward_scale;
+    reward_scale = ExperimentData.reward_scale;*/
 }
 
 function preload_resources() {
@@ -419,12 +424,3 @@ $(document).ready(function() {
 
 </body>
 </html>
-
-
-<!--import imagenet_psychophysics as ip-->
-<!--import imagenet-->
-<!--dataset = imagenet.dldatasets.ChallengeSynsets2013()-->
-<!--synsets = dataset.synset_list-->
-<!--conf = [(synsets[0], synsets[1]), (synsets[2], synsets[3]), (synsets[3], synsets[4]), (synsets[4], synsets[5])]-->
-<!--ip.urls_from_confusion_list(conf[0:1], preproc = None, k = 100, trials_per_hit=100, dataset = dataset, bucket_name='imagenet_psychophysics_test')-->
-
