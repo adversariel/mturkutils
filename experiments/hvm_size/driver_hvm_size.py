@@ -30,7 +30,7 @@ class HvMSizeExperiment(Experiment):
 
         meta = dataset.meta
         query_inds = np.arange(len(meta))
-        #query_inds = ((meta['obj'] == '_11') & (meta['var'] == 'V3')).nonzero()[0]
+        #query_inds = ((meta['obj'] == 'cruiser') & (meta['var'] == 'V3')).nonzero()[0]
 
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
@@ -42,7 +42,7 @@ class HvMSizeExperiment(Experiment):
         print('%d blocks' % nblocks)
         imgs = []
         imgData = []
-        for bn in range(nblocks)[:1]:
+        for bn in range(nblocks)[:]:
             pinds = perm[BSIZE * bn: BSIZE * (bn + 1)]
             pinds = np.concatenate([pinds, pinds[: REPEATS]])
             rng.shuffle(pinds)
@@ -66,13 +66,13 @@ additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
 exp = HvMSizeExperiment(htmlsrc = 'hvm_size.html',
                         htmldst = 'hvm_size_n%04d.html',
                         othersrc = othersrc,
-                        sandbox = True,
+                        sandbox = False,
                         title = 'Size Judgement, New Version',
-                        reward = 1.50,
+                        reward = 1.00,
                         duration = 3500,
                         description = 'Make object size judgements for up to 50 cent bonus',
                         comment = "Size judgement in HvM dataset",
-                        collection_name = "hvm_size_test",
+                        collection_name = "hvm_size",
                         max_assignments=1,
                         bucket_name='hvm_size_judgements',    
                         trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD, 

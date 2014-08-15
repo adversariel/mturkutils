@@ -6,9 +6,9 @@ from mturkutils.base import Experiment
 
 othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'TrackballControls.js', 'jstat.min.js']
 
-LEARNING_PERIOD = 5
+LEARNING_PERIOD = 10
 REPEATS = 5
-BSIZE = 65
+BSIZE = 50
 
 class HvMPoseExperiment(Experiment):
 
@@ -24,6 +24,7 @@ class HvMPoseExperiment(Experiment):
         meta = dataset.meta
         query_inds = np.arange(len(meta))
         #query_inds = (meta['var'] == 'V0').nonzero()[0][::10]
+        #query_inds = ((meta['obj'] == 'MQUEEN_L')).nonzero()[0]
 
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
@@ -35,7 +36,7 @@ class HvMPoseExperiment(Experiment):
         print('%d blocks' % nblocks)
         imgs = []
         imgData = []
-        for bn in range(nblocks)[:]:
+        for bn in range(nblocks)[:1]:
             pinds = perm[BSIZE * bn: BSIZE * (bn + 1)]
             pinds = np.concatenate([pinds, pinds[: REPEATS]])
             rng.shuffle(pinds)
@@ -54,8 +55,8 @@ class HvMPoseExperiment(Experiment):
 
 additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
                     'new':  str(LEARNING_PERIOD)}]
-exp = HvMPoseExperiment(htmlsrc = 'hvm_pose.html',
-                        htmldst = 'hvm_pose_n%04d.html',
+exp = HvMPoseExperiment(htmlsrc = 'hvm_pose_simple.html',
+                        htmldst = 'hvm_pose_simple_n%04d.html',
                         othersrc = othersrc,
                         sandbox = False,
                         title = 'Pose Judgement',
@@ -63,9 +64,9 @@ exp = HvMPoseExperiment(htmlsrc = 'hvm_pose.html',
                         duration = 1800,
                         description = 'Make object 3-d pose judgements for up to 50 cent bonus',
                         comment = "Pose judgement in HvM dataset",
-                        collection_name = 'hvm_pose',
+                        collection_name = None, #'hvm_pose_simple_',
                         max_assignments=1,
-                        bucket_name='hvm_pose',
+                        bucket_name='hvm_pose_simple',
                         trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD,
                         additionalrules=additionalrules)
 
