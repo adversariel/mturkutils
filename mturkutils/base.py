@@ -658,24 +658,45 @@ class Experiment(object):
 
 
 class MatchToSampleFromDLDataExperiment(Experiment):
+    """
+    Creates an experiment with the given ``html_data``.  Although the class
+    name implies use of an dldata object, it is possible to pass ``meta`` and
+    ``urls`` directly and skip dependency to dldata altogether (see example
+    experiment "objectome_cars_subord" for details).
+    """
 
-    def createTrials(self):
+    def createTrials(self, sampling='without-replacement', verbose=0):
+        """
+        - Create trials with the given ``html_data``.
+        - Parameter ``sampling`` determines the behavior of image sampling:
+          * "without-replacement" (default): no same images will be presented
+            across the entire population of subjects.
+          * "with-replacement": allows recycling of images.
+        """
 
+        assert sampling in ['without-replacement', 'with-replacement']
         html_data = self.html_data
 
-        dataset = html_data['dataset']
-        preproc = html_data['preproc']
-        meta_query = html_data['meta_query']
-        meta_field = html_data['meta_field']
+        dataset = html_data.get('dataset')
+        preproc = html_data.get('preproc')
+        meta_query = html_data.get('meta_query')
+        meta_field = html_data.get('meta_field', 'category')
         k = html_data['num_trials']
-        response_images = html_data['response_images']
-        dummy_upload = html_data['dummy_upload']
-        image_bucket_name = html_data['image_bucket_name']
+        response_images = html_data.get('response_images')
+        dummy_upload = html_data.get('dummy_upload', True)
+        image_bucket_name = html_data.get('image_bucket_name')
         combs = html_data['combs']
-        labelfunc = html_data['labelfunc']
-        seed = html_data['seed']
+        labelfunc = html_data.get('labelfunc')
+        seed = html_data.get('seed', 0)  # no need to change most cases
+        urls = html_data.get('urls')
+        meta = html_data.get('meta')
 
-        meta = dataset.meta
+        if meta is None:
+            if dataset is None:
+                raise ValueError('Either "meta" or "dataset" '
+                        'must be defined')
+            meta = dataset.meta
+
         if meta_query is not None:
             query_inds = set(np.ravel(np.argwhere(map(meta_query, meta))))
         else:
@@ -698,16 +719,41 @@ class MatchToSampleFromDLDataExperiment(Experiment):
             cat_inds = set(np.ravel(np.argwhere(meta[meta_field] == category)))
             inds = list(query_inds & cat_inds)
             num_sample = category_occurences[category] * num_per_category
-            if len(inds) < num_per_category:
-                raise ValueError(("Category %s has %s images, "
-                        "%s are required for this experiment") %
-                        (category, len(inds), num_sample))
 
-            img_inds.extend(list(
-                np.array(inds)[rng.permutation(len(inds))[:num_sample]]))
+            if sampling == 'without-replacement':
+                if len(inds) < num_sample:
+                    raise ValueError(("Category %s has %d images, "
+                            "%d are required for this experiment") %
+                            (category, len(inds), num_sample))
+                img_inds.extend(list(
+                    np.array(inds)[rng.permutation(len(inds))[:num_sample]]))
 
-        urls = dataset.publish_images(img_inds, preproc,
-                image_bucket_name, dummy_upload=dummy_upload)
+            elif sampling == 'with-replacement':
+                img_inds.extend(list(
+                    np.array(inds)[rng.randint(len(inds), size=num_sample)]))
+
+            else:
+                raise ValueError('Invalid "sampling"')
+
+        if urls is None:
+            assert image_bucket_name is not None
+            urls = dataset.publish_images(img_inds, preproc,
+                    image_bucket_name, dummy_upload=dummy_upload)
+        else:
+            assert len(meta) == len(urls)
+            urls = np.array(urls)[img_inds]
+        assert len(urls) == len(img_inds)
+
+        if verbose > 0:
+            print '** n =', n
+            print '** k =', k
+            print '** num_per_category =', num_per_category
+            print '** num_sample =', num_sample
+            print '** len(urls) =', len(urls)
+            print '** len(meta) =', len(meta)
+        if verbose > 1:
+            print '** category_occurences =', category_occurences
+
         for url, img_ind in zip(urls, img_inds):
             meta_entry = meta[img_ind]
             category = meta_entry[meta_field]
@@ -732,16 +778,34 @@ class MatchToSampleFromDLDataExperiment(Experiment):
                     imgs.append([sample, test])
                     imgData.append({"Sample": sample_meta, "Test": test_meta})
                     if ri is None:
-                        if labels is None:
+                        if labelfunc is None:
                             labels.append([''] * len(test_meta))
-                        labels.append([labelfunc(meta_dict, dataset)
-                            for meta_dict in test_meta])
+                        else:
+                            labels.append([labelfunc(meta_dict, dataset)
+                                for meta_dict in test_meta])
                     else:
                         labels.append(ri['labels'])
 
         for list_data in [imgs, imgData, labels]:
             rng = np.random.RandomState(seed=seed)
             rng.shuffle(list_data)
+
+        if verbose > 0:
+            print '** max len in left synset_urls =', \
+                    sorted([(len(synset_urls[e]), e)
+                        for e in synset_urls])[-1]
+            print '** max len in left category_meta_dicts =', \
+                    sorted([(len(category_meta_dicts[e]), e)
+                            for e in category_meta_dicts])[-1]
+        if verbose > 1:
+            print '** len for each in left synset_urls =', \
+                    {e: len(synset_urls[e]) for e in synset_urls}
+            print '** len for each in left category_meta_dicts =', \
+                    {e: len(category_meta_dicts[e])
+                            for e in category_meta_dicts}
+        if verbose > 2:
+            print '** synset_urls =', synset_urls
+            print '** category_meta_dicts =', category_meta_dicts
 
         self._trials = {'imgFiles': imgs, 'imgData': imgData, 'labels': labels,
                                'meta_field': [meta_field] * len(labels)}
@@ -750,10 +814,10 @@ class MatchToSampleFromDLDataExperiment(Experiment):
 class MatchToSampleFromDLDataExperimentWithTiming(
         MatchToSampleFromDLDataExperiment):
 
-    def createTrials(self, presentation_time=None):
+    def createTrials(self, presentation_time=None, **kwargs):
         if presentation_time is None:
             presentation_time = self.presentation_time
-        MatchToSampleFromDLDataExperiment.createTrials(self)
+        MatchToSampleFromDLDataExperiment.createTrials(self, **kwargs)
         N = len(self._trials['imgFiles'])
         self._trials['stimduration'] = [presentation_time] * N
 
@@ -761,8 +825,8 @@ class MatchToSampleFromDLDataExperimentWithTiming(
 class MatchToSampleFromDLDataExperimentWithReward(
         MatchToSampleFromDLDataExperiment):
 
-        def createTrials(self):
-            MatchToSampleFromDLDataExperiment.createTrials(self)
+        def createTrials(self, **kwargs):
+            MatchToSampleFromDLDataExperiment.createTrials(self, **kwargs)
             html_data = self.html_data
             combs = html_data['combs']
             acc = np.linspace(0, 1, 100)
