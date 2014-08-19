@@ -19,12 +19,6 @@ div#tutorial {
 	padding: 10px;
 }
 
-img {
-    /*filter: url(http://s3.amazonaws.com/imagenet_psychophysics/filters.svg#grayscale); *//* Firefox 3.5+ */
-    /*filter: gray; *//* IE6-9 */
-    /*-webkit-filter: grayscale(1); *//* Google Chrome & Safari 6+ */
-}
-
 .shrinkwidth {
 	width:360px;
 	height:auto;
@@ -45,7 +39,6 @@ img {
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/slider-1.0.2.js"></script>
 
 <script type="text/javascript">
 
@@ -54,7 +47,7 @@ ExperimentData = null;
 shuffle = function(o) {
 	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x = o[--i], o[i] = o[j], o[j] = x);
 	return o;
-  };
+};
 
 
 
@@ -66,20 +59,35 @@ Array.prototype.flatten = function flatten(){
    }
    return flat;
 };
-var num_correct = 0
+
+Array.prototype.getUnique = function(){
+   var u = {}, a = [];
+   for(var i = 0, l = this.length; i < l; ++i){
+      if(u.hasOwnProperty(this[i])) {
+         continue;
+      }
+      a.push(this[i]);
+      u[this[i]] = 1;
+   }
+   return a;
+};
+
+var num_correct = 0;
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
 
 function beginExp() {
 	console.log('beginExp');
 	begin = true;
-	$("#begintask").hide(), $("#_preload").hide();
+	$("#begintask").hide();
+	$("#begintaskdiv").hide();
+	$("#_preload").hide();
 
 	$('#group_container').hide();
+	window.scrollTo(0, 0);
 	$('.fixation img').attr('src',fixationImage.src);
 	$('.fixation').show();
 	var thisStim = imgFiles_new[trialNumber][0];
-	window.scrollTo(0, 0);
 	tmpImage = new Image();
 	tmpImage.src = thisStim;
 	$('#main_test').attr('src',thisStim);
@@ -104,9 +112,7 @@ function showStim() {
 	$('.fixation').hide();
 	setTimeout(function() {
 						$('.test').hide();
-						$('#img4').attr('src', imgFiles_new[trialNumber][1][0]);
-						$('#img5').attr('src', imgFiles_new[trialNumber][1][1]);
-						setTimeout("showResponse()",ISI);
+						setTimeout(showResponse, ISI);
 						},stimduration);
 }
 
@@ -133,16 +139,18 @@ function showResponse() {
 	format_acc = (acc * 100).toPrecision(3);
 	reward = reward_scale[trialNumber][Math.floor(acc*99)].toPrecision(2); */
 	$('#trialCounter').html('Progress:<br /> '+trialNumber+' of '+ totalTrials);
+	$('#img4').attr('src', imgFiles_new[trialNumber][1][0]);
+	$('#img5').attr('src', imgFiles_new[trialNumber][1][1]);
 	$('#group_container').show();
 	trialStartTime = new Date();
 
 	if (trialNumber+1 == totalTrials) {}
 	else {
 		var thisStim = imgFiles_new[trialNumber+1][0];
+		tmpImage = new Image();
+		tmpImage.src = thisStim;
+		$('#main_test').attr('src',thisStim);
 		}
-	tmpImage = new Image();
-	tmpImage.src = thisStim;
-	$('#main_test').attr('src',thisStim);
 
 }
 
@@ -150,6 +158,7 @@ function clicked(myval, index) {
 	console.log('clicked');
 	if (begin) {
  		trialEndTime = new Date();
+		window.scrollTo(0, 0);   // hahong: make sure scroll to the top
 	/* hahong: reward related
         var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
         var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
@@ -223,7 +232,7 @@ function endTrial() {
   else
   {
     trialNumber++;
-    setTimeout(function() {showStim()},ISI);
+    setTimeout(function() {showStim(); }, ISI);
   }
 }
 
@@ -246,7 +255,7 @@ function takeABreak() {
 					$('#main_test').attr('src',thisStim);
 					setTimeout(function() {showStim();},ISI);
 				}
-		}
+		};
 
 }
 
@@ -271,9 +280,9 @@ function init_vars() {
 	trialStartTime = new Date();
 	StimDone = new Array();
 	imgFiles_new = new Array();
-	fixationImage = new Image;
+	fixationImage = new Image();
 	fixationImage.src = "https://s3.amazonaws.com/task_images/fixation.png";
-	breakscreen = new Image;
+	breakscreen = new Image();
 	breakscreen.src = "https://s3.amazonaws.com/task_images/break.png";
 	stimduration = 100;
 	// hahong: simplyfy: labels = ExperimentData.labels;
@@ -282,7 +291,7 @@ function init_vars() {
 	totalTrials = ExperimentData["imgFiles"].length;
 	BreakTimes = [];
 	begin = false;
-	startpoint = 0
+	startpoint = 0;
 	exp_type = 'two_way';
     imgData = ExperimentData.imgData;
     /* hahong: reward related
@@ -295,14 +304,21 @@ function preload_resources() {
 //	imgFiles_new = imgFiles.slice(startpoint*totalTrials,(startpoint+1)*totalTrials)
 //	shuffle(imgFiles_new);
 
-	stimFiles = imgFiles_new.map(function(a) {
+	/* stimFiles = imgFiles_new.map(function(a) {
 		return a[0];
-	});
+	}); */
+
+    // hahong: this loads response images as well:
+    stimFiles = imgFiles_new.flatten().getUnique();
 }
 
 $(document).ready(function() {
-
-	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
+	$('#tutorial_original').hide();
+	$('#tutorial2').hide();
+	$('#tutorial3').hide();
+	$('.test').hide();
+	$('.fixation').hide();
+	$('#group_container').hide();
 
 	init_vars();
 	preload_resources();
@@ -313,7 +329,7 @@ $(document).ready(function() {
 															  });
 							   });
 
-	$('.test').hide();
+	$('.fixation img').attr('src',fixationImage.src);
 	$('#warning').hide();
 
 	$("#tutorial").html($("#tutorial_original").html());
@@ -325,7 +341,7 @@ $(document).ready(function() {
 
 	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
 		$('#warning').show();
-		$('#warning').html("<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>")
+		$('#warning').html("<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>");
 	}
 	if (BrowserDetect.browser == 'Explorer') {
 		$('#warning').show();
@@ -341,13 +357,13 @@ $(document).ready(function() {
 <body bgcolor="#7F7F7F">
 <div style="height:1000px; width:auto;">
 <div align="center" id="warning"></div>
-<div align="center"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
+<div id="begintaskdiv" style="position:absolute; top:170px; left: 47%;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
-<div class="fixation" align="center" style="position:relative; z-index:201; top:100px;"><img id="fixation_dot" src="" /></div>
-<div class="test" align="center" style="position:relative; z-index:200; top:100px;">
+<div class="fixation" align="center" style="position:relative; z-index:201; top:220px;"><img id="fixation_dot" src="" /></div>
+<div class="test" align="center" style="position:relative; z-index:200; top:170px;">
 <img id="main_test" src="" style="position:relative; top:0px; left:0px; z-index:200;"/>
 </div>
-<div id="group_container"  style="position:absolute; top:100px; width:100%" align="center">
+<div id="group_container"  style="position:absolute; top:215px; width:100%" align="center">
 <table width="900" cellpadding="0" cellspacing="0" border="0" align="center" style="visibility:visible" id="responsetable">
   <tr>
     <td align="center">
@@ -384,17 +400,17 @@ $(document).ready(function() {
 <div id="tutorial" style="position:relative; z-index:-1"></div>
 <div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: Instructions have changed, and low performance will lead to rejection: make sure to read!**</b>
 <p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
-<p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
+<p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 15 minutes, although we expect this to take about 5-10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
 <p><font color=red><b>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</b></font></p>
 <p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
 <center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
 <div id="tutorial2" style="position:absolute; z-index:-1;">
 <ul>
-<li>You will see a series of images, each one presented for a very brief time. Each image contains a pink dot and a closed curve.
+<li>You will see a series of images, each one presented for a very brief time. Each image will feature a single object from 60 possibilities. The objects are common things you might see around your house, on TV, in books, or on the Internet.
 <p>
-<li>After you see an image, <b>you must click to answer whether or not the pink dot is inside the closed curve.</b> Once you click, you will move on to the next image immediately, so be ready.
+<li>After you see an image, <b>you must click the picture button which <u>exactly</u> matches the object you saw.</b> Once you click, you will move on to the next image immediately, so be ready.
 <p>
-<li>For example, if you think you see the dot outside the curve, click the picture labeled "outside," to record your answer. <b>You may sometimes notice more than one object in the picture, so try to only consider the object which is the most prominent!</b></li>
+<li>For example, if you think you saw a picture of a car, click the car picture to record your answer. There is <b>always</b> an exact match, and <b>SOMETIMES YOU MUST CHOOSE BETWEEN TWO OBJECTS OF THE SAME CATEGORY</b>. In other words, you might see two cars of different makes, and only one is correct.</li>
 <p>
 <li>Even if you're not 100% sure of what you saw, <u><b>make your best guess.</b></u></li>
 <p>
@@ -407,7 +423,7 @@ $(document).ready(function() {
 <p>
 <li>Please be sure to maximize your browser window before beginning this experiment. .</li>
 <p>
-<li><b>In total, you will see 104 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
+<li><b>In total, you will see 174 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
 <p>
 <li>When you are ready to begin, click the "Begin" button at the very top of the screen. <b>Be prepared to see the first image -- it happens very fast!</b></li>
 <p>

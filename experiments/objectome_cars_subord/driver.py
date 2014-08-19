@@ -56,7 +56,9 @@ def get_urlbase(obj, selected_basic_objs=SELECTED_BASIC_OBJS):
                 'objectome_cars_subord/'
 
 
-def get_url(obj, idstr):
+def get_url(obj, idstr, resized=True):
+    if resized:
+        return get_urlbase(obj) + '360x360/' + idstr + '.png'
     return get_urlbase(obj) + idstr + '.png'
 
 
@@ -154,7 +156,7 @@ def get_exp(sandbox=True, selected_basic_objs=SELECTED_BASIC_OBJS):
     return exp, html_data
 
 
-def main(argv):
+def main(argv=[], partial=False):
     sandbox = True
     if len(argv) > 1 and argv[1] == 'production':
         sandbox = False
@@ -166,11 +168,13 @@ def main(argv):
     exp, _ = get_exp(sandbox=sandbox)
     exp.prepHTMLs()
     print '** Done prepping htmls.'
+    if partial:
+        return exp
     exp.testHTMLs()
     print '** Done testing htmls.'
-    return exp
     exp.uploadHTMLs()
     exp.createHIT(secure=True)
+    return exp
 
 
 if __name__ == '__main__':
