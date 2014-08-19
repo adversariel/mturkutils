@@ -1,5 +1,5 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="https://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <title>Object Identification</title>
@@ -42,9 +42,16 @@ height:360px;
 
 <script type="text/javascript">
 ExperimentData = null;
+var js_tres = 10000;
+var js_tres_variance = 10000;
+var JS_TRES_TOL = 40;
+var JS_TRES_VAR_TOL = 20 * 20;
 var num_correct = 0;
 var reward;
 var acc;
+var SZ_TEST = 360;   // test image canvas size --- must match html below
+var SZ_RESP = 200;   // response image canvas size --- must match html below
+
 
 function shuffle(o) {
     for (var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x =
@@ -61,7 +68,91 @@ function gup(name) {
     else return results[1];
 }
 
-Array.prototype.flatten = function() {
+function measure_js_tres() {
+    // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
+    var i = 0;
+    var sum_diff = 0;
+    var sum_sq_diff = 0;
+    var d = performance.now();
+    var timer = setTimeout(function() {
+        var diff = performance.now() - d;
+        sum_diff += diff;
+        sum_sq_diff += diff * diff;
+        timer = setTimeout(arguments.callee, 0);
+        if (i++ == 300) {
+            // done calculating js time resolution
+            clearTimeout(timer);
+            mean_diff = sum_diff / i;
+            js_tres = Math.max(mean_diff, 0);
+            js_tres_variance = sum_sq_diff / i - mean_diff * mean_diff;
+            pre_begin_task();
+        }
+        d = performance.now();
+    }, 0);
+}
+
+function pre_begin_task() {
+    var nook = false;
+    var details;
+
+    if (js_tres > JS_TRES_TOL) {
+        details = "Your system is too slow to complete this task.";
+        nook = true;
+    }
+    else if (js_tres_variance > JS_TRES_VAR_TOL) {
+        details = "Your system's clock varies too much.";
+        nook = true;
+    }
+
+    if (nook) {
+        $('#warning').show();
+        $('#warning').html(
+            "<font color=red style=background-color:white><b>Your system CANNOT run this HIT at this point.  Close other programs and try again please.</b></font>"
+        );
+        alert(details + "  Close other programs and try again please.");
+    }
+    else {
+        $("#begintaskdiv").css('visibility', 'visible');
+        $("#begintask").click(function() {
+        beginExp();
+        });
+    }
+}
+
+function get_contexts(onscr_canvas_id) {
+    // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
+    var offscreenCanvas = document.createElement('canvas');
+    var mainCanvas = document.getElementById(onscr_canvas_id);
+    var ctxOffscreen, ctxMain;
+    offscreenCanvas.width = mainCanvas.width;
+    offscreenCanvas.height = mainCanvas.height;
+    ctxOffscreen = offscreenCanvas.getContext('2d');
+    ctxMain = mainCanvas.getContext('2d');
+
+    return {onscr: ctxMain, offscr: ctxOffscreen};
+}
+
+function draw_to_context(imgurl, ctx, callback) {
+    // from: https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Canvas_tutorial/Using_images
+    var img;
+    t_draw_begin = performance.now();
+    img =  new Image();
+    img.onload = function(){
+        ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);  // should stretch
+        //ctx.drawImage(img, 0, 0);
+        if (typeof(callback) == 'function') {
+            callback();
+        }
+    };
+    img.src = imgurl;
+    return t_draw_begin;
+}
+
+function copy_contexts(ctxsrc, ctxdst) {
+    ctxdst.drawImage(ctxsrc.canvas, 0, 0);
+}
+
+Array.prototype.flatten = function flatten() {
     var flat = [];
     for (var i = 0, l = this.length; i < l; i++) {
         var type = Object.prototype.toString.call(this[i]).split(' ').pop()
@@ -73,6 +164,7 @@ Array.prototype.flatten = function() {
     }
     return flat;
 };
+
 Array.prototype.getUnique = function() {
     var u = {},
         a = [];
@@ -88,40 +180,73 @@ Array.prototype.getUnique = function() {
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
 function beginExp() {
-    console.log('beginExp');
+    // console.log('beginExp');
     begin = true;
     $("#begintask").hide();
     $("#begintaskdiv").hide();
     $("#_preload").hide();
     $('#group_container').hide();
-    window.scrollTo(0, 0);
     $('.fixation img').attr('src', fixationImage.src);
     $('.fixation').show();
-    var thisStim = imgFiles_new[trialNumber][0];
-    tmpImage = new Image();
-    tmpImage.src = thisStim;
-    $('#main_test').attr('src', thisStim);
-    //Set proper height/width:
+    t_pre_stimon = performance.now();
+
+    draw_to_context(imgFiles_new[trialNumber][0], ctx_test_off, function() {
+        setTimeout(function() {
+            var t_delta = performance.now() - t_draw_begin;
+            // console.log('t_delta init:' + t_delta);
+            setTimeout(function() {
+                showStim();
+            }, ISI - t_delta);
+        }, 0);
+    });
+    window.scrollTo(0, 0); // forced sync
+
+    /*  hahong: for safer canvas use, disable this
+    //Set proper height/width
     if (getAspectRatio(tmpImage) > 1) {
         //width is longer axis
         $('#main_test').removeClass().addClass('shrinkwidth');
     } else {
         //height is longer axis
         $('#main_test').removeClass().addClass('shrinkheight');
-    }
-    setTimeout(function() {
-        showStim();
-    }, ISI);
+    } */
 }
 
 function showStim() {
-    console.log('showStim');
+    // console.log('showStim');
+    copy_contexts(ctx_test_off, ctx_test_on);
     $('.test').show();
     $('.fixation').hide();
+    t0 = performance.now();
+
     setTimeout(function() {
-        $('.test').hide();
-        setTimeout(showResponse, ISI);
-    }, stimduration);
+        // at this point, the stimulus has been painted completely
+        t_at_stimon = performance.now();
+        t_ISI1 = t_at_stimon - t_pre_stimon;
+        console.log('ISI1 = ' + t_ISI1);
+        console.log('delta stimon = ' + (t_at_stimon - t0));
+        setTimeout(function() {
+            $('.test').hide();
+            t0 = performance.now();
+            setTimeout(function() {
+                // here, the stimulus has been erased completely
+                t_at_stimoff = performance.now();
+                t_stimondur = t_at_stimoff - t_at_stimon;
+                console.log('stim dur = ' + t_stimondur);
+                console.log('delta stimoff = ' + (t_at_stimoff - t0));
+                // pre-draw images
+                t_draw_begin_1st = draw_to_context(imgFiles_new[trialNumber][1][0], ctx_resp1_off, null);
+                t_draw_begin_2nd = draw_to_context(imgFiles_new[trialNumber][1][1], ctx_resp2_off, function() {
+                    setTimeout(function() {
+                        // pre-draw should have been completed
+                        var t_delta = performance.now() - Math.min(t_draw_begin_1st, t_draw_begin_2nd);
+                        // console.log('t_delta ISI2:' + t_delta);
+                        setTimeout(showResponse, ISI - t_delta);
+                    }, 0);
+                });
+            }, 0);
+        }, stimduration - js_tres);
+    }, 0);
 }
 
 function getAspectRatio(im) {
@@ -129,12 +254,12 @@ function getAspectRatio(im) {
     var width = im.naturalWidth;
     var height = im.naturalHeight;
     var ar = width / height;
-    //console.log(ar)
+    // console.log(ar)
     return ar;
 }
 
 function showResponse() {
-    console.log('showResponse');
+    // console.log('showResponse');
     /* hahong: simplify
     $('#label1').html(labels[trialNumber][0]);
     $('#label2').html(labels[trialNumber][1]);
@@ -144,25 +269,30 @@ function showResponse() {
     acc = parseFloat(num_correct) / Math.max(1,trialNumber);
     format_acc = (acc * 100).toPrecision(3);
     reward = reward_scale[trialNumber][Math.floor(acc*99)].toPrecision(2); */
+
+    // these should take short
+    copy_contexts(ctx_resp1_off, ctx_resp1_on);
+    copy_contexts(ctx_resp2_off, ctx_resp2_on);
+
     $('#trialCounter').html('Progress:<br /> ' + trialNumber + ' of ' +
         totalTrials);
-    $('#img4').attr('src', imgFiles_new[trialNumber][1][0]);
-    $('#img5').attr('src', imgFiles_new[trialNumber][1][1]);
     $('#group_container').show();
     trialStartTime = new Date();
-    if (trialNumber + 1 == totalTrials) {} else {
-        var thisStim = imgFiles_new[trialNumber + 1][0];
-        tmpImage = new Image();
-        tmpImage.src = thisStim;
-        $('#main_test').attr('src', thisStim);
+    if (trialNumber + 1 == totalTrials) {}
+    else {
+        setTimeout(function() {
+            t_after_stimoff = performance.now();
+            t_ISI2 = t_after_stimoff - t_at_stimoff;
+            console.log('ISI2 = ' + t_ISI2);
+            draw_to_context(imgFiles_new[trialNumber + 1][0], ctx_test_off, null);
+        }, 0);
     }
 }
 
 function clicked(myval, index) {
-    console.log('clicked');
+    // console.log('clicked');
     if (begin) {
         trialEndTime = new Date();
-        window.scrollTo(0, 0); // hahong: make sure scroll to the top
         /* hahong: reward related
         var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
         var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
@@ -176,6 +306,9 @@ function clicked(myval, index) {
         $('.fixation img').attr('src', fixationImage.src);
         $('#group_container').hide();
         $('.fixation').show();
+        window.scrollTo(0, 0); // hahong: make sure scroll to the top
+
+        /* hahong: not using this for safer canvas use
         //Set proper height/width:
         console.log(getAspectRatio(tmpImage));
         if (getAspectRatio(tmpImage) > 1) {
@@ -184,13 +317,13 @@ function clicked(myval, index) {
         } else {
             //height is longer axis
             $('#main_test').removeClass().addClass('shrinkheight');
-        }
+        } */
         endTrial();
     } else {}
 }
 
 function pushData(myval) {
-    console.log('pushData');
+    // console.log('pushData');
     StimDone.push(imgFiles_new[trialNumber]);
     response.push(myval);
     trialDurations.push(trialEndTime - trialStartTime);
@@ -228,13 +361,17 @@ function endTrial() {
     } else {
         trialNumber++;
         setTimeout(function() {
-            showStim();
-        }, ISI);
+            // fixation dot has appeared
+            t_pre_stimon = performance.now();
+            setTimeout(function() {
+                showStim();
+            }, ISI - js_tres);
+        }, 0);
     }
 }
 
 function takeABreak() {
-        $('#main_test').attr('src', breakscreen.src);
+        draw_to_context(breakscreen.src, ctx_test_on, null);
         $('.fixation').hide();
         $('.test').show();
         $('#_preload').html(
@@ -252,17 +389,23 @@ function takeABreak() {
                 $('.test').hide();
                 $('#_preload').hide();
                 $('.fixation').show();
-                var thisStim = imgFiles_new[trialNumber];
-                $('#main_test').attr('src', thisStim);
-                setTimeout(function() {
-                    showStim();
-                }, ISI);
+                t_pre_stimon = performance.now();
+                draw_to_context(imgFiles_new[trialNumber], ctx_test_off, function() {
+                    setTimeout(function() {
+                        var t_delta = performance.now() - t_draw_begin;
+                        // console.log('t_delta:' + t_delta);
+                        setTimeout(function() {
+                            showStim();
+                        }, ISI - t_delta);
+                    }, 0);
+                });
             }
         };
     }
-    //!!==END DYNAMIC TRIAL CODE==!!//
+//!!==END DYNAMIC TRIAL CODE==!!//
 
 function init_vars() {
+    var ctxs;
     zoom = DetectZoom.zoom();
     aID = gup("assignmentId");
     response = [];
@@ -284,6 +427,20 @@ function init_vars() {
     startpoint = 0;
     exp_type = 'two_way';
     imgData = ExperimentData.imgData;
+
+    // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
+    ctxs = get_contexts('main_test');
+    ctx_test_on = ctxs.onscr;
+    ctx_test_off = ctxs.offscr;
+
+    ctxs = get_contexts('img4');
+    ctx_resp1_on = ctxs.onscr;
+    ctx_resp1_off = ctxs.offscr;
+
+    ctxs = get_contexts('img5');
+    ctx_resp2_on = ctxs.onscr;
+    ctx_resp2_off = ctxs.offscr;
+
     /* hahong: reward related
     reward = 0;
     reward_scale = ExperimentData.reward_scale;*/
@@ -310,9 +467,7 @@ $(document).ready(function() {
     init_vars();
     preload_resources();
     preload(stimFiles, function() {
-        $("#begintask").click(function() {
-            beginExp();
-        });
+        measure_js_tres();
     });
     $('.fixation img').attr('src', fixationImage.src);
     $('#warning').hide();
@@ -343,11 +498,12 @@ $(document).ready(function() {
 <body bgcolor="#7F7F7F">
 <div style="height:1000px; width:auto;">
 <div align="center" id="warning"></div>
-<div id="begintaskdiv" style="position:absolute; top:170px; left: 47%;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
+<div id="begintaskdiv" style="position:absolute; top:170px; left: 47%; visibility: hidden;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
 <div class="fixation" align="center" style="position:relative; z-index:201; top:220px;"><img id="fixation_dot" src="" /></div>
 <div class="test" align="center" style="position:relative; z-index:200; top:170px;">
-<img id="main_test" src="" style="position:relative; top:0px; left:0px; z-index:200;"/>
+<!-- img id="main_test" src="" style="position:relative; top:0px; left:0px; z-index:200;"/ -->
+<canvas id="main_test" width="360" height="360" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
 </div>
 <div id="group_container"  style="position:absolute; top:215px; width:100%" align="center">
 <table width="900" cellpadding="0" cellspacing="0" border="0" align="center" style="visibility:visible" id="responsetable">
@@ -360,14 +516,14 @@ $(document).ready(function() {
     </td>
   </tr>
   <tr>
-    <td align="center"><img id="img4" style="position:relative; top:0px;" height=200 width=200 src ="" onclick="clicked($(this).attr('src'), 0)" border="1"/>
+    <td align="center"><canvas id="img4" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 src ="" onclick="clicked($(this).attr('src'), 0)"></canvas>
     </td>
     <td width="100" height="100" align="left" style="vertical-align:center;">
     <center style="margin-top:15px; position:relative; top:-30px;">
     <div id="trialCounter"></div>
     </center>
     </td>
-    <td align="center"><img id="img5" style="position:relative; top:0px;" height=200 width=200 src ="" onclick="clicked($(this).attr('src'), 1)" border="1"/>
+    <td align="center"><canvas id="img5" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 src ="" onclick="clicked($(this).attr('src'), 1)"></canvas>
     </td>
   </tr>
   <tr height=100>
