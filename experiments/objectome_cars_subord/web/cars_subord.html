@@ -14,19 +14,19 @@ div.thumb { position:absolute; float:left; padding: 1px; width: 64px; height: 64
 div.thumb img { border: 2px solid white; width:64px; height:64px; }
 
 div#tutorial {
-	position:relative;
-	background-color: white;
-	padding: 10px;
+position:relative;
+background-color: white;
+padding: 10px;
 }
 
 .shrinkwidth {
-	width:360px;
-	height:auto;
+width:360px;
+height:auto;
 }
 
 .shrinkheight {
-	width:auto;
-	height:360px;
+width:auto;
+height:360px;
 }
 
 </style>
@@ -41,125 +41,129 @@ div#tutorial {
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
 
 <script type="text/javascript">
-
 ExperimentData = null;
-
-shuffle = function(o) {
-	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x = o[--i], o[i] = o[j], o[j] = x);
-	return o;
-};
-
-
-
-Array.prototype.flatten = function flatten(){
-   var flat = [];
-   for (var i = 0, l = this.length; i < l; i++){
-       var type = Object.prototype.toString.call(this[i]).split(' ').pop().split(']').shift().toLowerCase();
-       if (type) { flat = flat.concat(/^(array|collection|arguments|object)$/.test(type) ? flatten.call(this[i]) : this[i]); }
-   }
-   return flat;
-};
-
-Array.prototype.getUnique = function(){
-   var u = {}, a = [];
-   for(var i = 0, l = this.length; i < l; ++i){
-      if(u.hasOwnProperty(this[i])) {
-         continue;
-      }
-      a.push(this[i]);
-      u[this[i]] = 1;
-   }
-   return a;
-};
-
 var num_correct = 0;
+var reward;
+var acc;
+
+function shuffle(o) {
+    for (var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x =
+        o[--i], o[i] = o[j], o[j] = x);
+    return o;
+}
+
+function gup(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regexS = "[\\?&]" + name + "=([^&#]*)";
+    var regex = new RegExp(regexS);
+    var results = regex.exec(window.location.href);
+    if (results === null) return "";
+    else return results[1];
+}
+
+Array.prototype.flatten = function() {
+    var flat = [];
+    for (var i = 0, l = this.length; i < l; i++) {
+        var type = Object.prototype.toString.call(this[i]).split(' ').pop()
+            .split(']').shift().toLowerCase();
+        if (type) {
+            flat = flat.concat(/^(array|collection|arguments|object)$/.test(
+                type) ? flatten.call(this[i]) : this[i]);
+        }
+    }
+    return flat;
+};
+Array.prototype.getUnique = function() {
+    var u = {},
+        a = [];
+    for (var i = 0, l = this.length; i < l; ++i) {
+        if (u.hasOwnProperty(this[i])) {
+            continue;
+        }
+        a.push(this[i]);
+        u[this[i]] = 1;
+    }
+    return a;
+};
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
-
 function beginExp() {
-	console.log('beginExp');
-	begin = true;
-	$("#begintask").hide();
-	$("#begintaskdiv").hide();
-	$("#_preload").hide();
-
-	$('#group_container').hide();
-	window.scrollTo(0, 0);
-	$('.fixation img').attr('src',fixationImage.src);
-	$('.fixation').show();
-	var thisStim = imgFiles_new[trialNumber][0];
-	tmpImage = new Image();
-	tmpImage.src = thisStim;
-	$('#main_test').attr('src',thisStim);
-	//Set proper height/width:
-	if (getAspectRatio(tmpImage) > 1) {
-		//width is longer axis
-		$('#main_test').removeClass().addClass('shrinkwidth');
-	}
-	else {
-		//height is longer axis
-		$('#main_test').removeClass().addClass('shrinkheight');
-	}
-
-	setTimeout(function() {
-						showStim();
-						},ISI);
+    console.log('beginExp');
+    begin = true;
+    $("#begintask").hide();
+    $("#begintaskdiv").hide();
+    $("#_preload").hide();
+    $('#group_container').hide();
+    window.scrollTo(0, 0);
+    $('.fixation img').attr('src', fixationImage.src);
+    $('.fixation').show();
+    var thisStim = imgFiles_new[trialNumber][0];
+    tmpImage = new Image();
+    tmpImage.src = thisStim;
+    $('#main_test').attr('src', thisStim);
+    //Set proper height/width:
+    if (getAspectRatio(tmpImage) > 1) {
+        //width is longer axis
+        $('#main_test').removeClass().addClass('shrinkwidth');
+    } else {
+        //height is longer axis
+        $('#main_test').removeClass().addClass('shrinkheight');
+    }
+    setTimeout(function() {
+        showStim();
+    }, ISI);
 }
 
 function showStim() {
-	console.log('showStim');
-	$('.test').show();
-	$('.fixation').hide();
-	setTimeout(function() {
-						$('.test').hide();
-						setTimeout(showResponse, ISI);
-						},stimduration);
+    console.log('showStim');
+    $('.test').show();
+    $('.fixation').hide();
+    setTimeout(function() {
+        $('.test').hide();
+        setTimeout(showResponse, ISI);
+    }, stimduration);
 }
 
 function getAspectRatio(im) {
-	//Defining aspect ratio as width/height
-	var width = im.naturalWidth;
-	var height = im.naturalHeight;
-	var ar = width/height;
-	//console.log(ar)
-	return ar;
+    //Defining aspect ratio as width/height
+    var width = im.naturalWidth;
+    var height = im.naturalHeight;
+    var ar = width / height;
+    //console.log(ar)
+    return ar;
 }
 
-var reward;
-var acc;
 function showResponse() {
-	console.log('showResponse');
-	/* hahong: simplify
-	$('#label1').html(labels[trialNumber][0]);
-	$('#label2').html(labels[trialNumber][1]);
-	$('#totalSeen').html('Total Objects Seen: 0');
-	*/
-	/* hahong: reward related
-	acc = parseFloat(num_correct) / Math.max(1,trialNumber);
-	format_acc = (acc * 100).toPrecision(3);
-	reward = reward_scale[trialNumber][Math.floor(acc*99)].toPrecision(2); */
-	$('#trialCounter').html('Progress:<br /> '+trialNumber+' of '+ totalTrials);
-	$('#img4').attr('src', imgFiles_new[trialNumber][1][0]);
-	$('#img5').attr('src', imgFiles_new[trialNumber][1][1]);
-	$('#group_container').show();
-	trialStartTime = new Date();
-
-	if (trialNumber+1 == totalTrials) {}
-	else {
-		var thisStim = imgFiles_new[trialNumber+1][0];
-		tmpImage = new Image();
-		tmpImage.src = thisStim;
-		$('#main_test').attr('src',thisStim);
-		}
-
+    console.log('showResponse');
+    /* hahong: simplify
+    $('#label1').html(labels[trialNumber][0]);
+    $('#label2').html(labels[trialNumber][1]);
+    $('#totalSeen').html('Total Objects Seen: 0');
+    */
+    /* hahong: reward related
+    acc = parseFloat(num_correct) / Math.max(1,trialNumber);
+    format_acc = (acc * 100).toPrecision(3);
+    reward = reward_scale[trialNumber][Math.floor(acc*99)].toPrecision(2); */
+    $('#trialCounter').html('Progress:<br /> ' + trialNumber + ' of ' +
+        totalTrials);
+    $('#img4').attr('src', imgFiles_new[trialNumber][1][0]);
+    $('#img5').attr('src', imgFiles_new[trialNumber][1][1]);
+    $('#group_container').show();
+    trialStartTime = new Date();
+    if (trialNumber + 1 == totalTrials) {} else {
+        var thisStim = imgFiles_new[trialNumber + 1][0];
+        tmpImage = new Image();
+        tmpImage.src = thisStim;
+        $('#main_test').attr('src', thisStim);
+    }
 }
 
 function clicked(myval, index) {
-	console.log('clicked');
-	if (begin) {
- 		trialEndTime = new Date();
-		window.scrollTo(0, 0);   // hahong: make sure scroll to the top
-	/* hahong: reward related
+    console.log('clicked');
+    if (begin) {
+        trialEndTime = new Date();
+        window.scrollTo(0, 0); // hahong: make sure scroll to the top
+        /* hahong: reward related
         var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
         var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
         console.log(index);
@@ -168,131 +172,117 @@ function clicked(myval, index) {
         if(meta_correct == meta_response){
             num_correct++;
         } */
- 		pushData(myval);
- 		$('.fixation img').attr('src',fixationImage.src);
- 		$('#group_container').hide();
- 		$('.fixation').show();
-
-		//Set proper height/width:
-		console.log(getAspectRatio(tmpImage));
-		if (getAspectRatio(tmpImage) > 1) {
-			//width is longer axis
-			$('#main_test').removeClass().addClass('shrinkwidth');
-		}
-		else {
-			//height is longer axis
-			$('#main_test').removeClass().addClass('shrinkheight');
-		}
-
- 		endTrial();
- 	}
- else { }
+        pushData(myval);
+        $('.fixation img').attr('src', fixationImage.src);
+        $('#group_container').hide();
+        $('.fixation').show();
+        //Set proper height/width:
+        console.log(getAspectRatio(tmpImage));
+        if (getAspectRatio(tmpImage) > 1) {
+            //width is longer axis
+            $('#main_test').removeClass().addClass('shrinkwidth');
+        } else {
+            //height is longer axis
+            $('#main_test').removeClass().addClass('shrinkheight');
+        }
+        endTrial();
+    } else {}
 }
 
 function pushData(myval) {
-	console.log('pushData');
-StimDone.push(imgFiles_new[trialNumber]);
-response.push(myval);
-trialDurations.push(trialEndTime - trialStartTime);
+    console.log('pushData');
+    StimDone.push(imgFiles_new[trialNumber]);
+    response.push(myval);
+    trialDurations.push(trialEndTime - trialStartTime);
 }
 
 function endTrial() {
-  if (trialNumber >= (totalTrials-1))
-  {
-	var resultsobj = [];
-	resultsobj.push({
-					Response:response,
-					ImgOrder:imgFiles_new,
-					StimShown:StimDone,
-					StimDuration:stimduration,
-					RT:trialDurations,
-					Condition:exp_type,
-					Zoom:zoom,
-					IPaddress:user_IP,
-					Browser:BrowserDetect.browser,
-					Version:BrowserDetect.version,
-					OpSys:BrowserDetect.OS,
-					WindowHeight:winH,
-					WindowWidth:winW,
-					ScreenHeight:vertical,
-					ScreenWidth:horizontal,
-                    ImgData: imgData,
-		    /* hahong: reward related
-		    Performance:acc,
-                    Bonus:reward */
-					});
-
-	document.getElementById("assignmentId").value = aID;
-	document.getElementById("data").value = JSON.stringify(resultsobj);
-	document.getElementById("postdata").submit();
-  }
-    else if (jQuery.inArray(trialNumber,BreakTimes) > -1) {
-	  takeABreak();
-  }
-  else
-  {
-    trialNumber++;
-    setTimeout(function() {showStim(); }, ISI);
-  }
+    if (trialNumber >= (totalTrials - 1)) {
+        var resultsobj = [];
+        resultsobj.push({
+            Response: response,
+            ImgOrder: imgFiles_new,
+            StimShown: StimDone,
+            StimDuration: stimduration,
+            RT: trialDurations,
+            Condition: exp_type,
+            Zoom: zoom,
+            IPaddress: user_IP,
+            Browser: BrowserDetect.browser,
+            Version: BrowserDetect.version,
+            OpSys: BrowserDetect.OS,
+            WindowHeight: winH,
+            WindowWidth: winW,
+            ScreenHeight: vertical,
+            ScreenWidth: horizontal,
+            ImgData: imgData,
+            /* hahong: reward related
+                Performance:acc,
+                Bonus:reward */
+        });
+        document.getElementById("assignmentId").value = aID;
+        document.getElementById("data").value = JSON.stringify(resultsobj);
+        document.getElementById("postdata").submit();
+    } else if (jQuery.inArray(trialNumber, BreakTimes) > -1) {
+        takeABreak();
+    } else {
+        trialNumber++;
+        setTimeout(function() {
+            showStim();
+        }, ISI);
+    }
 }
 
 function takeABreak() {
-	$('#main_test').attr('src',breakscreen.src);
-	$('.fixation').hide();
-	$('.test').show();
-	$('#_preload').html("<font color=red style=background-color:white>You have completed "+Math.round((trialNumber/totalTrials)*100)+"% of the experiment. Be sure to pay attention so that you know you can finish on time!");
-	$('#_preload').show();
-	document.onkeypress = function(e){
-			var evtobj = window.event? event : e;
-			var unicode = evtobj.charCode? evtobj.charCode : evtobj.keyCode;
-			var actualKey = String.fromCharCode(unicode);
-				if (actualKey=='z'){
-					trialNumber++;
-					$('.test').hide();
-					$('#_preload').hide();
-					$('.fixation').show();
-					var thisStim = imgFiles_new[trialNumber];
-					$('#main_test').attr('src',thisStim);
-					setTimeout(function() {showStim();},ISI);
-				}
-		};
-
-}
-
-//!!==END DYNAMIC TRIAL CODE==!!//
-
-function gup(name) {
-    name = name.replace(/[\[]/,"\\[").replace(/[\]]/,"\\]");
-    var regexS = "[\\?&]"+name+"=([^&#]*)";
-    var regex = new RegExp( regexS );
-    var results = regex.exec(window.location.href);
-    if (results === null)
-        return "";
-    else
-        return results[1];
-}
+        $('#main_test').attr('src', breakscreen.src);
+        $('.fixation').hide();
+        $('.test').show();
+        $('#_preload').html(
+            "<font color=red style=background-color:white>You have completed " +
+            Math.round((trialNumber / totalTrials) * 100) +
+            "% of the experiment. Be sure to pay attention so that you know you can finish on time!"
+        );
+        $('#_preload').show();
+        document.onkeypress = function(e) {
+            var evtobj = window.event ? event : e;
+            var unicode = evtobj.charCode ? evtobj.charCode : evtobj.keyCode;
+            var actualKey = String.fromCharCode(unicode);
+            if (actualKey == 'z') {
+                trialNumber++;
+                $('.test').hide();
+                $('#_preload').hide();
+                $('.fixation').show();
+                var thisStim = imgFiles_new[trialNumber];
+                $('#main_test').attr('src', thisStim);
+                setTimeout(function() {
+                    showStim();
+                }, ISI);
+            }
+        };
+    }
+    //!!==END DYNAMIC TRIAL CODE==!!//
 
 function init_vars() {
     zoom = DetectZoom.zoom();
-	aID = gup("assignmentId");
-	response = new Array();
-	trialDurations = new Array();
-	trialStartTime = new Date();
-	StimDone = new Array();
-	imgFiles_new = new Array();
-	fixationImage = new Image();
-	fixationImage.src = "https://s3.amazonaws.com/task_images/fixation.png";
-	breakscreen = new Image();
-	breakscreen.src = "https://s3.amazonaws.com/task_images/break.png";
-	stimduration = 100;
-	// hahong: simplyfy: labels = ExperimentData.labels;
-	ISI = 500;
-	trialNumber = 0;
-	totalTrials = ExperimentData["imgFiles"].length;
-	BreakTimes = [];
-	begin = false;
-	startpoint = 0;
-	exp_type = 'two_way';
+    aID = gup("assignmentId");
+    response = [];
+    trialDurations = [];
+    trialStartTime = new Date();
+    StimDone = [];
+    imgFiles_new = [];
+    fixationImage = new Image();
+    fixationImage.src = "https://s3.amazonaws.com/task_images/fixation.png";
+    breakscreen = new Image();
+    breakscreen.src = "https://s3.amazonaws.com/task_images/break.png";
+    stimduration = 100;
+    // hahong: simplyfy: labels = ExperimentData.labels;
+    ISI = 500;
+    trialNumber = 0;
+    totalTrials = ExperimentData["imgFiles"].length;
+    BreakTimes = [];
+    begin = false;
+    startpoint = 0;
+    exp_type = 'two_way';
     imgData = ExperimentData.imgData;
     /* hahong: reward related
     reward = 0;
@@ -301,55 +291,51 @@ function init_vars() {
 
 function preload_resources() {
     imgFiles_new = ExperimentData.imgFiles;
-//	imgFiles_new = imgFiles.slice(startpoint*totalTrials,(startpoint+1)*totalTrials)
-//	shuffle(imgFiles_new);
-
-	/* stimFiles = imgFiles_new.map(function(a) {
-		return a[0];
-	}); */
-
+    //imgFiles_new = imgFiles.slice(startpoint*totalTrials,(startpoint+1)*totalTrials)
+    //shuffle(imgFiles_new);
+    /* stimFiles = imgFiles_new.map(function(a) {
+        return a[0];
+    }); */
     // hahong: this loads response images as well:
     stimFiles = imgFiles_new.flatten().getUnique();
 }
 
 $(document).ready(function() {
-	$('#tutorial_original').hide();
-	$('#tutorial2').hide();
-	$('#tutorial3').hide();
-	$('.test').hide();
-	$('.fixation').hide();
-	$('#group_container').hide();
-
-	init_vars();
-	preload_resources();
-
-	preload(stimFiles, function() {
-							   $("#begintask").click(function(){
-															  beginExp();
-															  });
-							   });
-
-	$('.fixation img').attr('src',fixationImage.src);
-	$('#warning').hide();
-
-	$("#tutorial").html($("#tutorial_original").html());
-	$("#tutorial").dialog({height:650,
-							width:600,
-							position:"center",
-							title:"Instructions"
-							});
-
-	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
-		$('#warning').show();
-		$('#warning').html("<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>");
-	}
-	if (BrowserDetect.browser == 'Explorer') {
-		$('#warning').show();
-		$('#warning').append("<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT. Thank you!</b></font></span>");
-	}
-
+    $('#tutorial_original').hide();
+    $('#tutorial2').hide();
+    $('#tutorial3').hide();
+    $('.test').hide();
+    $('.fixation').hide();
+    $('#group_container').hide();
+    init_vars();
+    preload_resources();
+    preload(stimFiles, function() {
+        $("#begintask").click(function() {
+            beginExp();
+        });
+    });
+    $('.fixation img').attr('src', fixationImage.src);
+    $('#warning').hide();
+    $("#tutorial").html($("#tutorial_original").html());
+    $("#tutorial").dialog({
+        height: 650,
+        width: 600,
+        position: "center",
+        title: "Instructions"
+    });
+    if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
+        $('#warning').show();
+        $('#warning').html(
+            "<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
+        );
+    }
+    if (BrowserDetect.browser == 'Explorer') {
+        $('#warning').show();
+        $('#warning').append(
+            "<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT. Thank you!</b></font></span>"
+        );
+    }
 });
-
 </script>
 
 </head>
@@ -380,7 +366,7 @@ $(document).ready(function() {
     <center style="margin-top:15px; position:relative; top:-30px;">
     <div id="trialCounter"></div>
     </center>
-	</td>
+    </td>
     <td align="center"><img id="img5" style="position:relative; top:0px;" height=200 width=200 src ="" onclick="clicked($(this).attr('src'), 1)" border="1"/>
     </td>
   </tr>
@@ -390,12 +376,12 @@ $(document).ready(function() {
     <td align="center">
     </td>
     <td id="label2" align="center" width=200>
-	</td>
-  	</tr>
+    </td>
+  </tr>
 </table>
 </div>
 
-<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,							width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
+<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
 
 <div id="tutorial" style="position:relative; z-index:-1"></div>
 <div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: Instructions have changed, and low performance will lead to rejection: make sure to read!**</b>
@@ -433,10 +419,9 @@ $(document).ready(function() {
 </div>
 
 </div>
-	<form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
-	<input type="text" name="data" id="data" value="">
-    <input type="text" name="assignmentId" id="assignmentId" value="">
-	</form>
-
+<form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
+  <input type="text" name="data" id="data" value="">
+  <input type="text" name="assignmentId" id="assignmentId" value="">
+</form>
 </body>
 </html>
