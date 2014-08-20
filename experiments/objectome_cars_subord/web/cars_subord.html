@@ -51,6 +51,7 @@ var reward;
 var acc;
 var SZ_TEST = 360;   // test image canvas size --- must match html below
 var SZ_RESP = 200;   // response image canvas size --- must match html below
+var SZ_STATLEN = 5;
 
 function shuffle(o) {
     for (var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x =
@@ -114,14 +115,13 @@ function setTimeout2(fn, delay) {
     // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
     var t0 = performance.now();
     setTimeout(function setTimeout2_inner() {
-        // console.log(performance.now() - t0);
         if (performance.now() - t0 >= delay - js_tres * 1.5) {
             fn();
         }
         else {
             setTimeout(setTimeout2_inner, 0);
         }
-    }, delay - js_tres * 8);
+    }, Math.max(delay - js_tres * 8, 0));
 }
 
 function pre_begin_task() {
@@ -165,16 +165,19 @@ function get_contexts(onscr_canvas_id) {
     return {onscr: ctxMain, offscr: ctxOffscreen};
 }
 
-function draw_to_context(imgurl, ctx, callback) {
+function draw_to_context(imgurl, ctx, callback, wrap) {
     // from: https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Canvas_tutorial/Using_images
     var img;
-    t_draw_begin = performance.now();
+    var t_draw_begin = performance.now();
     img =  new Image();
     img.onload = function(){
         ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);  // should stretch
         //ctx.drawImage(img, 0, 0);
         if (typeof(callback) == 'function') {
-            callback();
+            if (wrap) {
+                setTimeout(callback, 0);
+            }
+            else callback();
         }
     };
     img.src = imgurl;
@@ -183,6 +186,10 @@ function draw_to_context(imgurl, ctx, callback) {
 
 function copy_contexts(ctxsrc, ctxdst) {
     ctxdst.drawImage(ctxsrc.canvas, 0, 0);
+}
+
+function get_drift_compensation(arr, ref) {
+    return arr.length >= SZ_STATLEN ? arr.mean() - ref : 0;
 }
 
 Array.prototype.flatten = function flatten() {
@@ -211,27 +218,27 @@ Array.prototype.getUnique = function() {
     return a;
 };
 
+Array.prototype.mean = function () {
+    var sum = 0, j = 0; 
+    for (var i = 0; i < this.length, isFinite(this[i]); i++) { 
+        sum += parseFloat(this[i]); ++j; 
+    } 
+    return j ? sum / j : 0; 
+};
+
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
 function beginExp() {
-    // console.log('beginExp');
     begin = true;
     $("#begintask").hide();
     $("#begintaskdiv").hide();
     $("#_preload").hide();
+    preTrial(false);
+}
+
+function preTrial(drawn) {
     $('#group_container').hide();
     $('.fixation img').attr('src', fixationImage.src);
     $('.fixation').show();
-    t_pre_stimon = performance.now();
-
-    draw_to_context(imgFiles_new[trialNumber][0], ctx_test_off, function() {
-        setTimeout(function() {
-            var t_delta = performance.now() - t_draw_begin;
-            // console.log('t_delta init:' + t_delta);
-            setTimeout2(function() {
-                showStim();
-            }, ISI - t_delta);
-        }, 0);
-    });
     window.scrollTo(0, 0); // forced sync
 
     /*  hahong: for safer canvas use, disable this
@@ -243,20 +250,37 @@ function beginExp() {
         //height is longer axis
         $('#main_test').removeClass().addClass('shrinkheight');
     } */
+
+    setTimeout(function() {
+        // fixation dot has appeared
+        var t_drift;
+        t_pre_stimon = performance.now();
+        t_drift = get_drift_compensation(measuredISI1, ISI);
+        if (!drawn) {
+            draw_to_context(imgFiles_new[trialNumber][0], ctx_test_off, function() {
+                var t_delta = performance.now() - t_pre_stimon - js_tres;
+                setTimeout2(showStim, ISI - t_delta - js_tres - t_drift);
+            }, false);
+        }
+        else setTimeout2(function() {
+                showStim();
+            }, ISI - js_tres - t_drift);
+    }, 0);
 }
 
 function showStim() {
-    // console.log('showStim');
     copy_contexts(ctx_test_off, ctx_test_on);
     $('.test').show();
     $('.fixation').hide();
 
     setTimeout(function() {
         // at this point, the stimulus has been painted completely
+        var t_drift;
         t_at_stimon = performance.now();
         t_ISI1 = t_at_stimon - t_pre_stimon;
         console.log('ISI1 = ' + t_ISI1);
         measuredISI1.push(t_ISI1);
+        t_drift = get_drift_compensation(measuredStimdur, stimduration);
         setTimeout2(function() {
             $('.test').hide();
             setTimeout(function() {
@@ -266,17 +290,15 @@ function showStim() {
                 console.log('stim dur = ' + t_stimondur);
                 measuredStimdur.push(t_stimondur);
                 // pre-draw images
-                t_draw_begin_1st = draw_to_context(imgFiles_new[trialNumber][1][0], ctx_resp1_off, null);
-                t_draw_begin_2nd = draw_to_context(imgFiles_new[trialNumber][1][1], ctx_resp2_off, function() {
-                    setTimeout(function() {
-                        // pre-draw should have been completed
-                        var t_delta = performance.now() - Math.min(t_draw_begin_1st, t_draw_begin_2nd);
-                        // console.log('t_delta ISI2:' + t_delta);
-                        setTimeout2(showResponse, ISI - t_delta);
-                    }, 0);
-                });
+                draw_to_context(imgFiles_new[trialNumber][1][0], ctx_resp1_off, null, false);
+                draw_to_context(imgFiles_new[trialNumber][1][1], ctx_resp2_off, function() {
+                    // pre-draw should have been completed
+                    var t_delta = performance.now() - t_at_stimoff - js_tres;
+                    var t_drift = get_drift_compensation(measuredISI2, ISI);
+                    setTimeout2(showResponse, ISI - t_delta - t_drift);
+                }, false);
             }, 0);
-        }, stimduration - js_tres);
+        }, stimduration - js_tres - t_drift);
     }, 0);
 }
 
@@ -285,12 +307,10 @@ function getAspectRatio(im) {
     var width = im.naturalWidth;
     var height = im.naturalHeight;
     var ar = width / height;
-    // console.log(ar)
     return ar;
 }
 
 function showResponse() {
-    // console.log('showResponse');
     /* hahong: simplify
     $('#label1').html(labels[trialNumber][0]);
     $('#label2').html(labels[trialNumber][1]);
@@ -316,12 +336,11 @@ function showResponse() {
         console.log('ISI2 = ' + t_ISI2);
         measuredISI2.push(t_ISI2);
         if (trialNumber + 1 < totalTrials)
-            draw_to_context(imgFiles_new[trialNumber + 1][0], ctx_test_off, null);
+            draw_to_context(imgFiles_new[trialNumber + 1][0], ctx_test_off, null, false);
     }, 0);
 }
 
 function clicked(myval, index) {
-    // console.log('clicked');
     if (!begin) return;
     trialEndTime = new Date();
     /* hahong: reward related
@@ -334,26 +353,10 @@ function clicked(myval, index) {
         num_correct++;
     } */
     pushData(myval);
-    $('.fixation img').attr('src', fixationImage.src);
-    $('#group_container').hide();
-    $('.fixation').show();
-    window.scrollTo(0, 0); // hahong: make sure scroll to the top
-
-    /* hahong: not using this for safer canvas use
-    //Set proper height/width:
-    console.log(getAspectRatio(tmpImage));
-    if (getAspectRatio(tmpImage) > 1) {
-        //width is longer axis
-        $('#main_test').removeClass().addClass('shrinkwidth');
-    } else {
-        //height is longer axis
-        $('#main_test').removeClass().addClass('shrinkheight');
-    } */
     endTrial();
 }
 
 function pushData(myval) {
-    // console.log('pushData');
     StimDone.push(imgFiles_new[trialNumber]);
     response.push(myval);
     trialDurations.push(trialEndTime - trialStartTime);
@@ -390,18 +393,12 @@ function endTrial() {
         takeABreak();
     } else {
         trialNumber++;
-        setTimeout(function() {
-            // fixation dot has appeared
-            t_pre_stimon = performance.now();
-            setTimeout2(function() {
-                showStim();
-            }, ISI - js_tres);
-        }, 0);
+        preTrial(true);
     }
 }
 
 function takeABreak() {
-        draw_to_context(breakscreen.src, ctx_test_on, null);
+        draw_to_context(breakscreen.src, ctx_test_on, null, false);
         $('.fixation').hide();
         $('.test').show();
         $('#_preload').html(
@@ -418,17 +415,7 @@ function takeABreak() {
                 trialNumber++;
                 $('.test').hide();
                 $('#_preload').hide();
-                $('.fixation').show();
-                t_pre_stimon = performance.now();
-                draw_to_context(imgFiles_new[trialNumber], ctx_test_off, function() {
-                    setTimeout(function() {
-                        var t_delta = performance.now() - t_draw_begin;
-                        // console.log('t_delta:' + t_delta);
-                        setTimeout2(function() {
-                            showStim();
-                        }, ISI - t_delta);
-                    }, 0);
-                });
+                preTrial(false);
             }
         };
     }
