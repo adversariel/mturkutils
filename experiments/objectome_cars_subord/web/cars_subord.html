@@ -52,6 +52,7 @@ var acc;
 var SZ_TEST = 360;   // test image canvas size --- must match html below
 var SZ_RESP = 200;   // response image canvas size --- must match html below
 var STATLEN = 3;
+var SLOPPY = 5;
 var EPS = 2;
 
 //!!== Utility functions ==!!//
@@ -109,17 +110,11 @@ function setTimeout2(fn, delay) {
     // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
     var t0 = performance.now(), sloppy_delay;
     var setTimeout2_inner = function setTimeout2_inner() {
-        if (performance.now() - t0 >= delay - js_tres * 2 - js_tres_variance * 2) {
-            // cpu intensive, but more accurate way of timing
-            while(performance.now() - t0 < delay - EPS) tscnt++;
-            fn();
-        }
-        else {
-            setTimeout(setTimeout2_inner, 0);
-        }
+        while(performance.now() - t0 < delay - EPS) tscnt++;
+        fn();
     };
     tscnt = 0;
-    sloppy_delay = delay - js_tres * 8;
+    sloppy_delay = delay - js_tres * SLOPPY;
     if (sloppy_delay <= 0) setTimeout2_inner();
     else setTimeout(setTimeout2_inner, sloppy_delay);
 }
@@ -150,6 +145,8 @@ function drawToContext(imgurl, ctx, callback, wrap) {
     img.onload = function(){
         ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);  // should stretch
         //ctx.drawImage(img, 0, 0);
+
+        // if callback is requested...
         if (typeof(callback) == 'function') {
             if (wrap) {
                 setTimeout(callback, 0);
@@ -192,19 +189,14 @@ function preTrial(drawn) {
 
     setTimeout(function() {
         // fixation dot has appeared
-        var t_drift;
+        var t_bias;
         t_pre_stimon = performance.now();
-        t_drift = getDriftCompensation(measuredISI1, delayBiasISI1, ISI);
-        delayBiasISI1.push(t_drift);
-        if (!drawn) {
-            drawToContext(imgFiles[trialNumber][0], ctx_test_off, function() {
-                var t_delta = performance.now() - t_pre_stimon - js_tres;
-                setTimeout2(showStim, ISI - t_delta - js_tres - t_drift);
-            }, false);
-        }
-        else setTimeout2(function() {
-                showStim();
-            }, ISI - js_tres - t_drift);
+
+        t_bias = getDriftCompensation(measuredISI1, delayBiasISI1, ISI);
+        setTimeout2(showStim, ISI - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
+
+        delayBiasISI1.push(t_bias);
+        if (!drawn) drawToContext(imgFiles[trialNumber][0], ctx_test_off, null, false);
     }, 0);
 }
 
@@ -215,32 +207,35 @@ function showStim() {
 
     setTimeout(function() {
         // at this point, the stimulus has been painted completely
-        var t_drift;
+        var t_bias;
         t_at_stimon = performance.now();
-        t_ISI1 = t_at_stimon - t_pre_stimon;
-        console.log('ISI1 = ' + t_ISI1);
-        measuredISI1.push(t_ISI1);
-        t_drift = getDriftCompensation(measuredStimdur, delayBiasStimdur, stimduration);
-        delayBiasStimdur.push(t_drift);
+
+        t_bias = getDriftCompensation(measuredStimdur, delayBiasStimdur, stimduration);
         setTimeout2(function() {
             $('.test').hide();
             setTimeout(function() {
                 // here, the stimulus has been erased completely
+                var t_bias;
                 t_at_stimoff = performance.now();
+
+                t_bias = getDriftCompensation(measuredISI2, delayBiasISI2, ISI);
+                setTimeout2(showResponse, ISI - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
+                delayBiasISI2.push(t_bias);
+
                 t_stimondur = t_at_stimoff - t_at_stimon;
-                console.log('stim dur = ' + t_stimondur);
                 measuredStimdur.push(t_stimondur);
-                // pre-draw images
+                console.log('stim dur = ' + t_stimondur);
+
+                // pre-draw images: should take less than ISI
                 drawToContext(imgFiles[trialNumber][1][0], ctx_resp1_off, null, false);
-                drawToContext(imgFiles[trialNumber][1][1], ctx_resp2_off, function() {
-                    // pre-draw should have been completed
-                    var t_delta = performance.now() - t_at_stimoff - js_tres;
-                    var t_drift = getDriftCompensation(measuredISI2, delayBiasISI2, ISI);
-                    setTimeout2(showResponse, ISI - t_delta - t_drift);
-                    delayBiasISI2.push(t_drift);
-                }, false);
+                drawToContext(imgFiles[trialNumber][1][1], ctx_resp2_off, null, false);
             }, 0);
-        }, stimduration - js_tres - t_drift);
+        }, stimduration - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
+        delayBiasStimdur.push(t_bias);
+
+        t_ISI1 = t_at_stimon - t_pre_stimon;
+        measuredISI1.push(t_ISI1);
+        console.log('ISI1 = ' + t_ISI1);
     }, 0);
 }
 
@@ -272,11 +267,13 @@ function showResponse() {
     $('#group_container').show();
     setTimeout(function() {
         // now response images are up
-        trialStartTime = new Date();
         t_after_stimoff = performance.now();
+        trialStartTime = new Date();
+
         t_ISI2 = t_after_stimoff - t_at_stimoff;
-        console.log('ISI2 = ' + t_ISI2);
         measuredISI2.push(t_ISI2);
+        console.log('ISI2 = ' + t_ISI2);
+
         if (trialNumber + 1 < totalTrials)
             drawToContext(imgFiles[trialNumber + 1][0], ctx_test_off, null, false);
     }, 0);
