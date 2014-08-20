@@ -44,14 +44,13 @@ height:360px;
 ExperimentData = null;
 var js_tres = 10000;
 var js_tres_variance = 10000;
-var JS_TRES_TOL = 40;
-var JS_TRES_VAR_TOL = 20 * 20;
+var JS_TRES_TOL = 17;            // ~60Hz frame rate
+var JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
 var num_correct = 0;
 var reward;
 var acc;
 var SZ_TEST = 360;   // test image canvas size --- must match html below
 var SZ_RESP = 200;   // response image canvas size --- must match html below
-
 
 function shuffle(o) {
     for (var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x =
@@ -74,21 +73,55 @@ function measure_js_tres() {
     var sum_diff = 0;
     var sum_sq_diff = 0;
     var d = performance.now();
-    var timer = setTimeout(function() {
+    setTimeout(function measure_js_tres_inner() {
         var diff = performance.now() - d;
         sum_diff += diff;
         sum_sq_diff += diff * diff;
-        timer = setTimeout(arguments.callee, 0);
         if (i++ == 300) {
             // done calculating js time resolution
-            clearTimeout(timer);
             mean_diff = sum_diff / i;
             js_tres = Math.max(mean_diff, 0);
             js_tres_variance = sum_sq_diff / i - mean_diff * mean_diff;
             pre_begin_task();
         }
+        else {
+            setTimeout(measure_js_tres_inner, 0);
+        }
         d = performance.now();
     }, 0);
+}
+
+/* another possibile implementation
+// compatibility
+requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+                              window.webkitRequestAnimationFrame || window.oRequestAnimationFrame;
+
+function setTimeout2(fn, delay) {
+    // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
+    var t0 = performance.now();
+    var setTimeout2_inner = function setTimeout2_inner(ts) {
+        if (ts - t0 >= delay - js_tres * 1.5) {
+            fn();
+        }
+        else {
+            requestAnimationFrame(setTimeout2_inner);
+        }
+    }
+    requestAnimationFrame(setTimeout2_inner);
+}*/
+
+function setTimeout2(fn, delay) {
+    // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
+    var t0 = performance.now();
+    setTimeout(function setTimeout2_inner() {
+        // console.log(performance.now() - t0);
+        if (performance.now() - t0 >= delay - js_tres * 1.5) {
+            fn();
+        }
+        else {
+            setTimeout(setTimeout2_inner, 0);
+        }
+    }, delay - js_tres * 8);
 }
 
 function pre_begin_task() {
@@ -194,7 +227,7 @@ function beginExp() {
         setTimeout(function() {
             var t_delta = performance.now() - t_draw_begin;
             // console.log('t_delta init:' + t_delta);
-            setTimeout(function() {
+            setTimeout2(function() {
                 showStim();
             }, ISI - t_delta);
         }, 0);
@@ -217,23 +250,21 @@ function showStim() {
     copy_contexts(ctx_test_off, ctx_test_on);
     $('.test').show();
     $('.fixation').hide();
-    t0 = performance.now();
 
     setTimeout(function() {
         // at this point, the stimulus has been painted completely
         t_at_stimon = performance.now();
         t_ISI1 = t_at_stimon - t_pre_stimon;
         console.log('ISI1 = ' + t_ISI1);
-        console.log('delta stimon = ' + (t_at_stimon - t0));
-        setTimeout(function() {
+        measuredISI1.push(t_ISI1);
+        setTimeout2(function() {
             $('.test').hide();
-            t0 = performance.now();
             setTimeout(function() {
                 // here, the stimulus has been erased completely
                 t_at_stimoff = performance.now();
                 t_stimondur = t_at_stimoff - t_at_stimon;
                 console.log('stim dur = ' + t_stimondur);
-                console.log('delta stimoff = ' + (t_at_stimoff - t0));
+                measuredStimdur.push(t_stimondur);
                 // pre-draw images
                 t_draw_begin_1st = draw_to_context(imgFiles_new[trialNumber][1][0], ctx_resp1_off, null);
                 t_draw_begin_2nd = draw_to_context(imgFiles_new[trialNumber][1][1], ctx_resp2_off, function() {
@@ -241,7 +272,7 @@ function showStim() {
                         // pre-draw should have been completed
                         var t_delta = performance.now() - Math.min(t_draw_begin_1st, t_draw_begin_2nd);
                         // console.log('t_delta ISI2:' + t_delta);
-                        setTimeout(showResponse, ISI - t_delta);
+                        setTimeout2(showResponse, ISI - t_delta);
                     }, 0);
                 });
             }, 0);
@@ -277,49 +308,48 @@ function showResponse() {
     $('#trialCounter').html('Progress:<br /> ' + trialNumber + ' of ' +
         totalTrials);
     $('#group_container').show();
-    trialStartTime = new Date();
-    if (trialNumber + 1 == totalTrials) {}
-    else {
-        setTimeout(function() {
-            t_after_stimoff = performance.now();
-            t_ISI2 = t_after_stimoff - t_at_stimoff;
-            console.log('ISI2 = ' + t_ISI2);
+    setTimeout(function() {
+        // now response images are up
+        trialStartTime = new Date();
+        t_after_stimoff = performance.now();
+        t_ISI2 = t_after_stimoff - t_at_stimoff;
+        console.log('ISI2 = ' + t_ISI2);
+        measuredISI2.push(t_ISI2);
+        if (trialNumber + 1 < totalTrials)
             draw_to_context(imgFiles_new[trialNumber + 1][0], ctx_test_off, null);
-        }, 0);
-    }
+    }, 0);
 }
 
 function clicked(myval, index) {
     // console.log('clicked');
-    if (begin) {
-        trialEndTime = new Date();
-        /* hahong: reward related
-        var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
-        var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
-        console.log(index);
-        console.log(meta_correct);
-        console.log(meta_response);
-        if(meta_correct == meta_response){
-            num_correct++;
-        } */
-        pushData(myval);
-        $('.fixation img').attr('src', fixationImage.src);
-        $('#group_container').hide();
-        $('.fixation').show();
-        window.scrollTo(0, 0); // hahong: make sure scroll to the top
+    if (!begin) return;
+    trialEndTime = new Date();
+    /* hahong: reward related
+    var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
+    var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
+    console.log(index);
+    console.log(meta_correct);
+    console.log(meta_response);
+    if(meta_correct == meta_response){
+        num_correct++;
+    } */
+    pushData(myval);
+    $('.fixation img').attr('src', fixationImage.src);
+    $('#group_container').hide();
+    $('.fixation').show();
+    window.scrollTo(0, 0); // hahong: make sure scroll to the top
 
-        /* hahong: not using this for safer canvas use
-        //Set proper height/width:
-        console.log(getAspectRatio(tmpImage));
-        if (getAspectRatio(tmpImage) > 1) {
-            //width is longer axis
-            $('#main_test').removeClass().addClass('shrinkwidth');
-        } else {
-            //height is longer axis
-            $('#main_test').removeClass().addClass('shrinkheight');
-        } */
-        endTrial();
-    } else {}
+    /* hahong: not using this for safer canvas use
+    //Set proper height/width:
+    console.log(getAspectRatio(tmpImage));
+    if (getAspectRatio(tmpImage) > 1) {
+        //width is longer axis
+        $('#main_test').removeClass().addClass('shrinkwidth');
+    } else {
+        //height is longer axis
+        $('#main_test').removeClass().addClass('shrinkheight');
+    } */
+    endTrial();
 }
 
 function pushData(myval) {
@@ -363,7 +393,7 @@ function endTrial() {
         setTimeout(function() {
             // fixation dot has appeared
             t_pre_stimon = performance.now();
-            setTimeout(function() {
+            setTimeout2(function() {
                 showStim();
             }, ISI - js_tres);
         }, 0);
@@ -394,7 +424,7 @@ function takeABreak() {
                     setTimeout(function() {
                         var t_delta = performance.now() - t_draw_begin;
                         // console.log('t_delta:' + t_delta);
-                        setTimeout(function() {
+                        setTimeout2(function() {
                             showStim();
                         }, ISI - t_delta);
                     }, 0);
@@ -411,6 +441,9 @@ function init_vars() {
     response = [];
     trialDurations = [];
     trialStartTime = new Date();
+    measuredISI1 = [];
+    measuredISI2 = [];
+    measuredStimdur = [];
     StimDone = [];
     imgFiles_new = [];
     fixationImage = new Image();
