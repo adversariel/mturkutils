@@ -42,7 +42,7 @@ height:360px;
 
 <script type="text/javascript">
 ExperimentData = null;
-var js_tres = 10000;
+var js_tres = 10000;             // setTimeout resolution
 var js_tres_variance = 10000;
 var JS_TRES_TOL = 17;            // ~60Hz frame rate
 var JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
@@ -51,151 +51,10 @@ var reward;
 var acc;
 var SZ_TEST = 360;   // test image canvas size --- must match html below
 var SZ_RESP = 200;   // response image canvas size --- must match html below
-var SZ_STATLEN = 5;
+var STATLEN = 3;
 var EPS = 2;
 
-function shuffle(o) {
-    for (var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x =
-        o[--i], o[i] = o[j], o[j] = x);
-    return o;
-}
-
-function gup(name) {
-    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
-    var regexS = "[\\?&]" + name + "=([^&#]*)";
-    var regex = new RegExp(regexS);
-    var results = regex.exec(window.location.href);
-    if (results === null) return "";
-    else return results[1];
-}
-
-function measure_js_tres() {
-    // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
-    var i = 0;
-    var sum_diff = 0;
-    var sum_sq_diff = 0;
-    var d = performance.now();
-    setTimeout(function measure_js_tres_inner() {
-        var diff = performance.now() - d;
-        sum_diff += diff;
-        sum_sq_diff += diff * diff;
-        if (i++ == 300) {
-            // done calculating js time resolution
-            mean_diff = sum_diff / i;
-            js_tres = Math.max(mean_diff, 0);
-            js_tres_variance = sum_sq_diff / i - mean_diff * mean_diff;
-            pre_begin_task();
-        }
-        else {
-            setTimeout(measure_js_tres_inner, 0);
-        }
-        d = performance.now();
-    }, 0);
-}
-
-/* another possibile implementation
-// compatibility
-requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
-                              window.webkitRequestAnimationFrame || window.oRequestAnimationFrame;
-
-function setTimeout2(fn, delay) {
-    // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
-    var t0 = performance.now();
-    var setTimeout2_inner = function setTimeout2_inner(ts) {
-        if (ts - t0 >= delay - js_tres * 1.5) {
-            fn();
-        }
-        else {
-            requestAnimationFrame(setTimeout2_inner);
-        }
-    }
-    requestAnimationFrame(setTimeout2_inner);
-}*/
-
-function setTimeout2(fn, delay) {
-    // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
-    var t0 = performance.now();
-    tscnt = 0;
-    setTimeout(function setTimeout2_inner() {
-        if (performance.now() - t0 >= delay - js_tres * 2 - js_tres_variance * 2) {
-            // cpu intensive, but more accurate way of timing
-            while(performance.now() - t0 < delay - EPS) tscnt++;
-            fn();
-        }
-        else {
-            setTimeout(setTimeout2_inner, 0);
-        }
-    }, Math.max(delay - js_tres * 8, 0));
-}
-
-function pre_begin_task() {
-    var nook = false;
-    var details;
-
-    if (js_tres > JS_TRES_TOL) {
-        details = "Your system is too slow to complete this task.";
-        nook = true;
-    }
-    else if (js_tres_variance > JS_TRES_VAR_TOL) {
-        details = "Your system's clock varies too much.";
-        nook = true;
-    }
-
-    if (nook) {
-        $('#warning').show();
-        $('#warning').html(
-            "<font color=red style=background-color:white><b>Your system CANNOT run this HIT at this point.  Close other programs and try again please.</b></font>"
-        );
-        alert(details + "  Close other programs and try again please.");
-    }
-    else {
-        $("#begintaskdiv").css('visibility', 'visible');
-        $("#begintask").click(function() {
-        beginExp();
-        });
-    }
-}
-
-function get_contexts(onscr_canvas_id) {
-    // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
-    var offscreenCanvas = document.createElement('canvas');
-    var mainCanvas = document.getElementById(onscr_canvas_id);
-    var ctxOffscreen, ctxMain;
-    offscreenCanvas.width = mainCanvas.width;
-    offscreenCanvas.height = mainCanvas.height;
-    ctxOffscreen = offscreenCanvas.getContext('2d');
-    ctxMain = mainCanvas.getContext('2d');
-
-    return {onscr: ctxMain, offscr: ctxOffscreen};
-}
-
-function draw_to_context(imgurl, ctx, callback, wrap) {
-    // from: https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Canvas_tutorial/Using_images
-    var img;
-    var t_draw_begin = performance.now();
-    img =  new Image();
-    img.onload = function(){
-        ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);  // should stretch
-        //ctx.drawImage(img, 0, 0);
-        if (typeof(callback) == 'function') {
-            if (wrap) {
-                setTimeout(callback, 0);
-            }
-            else callback();
-        }
-    };
-    img.src = imgurl;
-    return t_draw_begin;
-}
-
-function copy_contexts(ctxsrc, ctxdst) {
-    ctxdst.drawImage(ctxsrc.canvas, 0, 0);
-}
-
-function get_drift_compensation(arr, ref) {
-    return arr.length >= SZ_STATLEN ? arr.mean() - ref : 0;
-}
-
+//!!== Utility functions ==!!//
 Array.prototype.flatten = function flatten() {
     var flat = [];
     for (var i = 0, l = this.length; i < l; i++) {
@@ -230,6 +89,82 @@ Array.prototype.mean = function () {
     return j ? sum / j : 0; 
 };
 
+function shuffle(o) {
+    for (var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x =
+        o[--i], o[i] = o[j], o[j] = x);
+    return o;
+}
+
+function getURLParameter(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regexS = "[\\?&]" + name + "=([^&#]*)";
+    var regex = new RegExp(regexS);
+    var results = regex.exec(window.location.href);
+    if (results === null) return "";
+    else return results[1];
+}
+
+// More accurate setTimeout
+function setTimeout2(fn, delay) {
+    // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
+    var t0 = performance.now(), sloppy_delay;
+    var setTimeout2_inner = function setTimeout2_inner() {
+        if (performance.now() - t0 >= delay - js_tres * 2 - js_tres_variance * 2) {
+            // cpu intensive, but more accurate way of timing
+            while(performance.now() - t0 < delay - EPS) tscnt++;
+            fn();
+        }
+        else {
+            setTimeout(setTimeout2_inner, 0);
+        }
+    };
+    tscnt = 0;
+    sloppy_delay = delay - js_tres * 8;
+    if (sloppy_delay <= 0) setTimeout2_inner();
+    else setTimeout(setTimeout2_inner, sloppy_delay);
+}
+
+function getDriftCompensation(arr, biases, ref) {
+    return arr.length >= STATLEN ? arr.mean() + biases.mean() - ref : 0;
+}
+
+//!!== Graphics functions ==!!//
+function getContexts(onscr_canvas_id) {
+    // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
+    var offscreenCanvas = document.createElement('canvas');
+    var mainCanvas = document.getElementById(onscr_canvas_id);
+    var ctxOffscreen, ctxMain;
+    offscreenCanvas.width = mainCanvas.width;
+    offscreenCanvas.height = mainCanvas.height;
+    ctxOffscreen = offscreenCanvas.getContext('2d');
+    ctxMain = mainCanvas.getContext('2d');
+
+    return {onscr: ctxMain, offscr: ctxOffscreen};
+}
+
+function drawToContext(imgurl, ctx, callback, wrap) {
+    // from: https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Canvas_tutorial/Using_images
+    var img;
+    var t_draw_begin = performance.now();
+    img =  new Image();
+    img.onload = function(){
+        ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);  // should stretch
+        //ctx.drawImage(img, 0, 0);
+        if (typeof(callback) == 'function') {
+            if (wrap) {
+                setTimeout(callback, 0);
+            }
+            else callback();
+        }
+    };
+    img.src = imgurl;
+    return t_draw_begin;
+}
+
+function copyContexts(ctxsrc, ctxdst) {
+    ctxdst.drawImage(ctxsrc.canvas, 0, 0);
+}
+
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
 function beginExp() {
     begin = true;
@@ -259,9 +194,10 @@ function preTrial(drawn) {
         // fixation dot has appeared
         var t_drift;
         t_pre_stimon = performance.now();
-        t_drift = get_drift_compensation(measuredISI1, ISI);
+        t_drift = getDriftCompensation(measuredISI1, delayBiasISI1, ISI);
+        delayBiasISI1.push(t_drift);
         if (!drawn) {
-            draw_to_context(imgFiles_new[trialNumber][0], ctx_test_off, function() {
+            drawToContext(imgFiles[trialNumber][0], ctx_test_off, function() {
                 var t_delta = performance.now() - t_pre_stimon - js_tres;
                 setTimeout2(showStim, ISI - t_delta - js_tres - t_drift);
             }, false);
@@ -273,7 +209,7 @@ function preTrial(drawn) {
 }
 
 function showStim() {
-    copy_contexts(ctx_test_off, ctx_test_on);
+    copyContexts(ctx_test_off, ctx_test_on);
     $('.test').show();
     $('.fixation').hide();
 
@@ -284,7 +220,8 @@ function showStim() {
         t_ISI1 = t_at_stimon - t_pre_stimon;
         console.log('ISI1 = ' + t_ISI1);
         measuredISI1.push(t_ISI1);
-        t_drift = get_drift_compensation(measuredStimdur, stimduration);
+        t_drift = getDriftCompensation(measuredStimdur, delayBiasStimdur, stimduration);
+        delayBiasStimdur.push(t_drift);
         setTimeout2(function() {
             $('.test').hide();
             setTimeout(function() {
@@ -294,12 +231,13 @@ function showStim() {
                 console.log('stim dur = ' + t_stimondur);
                 measuredStimdur.push(t_stimondur);
                 // pre-draw images
-                draw_to_context(imgFiles_new[trialNumber][1][0], ctx_resp1_off, null, false);
-                draw_to_context(imgFiles_new[trialNumber][1][1], ctx_resp2_off, function() {
+                drawToContext(imgFiles[trialNumber][1][0], ctx_resp1_off, null, false);
+                drawToContext(imgFiles[trialNumber][1][1], ctx_resp2_off, function() {
                     // pre-draw should have been completed
                     var t_delta = performance.now() - t_at_stimoff - js_tres;
-                    var t_drift = get_drift_compensation(measuredISI2, ISI);
+                    var t_drift = getDriftCompensation(measuredISI2, delayBiasISI2, ISI);
                     setTimeout2(showResponse, ISI - t_delta - t_drift);
+                    delayBiasISI2.push(t_drift);
                 }, false);
             }, 0);
         }, stimduration - js_tres - t_drift);
@@ -326,8 +264,8 @@ function showResponse() {
     reward = reward_scale[trialNumber][Math.floor(acc*99)].toPrecision(2); */
 
     // these should take short
-    copy_contexts(ctx_resp1_off, ctx_resp1_on);
-    copy_contexts(ctx_resp2_off, ctx_resp2_on);
+    copyContexts(ctx_resp1_off, ctx_resp1_on);
+    copyContexts(ctx_resp2_off, ctx_resp2_on);
 
     $('#trialCounter').html('Progress:<br /> ' + trialNumber + ' of ' +
         totalTrials);
@@ -340,7 +278,7 @@ function showResponse() {
         console.log('ISI2 = ' + t_ISI2);
         measuredISI2.push(t_ISI2);
         if (trialNumber + 1 < totalTrials)
-            draw_to_context(imgFiles_new[trialNumber + 1][0], ctx_test_off, null, false);
+            drawToContext(imgFiles[trialNumber + 1][0], ctx_test_off, null, false);
     }, 0);
 }
 
@@ -361,7 +299,7 @@ function clicked(myval, index) {
 }
 
 function pushData(myval) {
-    StimDone.push(imgFiles_new[trialNumber]);
+    StimDone.push(imgFiles[trialNumber]);
     response.push(myval);
     trialDurations.push(trialEndTime - trialStartTime);
 }
@@ -371,7 +309,7 @@ function endTrial() {
         var resultsobj = [];
         resultsobj.push({
             Response: response,
-            ImgOrder: imgFiles_new,
+            ImgOrder: imgFiles,
             StimShown: StimDone,
             StimDuration: stimduration,
             RT: trialDurations,
@@ -385,6 +323,12 @@ function endTrial() {
             WindowWidth: winW,
             ScreenHeight: vertical,
             ScreenWidth: horizontal,
+            measISI1: measuredISI1,
+            measISI2: measuredISI2,
+            measStimdur: measuredStimdur,
+            biasISI1: delayBiasISI1,
+            biasISI2: delayBiasISI2,
+            biasStimdur: delayBiasStimdur,
             ImgData: imgData,
             /* hahong: reward related
                 Performance:acc,
@@ -402,7 +346,7 @@ function endTrial() {
 }
 
 function takeABreak() {
-        draw_to_context(breakscreen.src, ctx_test_on, null, false);
+        drawToContext(breakscreen.src, ctx_test_on, null, false);
         $('.fixation').hide();
         $('.test').show();
         $('#_preload').html(
@@ -425,18 +369,21 @@ function takeABreak() {
     }
 //!!==END DYNAMIC TRIAL CODE==!!//
 
-function init_vars() {
+function initVars() {
     var ctxs;
     zoom = DetectZoom.zoom();
-    aID = gup("assignmentId");
+    aID = getURLParameter("assignmentId");
     response = [];
     trialDurations = [];
     trialStartTime = new Date();
     measuredISI1 = [];
     measuredISI2 = [];
     measuredStimdur = [];
+    delayBiasISI1 = [];
+    delayBiasISI2 = [];
+    delayBiasStimdur = [];
     StimDone = [];
-    imgFiles_new = [];
+    imgFiles = [];
     fixationImage = new Image();
     fixationImage.src = "https://s3.amazonaws.com/task_images/fixation.png";
     breakscreen = new Image();
@@ -445,7 +392,7 @@ function init_vars() {
     // hahong: simplyfy: labels = ExperimentData.labels;
     ISI = 500;
     trialNumber = 0;
-    totalTrials = ExperimentData["imgFiles"].length;
+    totalTrials = ExperimentData.imgFiles.length;
     BreakTimes = [];
     begin = false;
     startpoint = 0;
@@ -453,15 +400,15 @@ function init_vars() {
     imgData = ExperimentData.imgData;
 
     // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
-    ctxs = get_contexts('main_test');
+    ctxs = getContexts('main_test');
     ctx_test_on = ctxs.onscr;
     ctx_test_off = ctxs.offscr;
 
-    ctxs = get_contexts('img4');
+    ctxs = getContexts('img4');
     ctx_resp1_on = ctxs.onscr;
     ctx_resp1_off = ctxs.offscr;
 
-    ctxs = get_contexts('img5');
+    ctxs = getContexts('img5');
     ctx_resp2_on = ctxs.onscr;
     ctx_resp2_off = ctxs.offscr;
 
@@ -470,15 +417,69 @@ function init_vars() {
     reward_scale = ExperimentData.reward_scale;*/
 }
 
-function preload_resources() {
-    imgFiles_new = ExperimentData.imgFiles;
-    //imgFiles_new = imgFiles.slice(startpoint*totalTrials,(startpoint+1)*totalTrials)
-    //shuffle(imgFiles_new);
-    /* stimFiles = imgFiles_new.map(function(a) {
+function preloadResources() {
+    imgFiles = ExperimentData.imgFiles;
+    //imgFiles = imgFiles.slice(startpoint*totalTrials,(startpoint+1)*totalTrials)
+    //shuffle(imgFiles);
+    /* stimFiles = imgFiles.map(function(a) {
         return a[0];
     }); */
     // hahong: this loads response images as well:
-    stimFiles = imgFiles_new.flatten().getUnique();
+    stimFiles = imgFiles.flatten().getUnique();
+}
+
+function measureTimeResolution() {
+    // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
+    var i = 0;
+    var sum_diff = 0;
+    var sum_sq_diff = 0;
+    var d = performance.now();
+    setTimeout(function measureTimeResolution_inner() {
+        var diff = performance.now() - d;
+        sum_diff += diff;
+        sum_sq_diff += diff * diff;
+        if (i++ == 300) {
+            // done calculating js time resolution
+            mean_diff = sum_diff / i;
+            js_tres = Math.max(mean_diff, 0);
+            js_tres_variance = sum_sq_diff / i - mean_diff * mean_diff;
+            preBeginTask();
+        }
+        else {
+            setTimeout(measureTimeResolution_inner, 0);
+        }
+        d = performance.now();
+    }, 0);
+}
+
+function preBeginTask() {
+    var nook = false;
+    var details;
+
+    if (js_tres > JS_TRES_TOL) {
+        details = "Your system is too slow to complete this task.";
+        nook = true;
+    }
+    else if (js_tres_variance > JS_TRES_VAR_TOL) {
+        details = "Your system's clock varies too much.";
+        nook = true;
+    }
+
+    if (nook) {
+        $('#_preload').hide();
+        $('#warning').show();
+        $('#warning').html(
+            "<font color=red style=background-color:white><b>Your system CANNOT run this HIT at this point.  Close other programs and try again please.</b></font>"
+        );
+        alert(details + "  Close other programs and try again please.");
+    }
+    else {
+        $('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
+        $("#begintaskdiv").css('visibility', 'visible');
+        $("#begintask").click(function() {
+        beginExp();
+        });
+    }
 }
 
 $(document).ready(function() {
@@ -488,10 +489,13 @@ $(document).ready(function() {
     $('.test').hide();
     $('.fixation').hide();
     $('#group_container').hide();
-    init_vars();
-    preload_resources();
+    initVars();
+    preloadResources();
     preload(stimFiles, function() {
-        measure_js_tres();
+        $('#_preload').html(
+            "<font color=red style=background-color:white><b>Wait...</b></font>"
+        );
+        measureTimeResolution();
     });
     $('.fixation img').attr('src', fixationImage.src);
     $('#warning').hide();
