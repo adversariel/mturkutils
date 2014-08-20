@@ -52,6 +52,7 @@ var acc;
 var SZ_TEST = 360;   // test image canvas size --- must match html below
 var SZ_RESP = 200;   // response image canvas size --- must match html below
 var SZ_STATLEN = 5;
+var EPS = 2;
 
 function shuffle(o) {
     for (var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x =
@@ -114,8 +115,11 @@ function setTimeout2(fn, delay) {
 function setTimeout2(fn, delay) {
     // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
     var t0 = performance.now();
+    tscnt = 0;
     setTimeout(function setTimeout2_inner() {
-        if (performance.now() - t0 >= delay - js_tres * 1.5) {
+        if (performance.now() - t0 >= delay - js_tres * 2 - js_tres_variance * 2) {
+            // cpu intensive, but more accurate way of timing
+            while(performance.now() - t0 < delay - EPS) tscnt++;
             fn();
         }
         else {
