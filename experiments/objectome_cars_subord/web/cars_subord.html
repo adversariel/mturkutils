@@ -90,6 +90,16 @@ Array.prototype.mean = function () {
     return j ? sum / j : 0; 
 };
 
+Array.prototype.variance = function () {
+    var sum = 0, j = 0, a; 
+    for (var i = 0; i < this.length, isFinite(this[i]); i++) { 
+        a = parseFloat(this[i]); ++j;
+        sum += a * a; 
+    } 
+    a = this.mean();
+    return j ? sum / j - a * a : 0; 
+};
+
 function shuffle(o) {
     for (var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x =
         o[--i], o[i] = o[j], o[j] = x);
