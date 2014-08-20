@@ -121,27 +121,9 @@ function rotateAroundWorldAxis(obj, rotX, rotY, rotZ){
     }
 
 var mult, mult1, bpp, bsize;
+var meshDict = {};
 
-function createScene( geometry, materials) {
-    mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
-    scene.add( mesh );
-
-    rotateAroundWorldAxis(mesh, 0, 0, -posdict[objname]['z']);
-    rotateAroundWorldAxis(mesh, 0, -posdict[objname]['y'], 0);
-    rotateAroundWorldAxis(mesh, -posdict[objname]['x'], 0, 0)
-
-    mult = sizes[imgData[trialNumber]['obj']] / 100;
-    bpp = bounding_boxes[imgData[trialNumber]['obj']];
-    bsize = Math.max(bpp['h'], bpp['w']) / 2;
-    mult1 = 100 / bsize;
-
-    mesh.scale.set(mult1 * mult * mesh.scale.x / mesh.geometry.boundingSphere.radius,
-                   mult1 * mult * mesh.scale.y / mesh.geometry.boundingSphere.radius,
-                   mult1 * mult * mesh.scale.z / mesh.geometry.boundingSphere.radius);
-
-    mesh.translateX(-mult1 * mult * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
-    mesh.translateY(-mult1 * mult * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
-    mesh.translateZ(-mult1 * mult * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+function makeScene(){
 
     size0x = mesh.scale.x;
     size0y = mesh.scale.y;
@@ -150,10 +132,11 @@ function createScene( geometry, materials) {
     sizer0x = mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius;
     sizer0y = mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius;
     sizer0z = mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius;
-    animate();
+    animate();    
+    
+    scene.add( mesh );
 
     $('#slider').slider("option", "value", 50);
-
     $('#slider').trigger('slide')
 
     var realsize = imgData[trialNumber]['s'].toFixed(2);
@@ -177,15 +160,42 @@ function createScene( geometry, materials) {
         $('#main_test').attr('src',thisStim);
     };
 
-    }
+}
+
+function createScene( geometry, materials) {
+    mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
+    
+    rotateAroundWorldAxis(mesh, 0, 0, -posdict[objname]['z']);
+    rotateAroundWorldAxis(mesh, 0, -posdict[objname]['y'], 0);
+    rotateAroundWorldAxis(mesh, -posdict[objname]['x'], 0, 0)
+
+    mult = sizes[imgData[trialNumber]['obj']] / 100;
+    bpp = bounding_boxes[imgData[trialNumber]['obj']];
+    bsize = Math.max(bpp['h'], bpp['w']) / 2;
+    mult1 = 100 / bsize;
+
+    mesh.scale.set(mult1 * mult * mesh.scale.x / mesh.geometry.boundingSphere.radius,
+                   mult1 * mult * mesh.scale.y / mesh.geometry.boundingSphere.radius,
+                   mult1 * mult * mesh.scale.z / mesh.geometry.boundingSphere.radius);
+
+    mesh.translateX(-mult1 * mult * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
+    mesh.translateY(-mult1 * mult * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
+    mesh.translateZ(-mult1 * mult * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+    //meshDict[objname] = mesh;
+    makeScene(mesh);
+}
 
 function replace_scene(){
-    jsonLoader.loadAjaxJSON( jsonLoader, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/" + objname + ".js",
-              createScene, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/",
-        function( progress, result ) {
-
-        });
+    if (meshDict[objname] == undefined){
+        jsonLoader.loadAjaxJSON( jsonLoader, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/" + objname + ".js",
+                  createScene, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/",
+            function( progress, result ) {
+            });
+    } else {
+        mesh = meshDict[objname]
+        makeScene();
     }
+}
 
 function init_scene() {
 
@@ -291,7 +301,7 @@ function getAspectRatio(im) {
 
 function reward_scale(error){
      if (error !== null){
-         var random_error = 0.25;
+         var random_error = 0.5;
          var bonus = Math.max((random_error - error) / random_error, 0);
      } else{
          bonus = 0.0
@@ -707,7 +717,8 @@ $(document).ready(function() {
 <p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
 <b>IMPORTANT: doing this task <u>requires</u> you to have WebGL enabled in your browser.</b>  If your web browser does not have WebGL capabilities, you <b>cannot</b> do this task.  If your browser does have WebGL capabilities, you must still <b>make sure that WebGL is enabled</b> in your browser.  To do so, go to your favorite web search engine, perform a search for "webgl + [your browser name]," and follow instructions.
 <p>
-Your computer also must also have a modern and fast internet connection, and have sufficient memory resources.   If you're unsure if your computer meets the requirements for this task, try the first few trials. If this task is not working properly for you, <font color=red><b>please send us an email at dlmug@mit.edu explain the problem</b></font>. Give us details about the issue as well as the browser and Operating System you're using.</p>
+To do this task, your computer <b>must</b> have a recent CPU and more than 4 GB of RAM. Your computer also must also have a modern and fast internet connection.  Please note that most laptops do NOT have sufficient resources to do this task.  If you're unsure if your computer meets the requirements for this task, try the first few trials.  If this task is not working efficiently, please return the HIT.</p>
+<p>While doing this task, it is <b> very important that you NOT have other browser windows open simultaneously</b>, even if you aren't looking at them.   Not only will these windows potentially distract you from the task, but they will also take up memory resources that your computer will need to run this task properly.</p>
 <p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
 <center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
 <div id="tutorial2" style="position:absolute; z-index:-1;">
