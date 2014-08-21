@@ -51,7 +51,7 @@ var reward;
 var acc;
 var SZ_TEST = 360;   // test image canvas size --- must match html below
 var SZ_RESP = 200;   // response image canvas size --- must match html below
-var STATLEN = 3;
+var STATLEN = 2;
 var SLOPPY = 5;
 var EPS = 2;
 
@@ -214,6 +214,7 @@ function showStim() {
     copyContexts(ctx_test_off, ctx_test_on);
     $('.test').show();
     $('.fixation').hide();
+    t_stim_queued = performance.now();
 
     setTimeout(function() {
         // at this point, the stimulus has been painted completely
@@ -221,16 +222,21 @@ function showStim() {
         t_at_stimon = performance.now();
 
         t_bias = getDriftCompensation(measuredStimdur, delayBiasStimdur, stimduration);
+        t_stimon_lag = t_at_stimon - t_stim_queued;
         setTimeout2(function() {
             $('.test').hide();
+            t_stim_dequeued = performance.now();
+
             setTimeout(function() {
                 // here, the stimulus has been erased completely
                 var t_bias;
                 t_at_stimoff = performance.now();
 
                 t_bias = getDriftCompensation(measuredISI2, delayBiasISI2, ISI);
+                t_stimoff_lag = t_at_stimoff - t_stim_dequeued;
                 setTimeout2(showResponse, ISI - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
                 delayBiasISI2.push(t_bias);
+                measuredStimoffLag.push(t_stimoff_lag);
 
                 t_stimondur = t_at_stimoff - t_at_stimon;
                 measuredStimdur.push(t_stimondur);
@@ -242,6 +248,7 @@ function showStim() {
             }, 0);
         }, stimduration - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
         delayBiasStimdur.push(t_bias);
+        measuredStimonLag.push(t_stimon_lag);
 
         t_ISI1 = t_at_stimon - t_pre_stimon;
         measuredISI1.push(t_ISI1);
@@ -333,9 +340,12 @@ function endTrial() {
             measISI1: measuredISI1,
             measISI2: measuredISI2,
             measStimdur: measuredStimdur,
+            measStimonLag: measuredStimonLag,
+            measStimoffLag: measuredStimoffLag,
             biasISI1: delayBiasISI1,
             biasISI2: delayBiasISI2,
             biasStimdur: delayBiasStimdur,
+            bogoMIPS: avg_mips,
             ImgData: imgData,
             /* hahong: reward related
                 Performance:acc,
@@ -386,6 +396,8 @@ function initVars() {
     measuredISI1 = [];
     measuredISI2 = [];
     measuredStimdur = [];
+    measuredStimonLag = [];
+    measuredStimoffLag = [];
     delayBiasISI1 = [];
     delayBiasISI2 = [];
     delayBiasStimdur = [];
@@ -435,7 +447,7 @@ function preloadResources() {
     stimFiles = imgFiles.flatten().getUnique();
 }
 
-function measureTimeResolution() {
+function measureTimeResolution(callback) {
     // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
     var i = 0;
     var sum_diff = 0;
@@ -450,13 +462,30 @@ function measureTimeResolution() {
             mean_diff = sum_diff / i;
             js_tres = Math.max(mean_diff, 0);
             js_tres_variance = sum_sq_diff / i - mean_diff * mean_diff;
-            preBeginTask();
+            if (typeof(callback) == 'function') callback();
         }
         else {
             setTimeout(measureTimeResolution_inner, 0);
         }
         d = performance.now();
     }, 0);
+}
+
+function measureBogoMIPS() {
+    // from: http://www.pothoven.net/javascripts/src/jsBogoMips.js
+    var t0 = performance.now();
+    var loops_per_sec = 0 + 0;
+    var t1 = performance.now();
+    var compensation = t1 - t0;
+    var DUR = 500;   // run for 500ms
+    var tend = performance.now() + DUR;
+
+    while (t1 < tend) {
+        loops_per_sec++;
+        t1 = performance.now();
+    }
+
+    return (loops_per_sec + (loops_per_sec * compensation)) / (1000000 / (1000 / DUR));
 }
 
 function preBeginTask() {
@@ -481,11 +510,17 @@ function preBeginTask() {
         alert(details + "  Close other programs and try again please.");
     }
     else {
-        $('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
-        $("#begintaskdiv").css('visibility', 'visible');
-        $("#begintask").click(function() {
-        beginExp();
-        });
+        bmips1 = measureBogoMIPS();
+        setTimeout(function() {
+            bmips2 = measureBogoMIPS();
+            setTimeout(function() {
+                bmips3 = measureBogoMIPS();
+                avg_mips = (bmips1 + bmips2 + bmips3) / 3;
+                $('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
+                $("#begintaskdiv").css('visibility', 'visible');
+                $("#begintask").click(beginExp);
+            }, 0);
+        }, 0);
     }
 }
 
@@ -502,15 +537,15 @@ $(document).ready(function() {
         $('#_preload').html(
             "<font color=red style=background-color:white><b>Wait...</b></font>"
         );
-        measureTimeResolution();
+        measureTimeResolution(preBeginTask);
     });
     $('.fixation img').attr('src', fixationImage.src);
     $('#warning').hide();
     $("#tutorial").html($("#tutorial_original").html());
     $("#tutorial").dialog({
-        height: 650,
-        width: 600,
-        position: "center",
+        height: 500,
+        width: 900,
+        position: ['middle', 20],
         title: "Instructions"
     });
     if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
@@ -531,16 +566,16 @@ $(document).ready(function() {
 </head>
 
 <body bgcolor="#7F7F7F">
-<div style="height:1000px; width:auto;">
+<div style="height:90%; width:95%; position:absolute;">
 <div align="center" id="warning"></div>
-<div id="begintaskdiv" style="position:absolute; top:170px; left: 47%; visibility: hidden;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
+<div id="begintaskdiv" style="position:absolute; top:40px; left: 47%; visibility: hidden;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
-<div class="fixation" align="center" style="position:relative; z-index:201; top:220px;"><img id="fixation_dot" src="" /></div>
-<div class="test" align="center" style="position:relative; z-index:200; top:170px;">
+<div class="fixation" align="center" style="position:relative; z-index:201; top:50%; height:256px; margin-top:-128px;"><img id="fixation_dot" src="" /></div>
+<div class="test" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-180px;">
 <!-- img id="main_test" src="" style="position:relative; top:0px; left:0px; z-index:200;"/ -->
 <canvas id="main_test" width="360" height="360" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
 </div>
-<div id="group_container"  style="position:absolute; top:215px; width:100%" align="center">
+<div id="group_container"  style="position:relative; width:100%; top:50%; height:200px; margin-top:-100px;" align="center">
 <table width="900" cellpadding="0" cellspacing="0" border="0" align="center" style="visibility:visible" id="responsetable">
   <tr>
     <td align="center">
@@ -572,7 +607,7 @@ $(document).ready(function() {
 </table>
 </div>
 
-<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
+<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:500,width:900,position:['middle', 20],title:'Instructions'})"><u>View Instructions</u></div>
 
 <div id="tutorial" style="position:relative; z-index:-1"></div>
 <div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: Instructions have changed, and low performance will lead to rejection: make sure to read!**</b>
