@@ -71,7 +71,7 @@
         }, 0);
     };
 
-    dltk.setTimeout2Cnt = 0;
+    dltk.setTimeout2Cnt = 0;  // debugging purposes only. do not rely on this variable.
     dltk.setTimeout2 = function setTimeout2(fn, delay) {
         // A function similar to setTimeout but much more accurate
         var t0 = performance.now(), sloppy_delay;
@@ -134,6 +134,21 @@
             if (typeof(callback) == 'function') callback(dltk.bogoMIPS);
         };
         measureBogoMIPS_inner();
+    };
+
+    dltk.runBenchmark = function runBenchmark(callback, tres_dur, mips_reps) {
+        dltk.measureTimeResolution(function (js_tres, js_tres_variance) {
+            dltk.measureBogoMIPS(function (mips) {
+                if (typeof(callback) == 'function') {
+                    var result = {
+                        js_tres: js_tres,
+                        js_tres_variance: js_tres_variance,
+                        bogoMIPS: mips
+                    };
+                    callback(result);
+                }
+            }, mips_reps);
+        }, tres_dur);
     };
 
     /*************************************************************************
