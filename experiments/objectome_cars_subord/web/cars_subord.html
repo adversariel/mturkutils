@@ -39,138 +39,14 @@ height:360px;
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
+<script type="text/javascript" src="http://dicarlo21.mit.edu:8880/~hahong/tmp/hh/dltk.js"></script>
 
 <script type="text/javascript">
 ExperimentData = null;
-var js_tres = 10000;             // setTimeout resolution
-var js_tres_variance = 10000;
-var JS_TRES_TOL = 17;            // ~60Hz frame rate
-var JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
 var num_correct = 0;
 var reward;
 var acc;
-var SZ_TEST = 360;   // test image canvas size --- must match html below
-var SZ_RESP = 200;   // response image canvas size --- must match html below
-var STATLEN = 2;
-var SLOPPY = 5;
-var EPS = 2;
 
-//!!== Utility functions ==!!//
-Array.prototype.flatten = function flatten() {
-    var flat = [];
-    for (var i = 0, l = this.length; i < l; i++) {
-        var type = Object.prototype.toString.call(this[i]).split(' ').pop()
-            .split(']').shift().toLowerCase();
-        if (type) {
-            flat = flat.concat(/^(array|collection|arguments|object)$/.test(
-                type) ? flatten.call(this[i]) : this[i]);
-        }
-    }
-    return flat;
-};
-
-Array.prototype.getUnique = function() {
-    var u = {},
-        a = [];
-    for (var i = 0, l = this.length; i < l; ++i) {
-        if (u.hasOwnProperty(this[i])) {
-            continue;
-        }
-        a.push(this[i]);
-        u[this[i]] = 1;
-    }
-    return a;
-};
-
-Array.prototype.mean = function () {
-    var sum = 0, j = 0; 
-    for (var i = 0; i < this.length, isFinite(this[i]); i++) { 
-        sum += parseFloat(this[i]); ++j; 
-    } 
-    return j ? sum / j : 0; 
-};
-
-Array.prototype.variance = function () {
-    var sum = 0, j = 0, a; 
-    for (var i = 0; i < this.length, isFinite(this[i]); i++) { 
-        a = parseFloat(this[i]); ++j;
-        sum += a * a; 
-    } 
-    a = this.mean();
-    return j ? sum / j - a * a : 0; 
-};
-
-function shuffle(o) {
-    for (var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x =
-        o[--i], o[i] = o[j], o[j] = x);
-    return o;
-}
-
-function getURLParameter(name) {
-    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
-    var regexS = "[\\?&]" + name + "=([^&#]*)";
-    var regex = new RegExp(regexS);
-    var results = regex.exec(window.location.href);
-    if (results === null) return "";
-    else return results[1];
-}
-
-// More accurate setTimeout
-function setTimeout2(fn, delay) {
-    // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
-    var t0 = performance.now(), sloppy_delay;
-    var setTimeout2_inner = function setTimeout2_inner() {
-        while(performance.now() - t0 < delay - EPS) tscnt++;
-        fn();
-    };
-    tscnt = 0;
-    sloppy_delay = delay - js_tres * SLOPPY;
-    if (sloppy_delay <= 0) setTimeout2_inner();
-    else setTimeout(setTimeout2_inner, sloppy_delay);
-}
-
-function getDriftCompensation(arr, biases, ref) {
-    return arr.length >= STATLEN ? arr.mean() + biases.mean() - ref : 0;
-}
-
-//!!== Graphics functions ==!!//
-function getContexts(onscr_canvas_id) {
-    // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
-    var offscreenCanvas = document.createElement('canvas');
-    var mainCanvas = document.getElementById(onscr_canvas_id);
-    var ctxOffscreen, ctxMain;
-    offscreenCanvas.width = mainCanvas.width;
-    offscreenCanvas.height = mainCanvas.height;
-    ctxOffscreen = offscreenCanvas.getContext('2d');
-    ctxMain = mainCanvas.getContext('2d');
-
-    return {onscr: ctxMain, offscr: ctxOffscreen};
-}
-
-function drawToContext(imgurl, ctx, callback, wrap) {
-    // from: https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Canvas_tutorial/Using_images
-    var img;
-    var t_draw_begin = performance.now();
-    img =  new Image();
-    img.onload = function(){
-        ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);  // should stretch
-        //ctx.drawImage(img, 0, 0);
-
-        // if callback is requested...
-        if (typeof(callback) == 'function') {
-            if (wrap) {
-                setTimeout(callback, 0);
-            }
-            else callback();
-        }
-    };
-    img.src = imgurl;
-    return t_draw_begin;
-}
-
-function copyContexts(ctxsrc, ctxdst) {
-    ctxdst.drawImage(ctxsrc.canvas, 0, 0);
-}
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
 function beginExp() {
@@ -202,16 +78,16 @@ function preTrial(drawn) {
         var t_bias;
         t_pre_stimon = performance.now();
 
-        t_bias = getDriftCompensation(measuredISI1, delayBiasISI1, ISI);
-        setTimeout2(showStim, ISI - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
+        t_bias = dltk.getDriftCompensation(measuredISI1, delayBiasISI1, ISI);
+        dltk.setTimeout2(showStim, ISI - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
 
         delayBiasISI1.push(t_bias);
-        if (!drawn) drawToContext(imgFiles[trialNumber][0], ctx_test_off, null, false);
+        if (!drawn) dltk.drawToContext(imgFiles[trialNumber][0], ctx_test_off, null, false);
     }, 0);
 }
 
 function showStim() {
-    copyContexts(ctx_test_off, ctx_test_on);
+    dltk.copyContexts(ctx_test_off, ctx_test_on);
     $('.test').show();
     $('.fixation').hide();
     t_stim_queued = performance.now();
@@ -221,9 +97,9 @@ function showStim() {
         var t_bias;
         t_at_stimon = performance.now();
 
-        t_bias = getDriftCompensation(measuredStimdur, delayBiasStimdur, stimduration);
+        t_bias = dltk.getDriftCompensation(measuredStimdur, delayBiasStimdur, stimduration);
         t_stimon_lag = t_at_stimon - t_stim_queued;
-        setTimeout2(function() {
+        dltk.setTimeout2(function() {
             $('.test').hide();
             t_stim_dequeued = performance.now();
 
@@ -232,9 +108,9 @@ function showStim() {
                 var t_bias;
                 t_at_stimoff = performance.now();
 
-                t_bias = getDriftCompensation(measuredISI2, delayBiasISI2, ISI);
+                t_bias = dltk.getDriftCompensation(measuredISI2, delayBiasISI2, ISI);
                 t_stimoff_lag = t_at_stimoff - t_stim_dequeued;
-                setTimeout2(showResponse, ISI - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
+                dltk.setTimeout2(showResponse, ISI - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
                 delayBiasISI2.push(t_bias);
                 measuredStimoffLag.push(t_stimoff_lag);
 
@@ -243,8 +119,8 @@ function showStim() {
                 console.log('stim dur = ' + t_stimondur);
 
                 // pre-draw images: should take less than ISI
-                drawToContext(imgFiles[trialNumber][1][0], ctx_resp1_off, null, false);
-                drawToContext(imgFiles[trialNumber][1][1], ctx_resp2_off, null, false);
+                dltk.drawToContext(imgFiles[trialNumber][1][0], ctx_resp1_off, null, false);
+                dltk.drawToContext(imgFiles[trialNumber][1][1], ctx_resp2_off, null, false);
             }, 0);
         }, stimduration - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
         delayBiasStimdur.push(t_bias);
@@ -276,8 +152,8 @@ function showResponse() {
     reward = reward_scale[trialNumber][Math.floor(acc*99)].toPrecision(2); */
 
     // these should take short
-    copyContexts(ctx_resp1_off, ctx_resp1_on);
-    copyContexts(ctx_resp2_off, ctx_resp2_on);
+    dltk.copyContexts(ctx_resp1_off, ctx_resp1_on);
+    dltk.copyContexts(ctx_resp2_off, ctx_resp2_on);
 
     $('#trialCounter').html('Progress:<br /> ' + trialNumber + ' of ' +
         totalTrials);
@@ -292,7 +168,7 @@ function showResponse() {
         console.log('ISI2 = ' + t_ISI2);
 
         if (trialNumber + 1 < totalTrials)
-            drawToContext(imgFiles[trialNumber + 1][0], ctx_test_off, null, false);
+            dltk.drawToContext(imgFiles[trialNumber + 1][0], ctx_test_off, null, false);
     }, 0);
 }
 
@@ -389,7 +265,7 @@ function takeABreak() {
 function initVars() {
     var ctxs;
     zoom = DetectZoom.zoom();
-    aID = getURLParameter("assignmentId");
+    aID = dltk.getURLParameter("assignmentId");
     response = [];
     trialDurations = [];
     trialStartTime = new Date();
@@ -419,15 +295,15 @@ function initVars() {
     imgData = ExperimentData.imgData;
 
     // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
-    ctxs = getContexts('main_test');
+    ctxs = dltk.getContextsFromCanvas('main_test');
     ctx_test_on = ctxs.onscr;
     ctx_test_off = ctxs.offscr;
 
-    ctxs = getContexts('img4');
+    ctxs = dltk.getContextsFromCanvas('img4');
     ctx_resp1_on = ctxs.onscr;
     ctx_resp1_off = ctxs.offscr;
 
-    ctxs = getContexts('img5');
+    ctxs = dltk.getContextsFromCanvas('img5');
     ctx_resp2_on = ctxs.onscr;
     ctx_resp2_off = ctxs.offscr;
 
@@ -447,56 +323,17 @@ function preloadResources() {
     stimFiles = imgFiles.flatten().getUnique();
 }
 
-function measureTimeResolution(callback) {
-    // from: http://javascript.info/tutorial/events-and-timing-depth#javascript-is-single-threaded
-    var i = 0;
-    var sum_diff = 0;
-    var sum_sq_diff = 0;
-    var d = performance.now();
-    setTimeout(function measureTimeResolution_inner() {
-        var diff = performance.now() - d;
-        sum_diff += diff;
-        sum_sq_diff += diff * diff;
-        if (i++ == 300) {
-            // done calculating js time resolution
-            mean_diff = sum_diff / i;
-            js_tres = Math.max(mean_diff, 0);
-            js_tres_variance = sum_sq_diff / i - mean_diff * mean_diff;
-            if (typeof(callback) == 'function') callback();
-        }
-        else {
-            setTimeout(measureTimeResolution_inner, 0);
-        }
-        d = performance.now();
-    }, 0);
-}
-
-function measureBogoMIPS() {
-    // from: http://www.pothoven.net/javascripts/src/jsBogoMips.js
-    var t0 = performance.now();
-    var loops_per_sec = 0 + 0;
-    var t1 = performance.now();
-    var compensation = t1 - t0;
-    var DUR = 500;   // run for 500ms
-    var tend = performance.now() + DUR;
-
-    while (t1 < tend) {
-        loops_per_sec++;
-        t1 = performance.now();
-    }
-
-    return (loops_per_sec + (loops_per_sec * compensation)) / (1000000 / (1000 / DUR));
-}
-
-function preBeginTask() {
+function preBeginTask(res, res_var) {
     var nook = false;
     var details;
+    js_tres = res;
+    js_tres_variance = res_var;
 
-    if (js_tres > JS_TRES_TOL) {
+    if (js_tres > dltk.JS_TRES_TOL) {
         details = "Your system is too slow to complete this task.";
         nook = true;
     }
-    else if (js_tres_variance > JS_TRES_VAR_TOL) {
+    else if (js_tres_variance > dltk.JS_TRES_VAR_TOL) {
         details = "Your system's clock varies too much.";
         nook = true;
     }
@@ -510,17 +347,12 @@ function preBeginTask() {
         alert(details + "  Close other programs and try again please.");
     }
     else {
-        bmips1 = measureBogoMIPS();
-        setTimeout(function() {
-            bmips2 = measureBogoMIPS();
-            setTimeout(function() {
-                bmips3 = measureBogoMIPS();
-                avg_mips = (bmips1 + bmips2 + bmips3) / 3;
-                $('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
-                $("#begintaskdiv").css('visibility', 'visible');
-                $("#begintask").click(beginExp);
-            }, 0);
-        }, 0);
+        dltk.measureBogoMIPS(function(bogoMIPS) {
+            avg_mips = bogoMIPS;
+            $('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
+            $("#begintaskdiv").css('visibility', 'visible');
+            $("#begintask").click(beginExp);
+        });
     }
 }
 
@@ -537,7 +369,7 @@ $(document).ready(function() {
         $('#_preload').html(
             "<font color=red style=background-color:white><b>Wait...</b></font>"
         );
-        measureTimeResolution(preBeginTask);
+        dltk.measureTimeResolution(preBeginTask);
     });
     $('.fixation img').attr('src', fixationImage.src);
     $('#warning').hide();
