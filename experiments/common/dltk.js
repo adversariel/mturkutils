@@ -11,6 +11,7 @@
     dltk.EPS = 2;                     // slack time in setTimeout2
     dltk.JS_TRES_TOL = 17;            // ~60Hz frame rate
     dltk.JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
+    dltk.FRAME_SLACK = 1000 / 60 / 2; // allows this amount of jitter
 
     dltk.preloaded_rsrcs = {};        // a dictionary of on/off screen contexts + etc. for preloaded imgs
 
@@ -51,6 +52,17 @@
             else setTimeout(wait_inner, 0);
         };
         setTimeout(wait_inner, 0);
+    };
+
+    dltk.getTimeSpent = function getTimeSpent(history) {
+        // simplify the "history" format returned by dltk.queueTrial
+        var j, tspent = [];
+        for (var i = 0; i < history.length; i++) {
+            j = history[i].length;
+            if (j === 0) j = 1;  // avoid undefined
+            tspent.push(history[i][j - 1] - history[i][0]);
+        }
+        return tspent;
     };
 
     /*************************************************************************
@@ -170,7 +182,7 @@
 
 
     /*************************************************************************
-     * Graphics functions                                                    *
+     * Graphics/experiment control functions                                 *
      *************************************************************************/
     dltk.getContextsFromCanvas = function getContextsFromCanvas(onscr_canvas_id) {
         // For double buffering
@@ -270,6 +282,62 @@
             // DO NOT SCHEDULE prepareResources_inner() HERE
         };
         setTimeout(prepareResources_inner, 0); 
+    };
+
+    dltk.queueTrial = function queueTrial(specs, callback) {
+        // queue and run one trial.
+        // - specs: list of dictionaries of trial elements, where:
+        //     specs[i].urls: list of URLs for the i-th component's image(s)
+        //     specs[i].duration: duration of the i-th component
+        //     specs[i].contexts: list of on-screen context(s) to where the image(s) will be drawn
+        //     specs[i].pre: callback func to be called just before rendering i-th component (optional)
+        // - callback: callback func to be called after the trial has ended (optional)
+        var t0 = performance.now();
+        var idx = -1;                 // current index of components
+        var history = [];
+        var tstamps = [t0]; 
+
+        var render = function render() {
+            var t = performance.now();
+            var w, h, ctx, url, ctxs, urls;
+            tstamps.push(t);
+
+            // -- no need to update the screen
+            if (idx >= 0 && (t - t0 < specs[idx].duration - dltk.FRAME_SLACK)) {
+                window.requestAnimationFrame(render);
+                return;
+            }
+
+            // -- update the screen
+            idx++;
+            history.push(tstamps);
+            t0 = t;
+            tstamps = [t0];
+
+            // finished?
+            if (idx >= specs.length) {
+                if (typeof(callback) == 'function') callback(history);
+                return;
+            }
+
+            // do necessary setups prior to draw idx-th component
+            if (typeof(specs[idx].pre) == 'function') specs[idx].pre(history);
+
+            // render
+            urls = specs[idx].urls;
+            ctxs = specs[idx].contexts;   // on-screen contexts
+            for (var j = 0; j < urls.length; j++) {
+                url = urls[j];
+                ctx = ctxs[j];
+                w = ctx.canvas.width;
+                h = ctx.canvas.height;
+                // transfer preloaded image to ctx: should be fast
+                dltk.copyContexts(dltk.preloaded_rsrcs[url][[w, h]], ctx); 
+            }
+
+            window.requestAnimationFrame(render);
+        };
+        window.requestAnimationFrame(render);
     };
 
 

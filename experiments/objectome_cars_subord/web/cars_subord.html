@@ -56,93 +56,51 @@ function beginExp() {
     $("#begintask").hide();
     $("#begintaskdiv").hide();
     $("#_preload").hide();
-    preTrial(false);
+    runTrialOnce();
 }
 
-function preTrial(drawn) {
+function runTrialOnce() {
+    var trial_specs = [];
+    // ISI 1 fixation dot
+    trial_specs.push({
+        urls: [IMG_FIXATION],
+        contexts: [ctx_test_on],
+        duration: ISI,
+        pre: preTrial
+    });
+    // sample stimulus
+    trial_specs.push({
+        urls: [imgFiles[trialNumber][0]],
+        contexts: [ctx_test_on],
+        duration: stimduration,
+    });
+    // ISI 2 blank
+    trial_specs.push({
+        urls: [IMG_BLANK],
+        contexts: [ctx_test_on],
+        duration: ISI,
+    });
+    // response images
+    trial_specs.push({
+        urls: imgFiles[trialNumber][1],
+        contexts: [ctx_resp0_on, ctx_resp1_on],
+        duration: 0,   // immediately proceed to callback after paint
+        pre: preResponse
+    });
+    dltk.queueTrial(trial_specs, function(hist) {
+        // now response images are up
+        trialStartTime = new Date();
+        console.log(dltk.getTimeSpent(hist));
+    });
+}
+
+function preTrial(hist) {
     $('#group_container').hide();
-    $('.fixation img').attr('src', fixationImage.src);
-    $('.fixation').show();
-    window.scrollTo(0, 0); // forced sync
-
-    /*  hahong: for safer canvas use, disable this
-    //Set proper height/width
-    if (getAspectRatio(tmpImage) > 1) {
-        //width is longer axis
-        $('#main_test').removeClass().addClass('shrinkwidth');
-    } else {
-        //height is longer axis
-        $('#main_test').removeClass().addClass('shrinkheight');
-    } */
-
-    setTimeout(function() {
-        // fixation dot has appeared
-        var t_bias;
-        t_pre_stimon = performance.now();
-
-        t_bias = dltk.getDriftCompensation(measuredISI1, delayBiasISI1, ISI);
-        dltk.setTimeout2(showStim, ISI - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
-
-        delayBiasISI1.push(t_bias);
-        if (!drawn) dltk.drawToContext(imgFiles[trialNumber][0], ctx_test_off, null, false);
-    }, 0);
-}
-
-function showStim() {
-    dltk.copyContexts(ctx_test_off, ctx_test_on);
     $('.test').show();
-    $('.fixation').hide();
-    t_stim_queued = performance.now();
-
-    setTimeout(function() {
-        // at this point, the stimulus has been painted completely
-        var t_bias;
-        t_at_stimon = performance.now();
-
-        t_bias = dltk.getDriftCompensation(measuredStimdur, delayBiasStimdur, stimduration);
-        t_stimon_lag = t_at_stimon - t_stim_queued;
-        dltk.setTimeout2(function() {
-            $('.test').hide();
-            t_stim_dequeued = performance.now();
-
-            setTimeout(function() {
-                // here, the stimulus has been erased completely
-                var t_bias;
-                t_at_stimoff = performance.now();
-
-                t_bias = dltk.getDriftCompensation(measuredISI2, delayBiasISI2, ISI);
-                t_stimoff_lag = t_at_stimoff - t_stim_dequeued;
-                dltk.setTimeout2(showResponse, ISI - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
-                delayBiasISI2.push(t_bias);
-                measuredStimoffLag.push(t_stimoff_lag);
-
-                t_stimondur = t_at_stimoff - t_at_stimon;
-                measuredStimdur.push(t_stimondur);
-                console.log('stim dur = ' + t_stimondur);
-
-                // pre-draw images: should take less than ISI
-                dltk.drawToContext(imgFiles[trialNumber][1][0], ctx_resp1_off, null, false);
-                dltk.drawToContext(imgFiles[trialNumber][1][1], ctx_resp2_off, null, false);
-            }, 0);
-        }, stimduration - js_tres - t_bias);  // subtract js_tres because of setTimeout(fn, 0)
-        delayBiasStimdur.push(t_bias);
-        measuredStimonLag.push(t_stimon_lag);
-
-        t_ISI1 = t_at_stimon - t_pre_stimon;
-        measuredISI1.push(t_ISI1);
-        console.log('ISI1 = ' + t_ISI1);
-    }, 0);
+    window.scrollTo(0, 0); // forced sync
 }
 
-function getAspectRatio(im) {
-    //Defining aspect ratio as width/height
-    var width = im.naturalWidth;
-    var height = im.naturalHeight;
-    var ar = width / height;
-    return ar;
-}
-
-function showResponse() {
+function preResponse(hist) {
     /* hahong: simplify
     $('#label1').html(labels[trialNumber][0]);
     $('#label2').html(labels[trialNumber][1]);
@@ -153,30 +111,16 @@ function showResponse() {
     format_acc = (acc * 100).toPrecision(3);
     reward = reward_scale[trialNumber][Math.floor(acc*99)].toPrecision(2); */
 
-    // these should take short
-    dltk.copyContexts(ctx_resp1_off, ctx_resp1_on);
-    dltk.copyContexts(ctx_resp2_off, ctx_resp2_on);
-
     $('#trialCounter').html('Progress:<br /> ' + trialNumber + ' of ' +
         totalTrials);
     $('#group_container').show();
-    setTimeout(function() {
-        // now response images are up
-        t_after_stimoff = performance.now();
-        trialStartTime = new Date();
-
-        t_ISI2 = t_after_stimoff - t_at_stimoff;
-        measuredISI2.push(t_ISI2);
-        console.log('ISI2 = ' + t_ISI2);
-
-        if (trialNumber + 1 < totalTrials)
-            dltk.drawToContext(imgFiles[trialNumber + 1][0], ctx_test_off, null, false);
-    }, 0);
+    $('.test').hide();
 }
 
-function clicked(myval, index) {
+function clicked(index) {
     if (!begin) return;
     trialEndTime = new Date();
+    var myval = imgFiles[trialNumber][1][index];
     /* hahong: reward related
     var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
     var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
@@ -236,13 +180,12 @@ function endTrial() {
         takeABreak();
     } else {
         trialNumber++;
-        preTrial(true);
+        runTrialOnce();
     }
 }
 
 function takeABreak() {
-        drawToContext(breakscreen.src, ctx_test_on, null, false);
-        $('.fixation').hide();
+        dltk.drawToContext(breakscreen.src, ctx_test_on, null, false);
         $('.test').show();
         $('#_preload').html(
             "<font color=red style=background-color:white>You have completed " +
@@ -258,7 +201,7 @@ function takeABreak() {
                 trialNumber++;
                 $('.test').hide();
                 $('#_preload').hide();
-                preTrial(false);
+                runTrialOnce();
             }
         };
     }
@@ -280,16 +223,14 @@ function initVars() {
     delayBiasISI2 = [];
     delayBiasStimdur = [];
     StimDone = [];
-    imgFiles = [];
-    fixationImage = new Image();
-    fixationImage.src = "https://s3.amazonaws.com/task_images/fixation.png";
     breakscreen = new Image();
     breakscreen.src = "https://s3.amazonaws.com/task_images/break.png";
     stimduration = 100;
     // hahong: simplyfy: labels = ExperimentData.labels;
     ISI = 500;
     trialNumber = 0;
-    totalTrials = ExperimentData.imgFiles.length;
+    imgFiles = ExperimentData.imgFiles;
+    totalTrials = imgFiles.length;
     BreakTimes = [];
     begin = false;
     startpoint = 0;
@@ -297,25 +238,13 @@ function initVars() {
     imgData = ExperimentData.imgData;
 
     // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
-    ctxs = dltk.getContextsFromCanvas('main_test');
-    ctx_test_on = ctxs.onscr;
-    ctx_test_off = ctxs.offscr;
-
-    ctxs = dltk.getContextsFromCanvas('img4');
-    ctx_resp1_on = ctxs.onscr;
-    ctx_resp1_off = ctxs.offscr;
-
-    ctxs = dltk.getContextsFromCanvas('img5');
-    ctx_resp2_on = ctxs.onscr;
-    ctx_resp2_off = ctxs.offscr;
+    ctx_test_on = dltk.getOnScreenContextFromCanvas('main_test');
+    ctx_resp0_on = dltk.getOnScreenContextFromCanvas('img4');
+    ctx_resp1_on = dltk.getOnScreenContextFromCanvas('img5');
 
     /* hahong: reward related
     reward = 0;
     reward_scale = ExperimentData.reward_scale;*/
-
-    // previously in preloadResources()
-    imgFiles = ExperimentData.imgFiles;
-    stimFiles = imgFiles.flatten().getUnique();
 }
 
 function checkSystem(benchmark) {
@@ -351,7 +280,7 @@ function preloadResources() {
     // load fixation dot and blank image first...
     dltk.prepareResources([[IMG_FIXATION, []], [IMG_BLANK, []]], [ctx_test_on, []], function() {
         // ...then load trial images
-        dltk.prepareResources(imgFiles, [ctx_test_on, [ctx_resp1_on, ctx_resp2_on]], preBeginTask,
+        dltk.prepareResources(imgFiles, [ctx_test_on, [ctx_resp0_on, ctx_resp1_on]], preBeginTask,
             function(progress, total) {
                 $('#_preload').html(
                     "<font color=red style=background-color:white><b>Processing resources: " + 
@@ -374,12 +303,10 @@ $(document).ready(function() {
     $('#tutorial2').hide();
     $('#tutorial3').hide();
     $('.test').hide();
-    $('.fixation').hide();
     $('#group_container').hide();
     initVars();
     $('#_preload').html("<font color=red style=background-color:white><b>Wait...</b></font>");
     dltk.runBenchmark(checkSystem);
-    $('.fixation img').attr('src', fixationImage.src);
     $('#warning').hide();
     $("#tutorial").html($("#tutorial_original").html());
     $("#tutorial").dialog({
@@ -410,7 +337,6 @@ $(document).ready(function() {
 <div align="center" id="warning"></div>
 <div id="begintaskdiv" style="position:absolute; top:40px; left: 47%; visibility: hidden;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
-<div class="fixation" align="center" style="position:relative; z-index:201; top:50%; height:256px; margin-top:-128px;"><img id="fixation_dot" src="" /></div>
 <div class="test" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-180px;">
 <!-- img id="main_test" src="" style="position:relative; top:0px; left:0px; z-index:200;"/ -->
 <canvas id="main_test" width="360" height="360" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
@@ -426,14 +352,14 @@ $(document).ready(function() {
     </td>
   </tr>
   <tr>
-    <td align="center"><canvas id="img4" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 src ="" onclick="clicked($(this).attr('src'), 0)"></canvas>
+    <td align="center"><canvas id="img4" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 onclick="clicked(0)"></canvas>
     </td>
     <td width="100" height="100" align="left" style="vertical-align:center;">
     <center style="margin-top:15px; position:relative; top:-30px;">
     <div id="trialCounter"></div>
     </center>
     </td>
-    <td align="center"><canvas id="img5" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 src ="" onclick="clicked($(this).attr('src'), 1)"></canvas>
+    <td align="center"><canvas id="img5" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 onclick="clicked(1)"></canvas>
     </td>
   </tr>
   <tr height=100>
