@@ -43,6 +43,8 @@ height:360px;
 
 <script type="text/javascript">
 ExperimentData = null;
+var IMG_FIXATION = 'https://s3.amazonaws.com/task_images/fixation_360x360.png';
+var IMG_BLANK = 'https://s3.amazonaws.com/task_images/blank_360x360.png';
 var num_correct = 0;
 var reward;
 var acc;
@@ -310,20 +312,13 @@ function initVars() {
     /* hahong: reward related
     reward = 0;
     reward_scale = ExperimentData.reward_scale;*/
-}
 
-function preloadResources() {
+    // previously in preloadResources()
     imgFiles = ExperimentData.imgFiles;
-    //imgFiles = imgFiles.slice(startpoint*totalTrials,(startpoint+1)*totalTrials)
-    //shuffle(imgFiles);
-    /* stimFiles = imgFiles.map(function(a) {
-        return a[0];
-    }); */
-    // hahong: this loads response images as well:
     stimFiles = imgFiles.flatten().getUnique();
 }
 
-function preBeginTask(benchmark) {
+function checkSystem(benchmark) {
     var nook = false;
     var details;
     js_tres = benchmark.js_tres;
@@ -348,10 +343,30 @@ function preBeginTask(benchmark) {
         alert(details + "  Close other programs and try again please.");
     }
     else {
-        $('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
-        $("#begintaskdiv").css('visibility', 'visible');
-        $("#begintask").click(beginExp);
+        preloadResources();
     }
+}
+
+function preloadResources() {
+    // load fixation dot and blank image first...
+    dltk.prepareResources([[IMG_FIXATION, []], [IMG_BLANK, []]], [ctx_test_on, []], function() {
+        // ...then load trial images
+        dltk.prepareResources(imgFiles, [ctx_test_on, [ctx_resp1_on, ctx_resp2_on]], preBeginTask,
+            function(progress, total) {
+                $('#_preload').html(
+                    "<font color=red style=background-color:white><b>Processing resources: " + 
+                    progress + "/" + total + "</b></font>"
+                );
+            }
+        );
+    });
+    // Note: no need to call zen.preload() anymore
+}
+
+function preBeginTask(benchmark) {
+    $('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
+    $("#begintaskdiv").css('visibility', 'visible');
+    $("#begintask").click(beginExp);
 }
 
 $(document).ready(function() {
@@ -362,13 +377,8 @@ $(document).ready(function() {
     $('.fixation').hide();
     $('#group_container').hide();
     initVars();
-    preloadResources();
-    preload(stimFiles, function() {
-        $('#_preload').html(
-            "<font color=red style=background-color:white><b>Wait...</b></font>"
-        );
-        dltk.runBenchmark(preBeginTask);
-    });
+    $('#_preload').html("<font color=red style=background-color:white><b>Wait...</b></font>");
+    dltk.runBenchmark(checkSystem);
     $('.fixation img').attr('src', fixationImage.src);
     $('#warning').hide();
     $("#tutorial").html($("#tutorial_original").html());
