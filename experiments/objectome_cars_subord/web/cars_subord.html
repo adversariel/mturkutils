@@ -123,7 +123,7 @@ function runTrialOnce() {
 function preTrial(hist) {
     $('#group_container').hide();
     $('.test').show();
-    window.scrollTo(0, 0); // forced sync
+    // window.scrollTo(0, 0); // this causes suboptimal performance (forced sync)
 }
 
 function preResponse(hist) {
