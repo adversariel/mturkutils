@@ -12,23 +12,7 @@ p.intro { margin: 0; padding: 15px; background: #eee; font-size: small; }
 .thumbs { position: absolute; width: 100px; height: 100px;}
 div.thumb { position:absolute; float:left; padding: 1px; width: 64px; height: 64px;}
 div.thumb img { border: 2px solid white; width:64px; height:64px; }
-
-div#tutorial {
-position:relative;
-background-color: white;
-padding: 10px;
-}
-
-.shrinkwidth {
-width:360px;
-height:auto;
-}
-
-.shrinkheight {
-width:auto;
-height:360px;
-}
-
+div#tutorial { position:relative; background-color: white; padding: 10px; }
 </style>
 
 
@@ -60,7 +44,9 @@ function beginExp() {
 }
 
 function runTrialOnce() {
+    // run single trial
     var trial_specs = [];
+
     // ISI 1 fixation dot
     trial_specs.push({
         urls: [IMG_FIXATION],
@@ -90,7 +76,18 @@ function runTrialOnce() {
     dltk.queueTrial(trial_specs, function(hist) {
         // now response images are up
         trialStartTime = new Date();
-        console.log(dltk.getTimeSpent(hist));
+        setTimeout(function() {
+            var t_spent = dltk.getTimeSpent(hist);
+            var t_ISI1 = t_spent[1];
+            var t_stim = t_spent[2];
+            var t_ISI2 = t_spent[3];
+
+            measuredStimdur.push(t_stim);
+            measuredISI1.push(t_ISI1);
+            measuredISI2.push(t_ISI2);
+
+            console.log('ISI1, stimon, ISI2 = ', + t_ISI1 + ', ' + t_stim + ', ' + t_ISI2);
+        }, 0);
     });
 }
 
@@ -162,11 +159,6 @@ function endTrial() {
             measISI1: measuredISI1,
             measISI2: measuredISI2,
             measStimdur: measuredStimdur,
-            measStimonLag: measuredStimonLag,
-            measStimoffLag: measuredStimoffLag,
-            biasISI1: delayBiasISI1,
-            biasISI2: delayBiasISI2,
-            biasStimdur: delayBiasStimdur,
             bogoMIPS: avg_mips,
             ImgData: imgData,
             /* hahong: reward related
@@ -217,11 +209,6 @@ function initVars() {
     measuredISI1 = [];
     measuredISI2 = [];
     measuredStimdur = [];
-    measuredStimonLag = [];
-    measuredStimoffLag = [];
-    delayBiasISI1 = [];
-    delayBiasISI2 = [];
-    delayBiasStimdur = [];
     StimDone = [];
     breakscreen = new Image();
     breakscreen.src = "https://s3.amazonaws.com/task_images/break.png";
@@ -337,8 +324,8 @@ $(document).ready(function() {
 <div align="center" id="warning"></div>
 <div id="begintaskdiv" style="position:absolute; top:40px; left: 47%; visibility: hidden;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
+<!-- try to aim 8 deg -->
 <div class="test" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-180px;">
-<!-- img id="main_test" src="" style="position:relative; top:0px; left:0px; z-index:200;"/ -->
 <canvas id="main_test" width="360" height="360" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
 </div>
 <div id="group_container"  style="position:relative; width:100%; top:50%; height:200px; margin-top:-100px;" align="center">
