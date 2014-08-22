@@ -29,30 +29,55 @@ div#tutorial { position:relative; background-color: white; padding: 10px; }
 ExperimentData = null;
 var IMG_FIXATION = 'https://s3.amazonaws.com/task_images/fixation_360x360.png';
 var IMG_BLANK = 'https://s3.amazonaws.com/task_images/blank_360x360.png';
-var num_correct = 0;
-var reward;
-var acc;
+var JS_TRES_TOL = 17;            // An example tolerance value for js timing (~60Hz frame rate)
+var JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
+
+var labels = ExperimentData.labels;
+var imgFiles = ExperimentData.imgFiles;
+var imgData = ExperimentData.imgData;
+var totalTrials = imgFiles.length;
+var BreakTimes = [];
+var exp_type = 'two_way';
+
+var trialNumber = 0;
+var stimduration = 100;
+var ISI = 500;
+/* reward related:
+var num_correct = 0, reward = 0, acc;
+reward related: var reward_scale = ExperimentData.reward_scale; */
+
+var zoom;
+var aID;
+var js_tres;
+var js_tres_variance;
+var ctx_test_on;
+var ctx_resp0_on;
+var ctx_resp1_on;
+var bogoMIPS;
+
+var trialStartTime, trialEndTime;
+var response = [];
+var trialDurations = [];
+var measuredISI1 = [];
+var measuredISI2 = [];
+var measuredStimdur = [];
+var StimDone = [];
+
+var breakscreen;
+var begin = false;
+var benchmark_finished = false;
 
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
-function beginExp() {
-    begin = true;
-    $("#begintask").hide();
-    $("#begintaskdiv").hide();
-    $("#_preload").hide();
-    runTrialOnce();
-}
-
 function runTrialOnce() {
-    // run single trial
+    // Run single trial by using the new framework
     var trial_specs = [];
-
     // ISI 1 fixation dot
     trial_specs.push({
         urls: [IMG_FIXATION],
         contexts: [ctx_test_on],
         duration: ISI,
-        pre: preTrial
+        pre: preTrial   // this should be short to run
     });
     // sample stimulus
     trial_specs.push({
@@ -71,12 +96,15 @@ function runTrialOnce() {
         urls: imgFiles[trialNumber][1],
         contexts: [ctx_resp0_on, ctx_resp1_on],
         duration: 0,   // immediately proceed to callback after paint
-        pre: preResponse
-    });
+        pre: preResponse   // this should be short to run
+        });
+
+    // Queue experiment
     dltk.queueTrial(trial_specs, function(hist) {
         // now response images are up
         trialStartTime = new Date();
         setTimeout(function() {
+            // schedule all less time critical jobs later here
             var t_spent = dltk.getTimeSpent(hist);
             var t_ISI1 = t_spent[1];
             var t_stim = t_spent[2];
@@ -159,8 +187,10 @@ function endTrial() {
             measISI1: measuredISI1,
             measISI2: measuredISI2,
             measStimdur: measuredStimdur,
-            bogoMIPS: avg_mips,
+            bogoMIPS: bogoMIPS,
             ImgData: imgData,
+            jsTimeRes: js_tres,
+            jsTimeResVariance: js_tres_variance,
             /* hahong: reward related
                 Performance:acc,
                 Bonus:reward */
@@ -177,87 +207,86 @@ function endTrial() {
 }
 
 function takeABreak() {
-        dltk.drawToContext(breakscreen.src, ctx_test_on, null, false);
-        $('.test').show();
-        $('#_preload').html(
-            "<font color=red style=background-color:white>You have completed " +
-            Math.round((trialNumber / totalTrials) * 100) +
-            "% of the experiment. Be sure to pay attention so that you know you can finish on time!"
-        );
-        $('#_preload').show();
-        document.onkeypress = function(e) {
-            var evtobj = window.event ? event : e;
-            var unicode = evtobj.charCode ? evtobj.charCode : evtobj.keyCode;
-            var actualKey = String.fromCharCode(unicode);
-            if (actualKey == 'z') {
-                trialNumber++;
-                $('.test').hide();
-                $('#_preload').hide();
-                runTrialOnce();
-            }
-        };
-    }
+    dltk.drawToContext(breakscreen.src, ctx_test_on, null, false);
+    $('.test').show();
+    $('#_preload').html(
+        "<font color=red style=background-color:white>You have completed " +
+        Math.round((trialNumber / totalTrials) * 100) +
+        "% of the experiment. Be sure to pay attention so that you know you can finish on time!"
+    );
+    $('#_preload').show();
+    document.onkeypress = function(e) {
+        var evtobj = window.event ? event : e;
+        var unicode = evtobj.charCode ? evtobj.charCode : evtobj.keyCode;
+        var actualKey = String.fromCharCode(unicode);
+        if (actualKey == 'z') {
+            trialNumber++;
+            $('.test').hide();
+            $('#_preload').hide();
+            runTrialOnce();
+        }
+    };
+}
 //!!==END DYNAMIC TRIAL CODE==!!//
 
-function initVars() {
-    var ctxs;
-    zoom = DetectZoom.zoom();
-    aID = dltk.getURLParameter("assignmentId");
-    response = [];
-    trialDurations = [];
-    trialStartTime = new Date();
-    measuredISI1 = [];
-    measuredISI2 = [];
-    measuredStimdur = [];
-    StimDone = [];
+
+function initSetup() {
+    // initial layout
+    $('#tutorial_original').hide();
+    $('#tutorial2').hide();
+    $('#tutorial3').hide();
+    $('.test').hide();
+    $('#group_container').hide();
+
+    // setup variables
+    $('#_preload').html("<font color=red style=background-color:white><b>Wait...</b></font>");
     breakscreen = new Image();
     breakscreen.src = "https://s3.amazonaws.com/task_images/break.png";
-    stimduration = 100;
-    // hahong: simplyfy: labels = ExperimentData.labels;
-    ISI = 500;
-    trialNumber = 0;
-    imgFiles = ExperimentData.imgFiles;
-    totalTrials = imgFiles.length;
-    BreakTimes = [];
-    begin = false;
-    startpoint = 0;
-    exp_type = 'two_way';
-    imgData = ExperimentData.imgData;
+    zoom = DetectZoom.zoom();
+    aID = dltk.getURLParameter("assignmentId");
 
     // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
     ctx_test_on = dltk.getOnScreenContextFromCanvas('main_test');
     ctx_resp0_on = dltk.getOnScreenContextFromCanvas('img4');
     ctx_resp1_on = dltk.getOnScreenContextFromCanvas('img5');
-
-    /* hahong: reward related
-    reward = 0;
-    reward_scale = ExperimentData.reward_scale;*/
 }
 
 function checkSystem(benchmark) {
+    // determine if this system is capable of running this task
+    // based on the benchmark result
     var nook = false;
-    var details;
+    var details, api_support;
+
+    if (benchmark_finished) return;
+    benchmark_finished = true;
     js_tres = benchmark.js_tres;
     js_tres_variance = benchmark.js_tres_variance;
-    avg_mips = benchmark.bogoMIPS;
+    bogoMIPS = benchmark.bogoMIPS;
+    api_support = benchmark.api_support;
 
-    if (js_tres > dltk.JS_TRES_TOL) {
-        details = "Your system is too slow to complete this task.";
+    if (!api_support) {
+        details = "Your browser seems to be outdated to run this task.  Please try with the newest Chrome or Firefox please.";
         nook = true;
     }
-    else if (js_tres_variance > dltk.JS_TRES_VAR_TOL) {
-        details = "Your system's clock varies too much.";
+    else if (js_tres > JS_TRES_TOL) {
+        details = "Your system is too slow to complete this task.  Close other programs and try again please.";
+        nook = true;
+    }
+    else if (js_tres_variance > JS_TRES_VAR_TOL) {
+        details = "Your system's clock varies too much.  Close other programs and try again please.";
         nook = true;
     }
 
+    // if something's wrong, display message and quit
     if (nook) {
         $('#_preload').hide();
         $('#warning').show();
         $('#warning').html(
-            "<font color=red style=background-color:white><b>Your system CANNOT run this HIT at this point.  Close other programs and try again please.</b></font>"
+            "<font color=red style=background-color:white><b>Your system CANNOT run this HIT at this point:" + details + "</b></font>"
         );
-        alert(details + "  Close other programs and try again please.");
+        alert(details);
     }
+    // otherwise, proceed to experiment.
     else {
         preloadResources();
     }
@@ -267,7 +296,10 @@ function preloadResources() {
     // load fixation dot and blank image first...
     dltk.prepareResources([[IMG_FIXATION, []], [IMG_BLANK, []]], [ctx_test_on, []], function() {
         // ...then load trial images
-        dltk.prepareResources(imgFiles, [ctx_test_on, [ctx_resp0_on, ctx_resp1_on]], preBeginTask,
+        dltk.prepareResources(
+            imgFiles,
+            [ctx_test_on, [ctx_resp0_on, ctx_resp1_on]],
+            preBeginExp,   // call this when successful
             function(progress, total) {
                 $('#_preload').html(
                     "<font color=red style=background-color:white><b>Processing resources: " + 
@@ -279,21 +311,23 @@ function preloadResources() {
     // Note: no need to call zen.preload() anymore
 }
 
-function preBeginTask(benchmark) {
+function preBeginExp() {
+    // Show Begin button and make it clickable
     $('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
     $("#begintaskdiv").css('visibility', 'visible');
     $("#begintask").click(beginExp);
 }
 
-$(document).ready(function() {
-    $('#tutorial_original').hide();
-    $('#tutorial2').hide();
-    $('#tutorial3').hide();
-    $('.test').hide();
-    $('#group_container').hide();
-    initVars();
-    $('#_preload').html("<font color=red style=background-color:white><b>Wait...</b></font>");
-    dltk.runBenchmark(checkSystem);
+function beginExp() {
+    begin = true;
+    $("#begintask").hide();
+    $("#begintaskdiv").hide();
+    $("#_preload").hide();
+    runTrialOnce();
+}
+
+function standby() {
+    // setup and show pre-experiment standby screen
     $('#warning').hide();
     $("#tutorial").html($("#tutorial_original").html());
     $("#tutorial").dialog({
@@ -314,7 +348,18 @@ $(document).ready(function() {
             "<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT. Thank you!</b></font></span>"
         );
     }
-});
+}
+
+function main() {
+    initSetup();
+    standby();
+    dltk.runBenchmark(checkSystem);   // run benchmark...
+    setTimeout(function() {           // ... or fall back to failure mode in 1 min.
+        checkSystem({api_support: false}); 
+        }, 60 * 1000);
+}
+
+$(document).ready(main);
 </script>
 
 </head>
@@ -339,14 +384,14 @@ $(document).ready(function() {
     </td>
   </tr>
   <tr>
-    <td align="center"><canvas id="img4" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 onclick="clicked(0)"></canvas>
+    <td align="center"><canvas id="img4" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 onclick="clicked(0);"></canvas>
     </td>
     <td width="100" height="100" align="left" style="vertical-align:center;">
     <center style="margin-top:15px; position:relative; top:-30px;">
     <div id="trialCounter"></div>
     </center>
     </td>
-    <td align="center"><canvas id="img5" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 onclick="clicked(1)"></canvas>
+    <td align="center"><canvas id="img5" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 onclick="clicked(1);"></canvas>
     </td>
   </tr>
   <tr height=100>

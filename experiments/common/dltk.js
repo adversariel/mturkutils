@@ -9,7 +9,7 @@
     dltk.STATLEN = 2;                 // minimum length to compute statistics
     dltk.SLOPPY = 5;                  // the amount of shortfall in setTimeout2
     dltk.EPS = 2;                     // slack time in setTimeout2
-    dltk.JS_TRES_TOL = 17;            // ~60Hz frame rate
+    dltk.JS_TRES_TOL = 17;            // An example tolerance value for js timing (~60Hz frame rate)
     dltk.JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
     dltk.STATLEN_FPS = 2;             // use last two fps to figure out current fps
 
@@ -169,10 +169,18 @@
         dltk.measureTimeResolution(function (js_tres, js_tres_variance) {
             dltk.measureBogoMIPS(function (mips) {
                 if (typeof(callback) == 'function') {
+                    var api_support = true;
+                    // test api support level
+                    if (typeof(window.requestAnimationFrame) != 'function')
+                        api_support = false;
+                    if (typeof(performance.now) != 'function')
+                        api_support = false;
+
                     var result = {
                         js_tres: js_tres,
                         js_tres_variance: js_tres_variance,
-                        bogoMIPS: mips
+                        bogoMIPS: mips,
+                        api_support: api_support,
                     };
                     callback(result);
                 }
