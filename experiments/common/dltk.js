@@ -11,7 +11,7 @@
     dltk.EPS = 2;                     // slack time in setTimeout2
     dltk.JS_TRES_TOL = 17;            // ~60Hz frame rate
     dltk.JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
-    dltk.FRAME_SLACK = 1000 / 60 / 2; // allows this amount of jitter
+    dltk.STATLEN_FPS = 2;             // use last two fps to figure out current fps
 
     dltk.preloaded_rsrcs = {};        // a dictionary of on/off screen contexts + etc. for preloaded imgs
 
@@ -299,11 +299,14 @@
 
         var render = function render() {
             var t = performance.now();
-            var w, h, ctx, url, ctxs, urls;
+            var w, h, ctx, url, ctxs, urls, t_jitter;
             tstamps.push(t);
+            // half-frame jitter is okay and probably unavoidable
+            t_jitter = tstamps.slice(-(dltk.STATLEN_FPS + 1)).diff().mean() / 2;
+            dltk._t_jitter = t_jitter;    // mainly for diagnostic/debug purposes
 
             // -- no need to update the screen
-            if (idx >= 0 && (t - t0 < specs[idx].duration - dltk.FRAME_SLACK)) {
+            if (idx >= 0 && (t - t0 < specs[idx].duration - t_jitter)) {
                 window.requestAnimationFrame(render);
                 return;
             }
@@ -386,6 +389,14 @@
         } 
         a = this.mean();
         return j ? sum / j - a * a : 0; 
+    };
+
+    window.Array.prototype.diff = function () {
+        var res = []; 
+        for (var i = 0; i < this.length - 1; i++) { 
+            res.push(this[i + 1] - this[i]);
+        } 
+        return res;
     };
 
 }(window.dltk = window.dltk || {}, window));
