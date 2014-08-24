@@ -23,19 +23,19 @@ div#tutorial { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140822-34190c1.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk.js"></script>
 
 <script type="text/javascript">
 ExperimentData = null;
-var IMG_FIXATION = 'https://s3.amazonaws.com/task_images/fixation_360x360.png';
-var IMG_BLANK = 'https://s3.amazonaws.com/task_images/blank_360x360.png';
+var IMG_BLACK = 'color: black';
+var IMG_WHITE = 'color: white';
 var JS_TRES_TOL = 17;            // An example tolerance value for js timing (~60Hz frame rate)
 var JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
 
 // var labels = ExperimentData.labels;   // unused here
-var imgFiles = ExperimentData.imgFiles;
-var imgData = ExperimentData.imgData;
-var totalTrials = imgFiles.length;
+//var imgFiles = ExperimentData.imgFiles;
+//var imgData = ExperimentData.imgData;
+var totalTrials = 500;
 var BreakTimes = [];
 var exp_type = 'two_way';
 
@@ -75,26 +75,26 @@ function runTrialOnce() {
     var trial_specs = [];
     // ISI 1 fixation dot
     trial_specs.push({
-        urls: [IMG_FIXATION],
+        urls: [IMG_BLACK],
         contexts: [ctx_test_on],
         duration: ISI,
         pre: preTrial   // this should be short to run
     });
     // sample stimulus
     trial_specs.push({
-        urls: [imgFiles[trialNumber][0]],
+        urls: [IMG_WHITE],
         contexts: [ctx_test_on],
         duration: stimduration,
     });
     // ISI 2 blank
     trial_specs.push({
-        urls: [IMG_BLANK],
+        urls: [IMG_BLACK],
         contexts: [ctx_test_on],
         duration: ISI,
     });
     // response images
     trial_specs.push({
-        urls: imgFiles[trialNumber][1],
+        urls: [IMG_BLACK, IMG_BLACK],
         contexts: [ctx_resp0_on, ctx_resp1_on],
         duration: 0,   // immediately proceed to callback after paint
         pre: preResponse   // this should be short to run
@@ -146,7 +146,7 @@ function preResponse(hist) {
 function clicked(index) {
     if (!begin) return;
     trialEndTime = new Date();
-    var myval = imgFiles[trialNumber][1][index];
+    var myval = index; //imgFiles[trialNumber][1][index];
     /* hahong: reward related
     var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
     var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
@@ -161,7 +161,7 @@ function clicked(index) {
 }
 
 function pushData(myval) {
-    StimDone.push(imgFiles[trialNumber]);
+    //StimDone.push(imgFiles[trialNumber]);
     response.push(myval);
     trialDurations.push(trialEndTime - trialStartTime);
 }
@@ -171,7 +171,7 @@ function endTrial() {
         var resultsobj = [];
         resultsobj.push({
             Response: response,
-            ImgOrder: imgFiles,
+            //ImgOrder: imgFiles,
             StimShown: StimDone,
             StimDuration: stimduration,
             RT: trialDurations,
@@ -189,7 +189,7 @@ function endTrial() {
             measISI2: measuredISI2,
             measStimdur: measuredStimdur,
             bogoMIPS: bogoMIPS,
-            ImgData: imgData,
+            //ImgData: imgData,
             jsTimeRes: js_tres,
             jsTimeResVariance: js_tres_variance,
             /* hahong: reward related
@@ -300,20 +300,7 @@ function checkSystem(benchmark) {
 
 function preloadResources() {
     // load fixation dot and blank image first...
-    dltk.prepareResources([[IMG_FIXATION, []], [IMG_BLANK, []]], [ctx_test_on, []], function() {
-        // ...then load trial images
-        dltk.prepareResources(
-            imgFiles,
-            [ctx_test_on, [ctx_resp0_on, ctx_resp1_on]],
-            preBeginExp,   // call this when successful
-            function(progress, total) {
-                $('#_preload').html(
-                    "<font color=red style=background-color:white><b>Processing resources: " + 
-                    progress + "/" + total + "</b></font>"
-                );
-            }
-        );
-    });
+    dltk.prepareResources([[IMG_BLACK, [IMG_BLACK, IMG_BLACK]], [IMG_WHITE, [IMG_WHITE, IMG_WHITE]]], [ctx_test_on, [ctx_resp0_on, ctx_resp1_on]], preBeginExp);
     // Note: no need to call zen.preload() anymore
 }
 
@@ -370,7 +357,7 @@ $(document).ready(main);
 
 </head>
 
-<body bgcolor="#7F7F7F">
+<body bgcolor="#000">
 <div style="height:90%; width:95%; position:absolute;">
 <div align="center" id="warning"></div>
 <div id="begintaskdiv" style="position:absolute; top:40px; left: 47%; visibility: hidden;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
@@ -390,14 +377,14 @@ $(document).ready(main);
     </td>
   </tr>
   <tr>
-    <td align="center"><canvas id="img4" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 onclick="clicked(0);"></canvas>
+    <td align="center"><canvas id="img4" style="position:relative; top:0px; border:1px solid #444;" height=200 width=200 onclick="clicked(0);"></canvas>
     </td>
     <td width="100" height="100" align="left" style="vertical-align:center;">
     <center style="margin-top:15px; position:relative; top:-30px;">
     <div id="trialCounter"></div>
     </center>
     </td>
-    <td align="center"><canvas id="img5" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 onclick="clicked(1);"></canvas>
+    <td align="center"><canvas id="img5" style="position:relative; top:0px; border:1px solid #444;" height=200 width=200 onclick="clicked(1);"></canvas>
     </td>
   </tr>
   <tr height=100>
@@ -414,40 +401,9 @@ $(document).ready(main);
 <div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:500,width:900,position:['middle', 20],title:'Instructions'})"><u>View Instructions</u></div>
 
 <div id="tutorial" style="position:relative; z-index:-1"></div>
-<div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: Instructions have changed, and low performance will lead to rejection: make sure to read!**</b>
-<p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
-<p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 15 minutes, although we expect this to take about 5-10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
-<p><font color=red><b>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</b></font></p>
-<p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
-<center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
-<div id="tutorial2" style="position:absolute; z-index:-1;">
-<ul>
-<li>You will see a series of images, each one presented for a very brief time. Each image will feature a single object from 60 possibilities. The objects are common things you might see around your house, on TV, in books, or on the Internet.
-<p>
-<li>After you see an image, <b>you must click the picture button which <u>exactly</u> matches the object you saw.</b> Once you click, you will move on to the next image immediately, so be ready.
-<p>
-<li>For example, if you think you saw a picture of a car, click the car picture to record your answer. There is <b>always</b> an exact match, and <b>SOMETIMES YOU MUST CHOOSE BETWEEN TWO OBJECTS OF THE SAME CATEGORY</b>. In other words, you might see two cars of different makes, and only one is correct.</li>
-<p>
-<li>Even if you're not 100% sure of what you saw, <u><b>make your best guess.</b></u></li>
-<p>
-<li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
-</ul>
-<center><p onclick="$('#tutorial').html($('#tutorial3').html())"><font color=blue><u>Click here to continue reading</u></font></p></center>
-</div>
-<div id="tutorial3" style="position:absolute; z-index:-1;">
-<ul>
-<p>
-<li>Please be sure to maximize your browser window before beginning this experiment. .</li>
-<p>
-<li><b>In total, you will see 174 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
-<p>
-<li>When you are ready to begin, click the "Begin" button at the very top of the screen. <b>Be prepared to see the first image -- it happens very fast!</b></li>
-<p>
-<li>If you have questions or concerns about this HIT, feel free to contact the requester. You can re-read these instructions at any time by clicking the link in the upper right-hand corner of the screen. Good luck!</li>
-</ul>
+<div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: This is designed mainly for IN-LAB oscilloscope tests.  This will not behave as expected as an regular MTurk experiment! ***</b>
 <center><font color=blue><u><p onclick="$('#tutorial').dialog('close')">Click here to close the instructions</p></u></font></center>
 </div>
-
 </div>
 <form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
   <input type="text" name="data" id="data" value="">
