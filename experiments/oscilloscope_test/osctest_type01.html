@@ -67,6 +67,7 @@ var breakscreen;
 var begin = false;
 var benchmark_finished = false;
 var timer = null;
+var full_history;
 
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
@@ -110,6 +111,7 @@ function runTrialOnce() {
             var t_ISI1 = t_spent[1];
             var t_stim = t_spent[2];
             var t_ISI2 = t_spent[3];
+            full_history = hist;
 
             measuredStimdur.push(t_stim);
             measuredISI1.push(t_ISI1);
