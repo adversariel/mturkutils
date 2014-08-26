@@ -125,7 +125,7 @@ function runTrialOnce() {
 
             console.log('ISI1, stimon, ISI2 = ', + t_ISI1 + ', ' + t_stim + ', ' + t_ISI2);
         }, 0);
-    });
+    }, {measureFlushTiming: true});
 }
 
 function preTrial(hist) {
