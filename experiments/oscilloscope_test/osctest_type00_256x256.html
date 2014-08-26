@@ -1,0 +1,316 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Object Identification</title>
+
+<style>
+body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana }
+div,pre { margin:0; padding:0 }
+h2 { margin: 20px 0 5px 0; padding: 0 }
+p.intro { margin: 0; padding: 15px; background: #eee; font-size: small; }
+.thumbs { position: absolute; width: 100px; height: 100px;}
+div.thumb { position:absolute; float:left; padding: 1px; width: 64px; height: 64px;}
+div.thumb img { border: 2px solid white; width:64px; height:64px; }
+
+div#tutorial {
+position:relative; 
+background-color: white;  
+padding: 10px;
+}
+
+</style>
+
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script type="text/javascript" language="JavaScript" src="http://web.mit.edu/esolomon/www/browserdetect.js"></script>
+<script type="text/javascript" src="http://web.mit.edu/esolomon/www/javascripts/jquery.zoom-min.js"></script>
+<script type="text/javascript" src="http://web.mit.edu/esolomon/www/zen.js"></script>
+<script type="text/javascript" src="http://esolomon.scripts.mit.edu/ip.php"></script>
+<script src="http://web.mit.edu/esolomon/www/javascripts/detect-zoom.js" type="text/javascript"></script>
+<link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+
+<script type="text/javascript">
+var BLACK_IMG = 'https://s3.amazonaws.com/task_images/black_256x256.png';
+var WHITE_IMG = 'https://s3.amazonaws.com/task_images/white_256x256.png';
+
+shuffle = function(o) { 
+	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+	return o;
+  };
+  
+Array.prototype.flatten = function flatten(){
+   var flat = [];
+   for (var i = 0, l = this.length; i < l; i++){
+       var type = Object.prototype.toString.call(this[i]).split(' ').pop().split(']').shift().toLowerCase();
+       if (type) { flat = flat.concat(/^(array|collection|arguments|object)$/.test(type) ? flatten.call(this[i]) : this[i]); }
+   }
+   return flat;
+};
+
+
+//!!==BEGIN DYNAMIC TRIAL CODE==!!//
+
+function beginExp() {
+	console.log('beginExp');
+	begin = true;
+	$("#begintask").hide(), $("#_preload").hide();
+	
+	$('#group_container').hide();
+	$('.fixation img').attr('src',fixationImage.src);
+	$('.fixation').show(); 
+	var thisStim = WHITE_IMG + '?' + parseInt(performance.now());  // hh: to see the effect of resize everytime, disable pre-fetching and reusing of cache
+	$('#main_test').attr('src',thisStim);
+	setTimeout(function() {
+						showStim();
+						},ISI);
+}
+
+function showStim() {
+	console.log('showStim');
+	//$('.fixation').hide(0, function(o1, o2){ t0a = performance.now(); });	
+	//$('.test').show(0, function(o1, o2){ t0b = performance.now(); });	
+	$('.fixation').hide();
+	$('.test').show();
+	t0 = performance.now();
+	setTimeout(function() { t0q = performance.now(); console.log('T(paint stim + a) = ' + (t0q - t0)); }, 0);
+	setTimeout(function() {
+						//$('.test').hide(0, function(o1, o2){ t1a = performance.now(); console.log('delta2 = ' + (t1a - t0a)); console.log('delta2b = ' + (t1a - t0b)); });
+						$('.test').hide();
+						t1 = performance.now();
+						//console.log('delta = ' + (t1 - t0));
+						setTimeout("showResponse()",ISI);
+						setTimeout(function() { t1q = performance.now(); console.log('T(actual stim dur) = ' + (t1q - t0q)); console.log('T(erase stim + a) = ' + (t1q - t1)); }, 0);
+						},stimduration);	
+}
+
+function showResponse() {
+	console.log('showResponse');
+						$('#img4').attr('src', BLACK_IMG);
+						$('#img5').attr('src', BLACK_IMG);
+
+	$('#totalSeen').html('Total Objects Seen: 0');
+	$('#trialCounter').html('Progress:<br /> '+trialNumber+' of '+totalTrials);
+	$('#group_container').show();
+	trialStartTime = new Date();
+	if (trialNumber+1 == totalTrials) {}
+	else {
+		var thisStim = WHITE_IMG + '?' + parseInt(performance.now());  // hh: to see the effect of resize everytime, disable pre-fetching and reusing of cache
+		}
+	$('#main_test').attr('src',thisStim);
+	setTimeout(function() { t2q = performance.now(); console.log('T(actual ISI) = ' + (t2q - t1q)); }, 0);
+	
+}
+
+function clicked(myval) {
+	console.log('clicked');
+if (begin) {
+ trialEndTime = new Date();
+ pushData(myval)
+ $('.fixation img').attr('src',fixationImage.src);
+ $('#group_container').hide();
+ $('.fixation').show(); 
+ endTrial();
+ }
+ else {
+ }	
+}
+
+function pushData(myval) {
+	console.log('pushData');
+//StimDone.push(imgFiles_new[trialNumber]);
+response.push(myval);
+trialDurations.push(trialEndTime - trialStartTime);
+}
+
+function endTrial() {
+  if (trialNumber >= (totalTrials-1))
+  {
+	var resultsobj = [];
+	/*resultsobj.push({
+					Response:response,
+					ImgOrder:imgFiles_new,
+					StimShown:StimDone,
+					StimDuration:stimduration,
+					RT:trialDurations,
+					Condition:exp_type,
+					Zoom:zoom,
+					IPaddress:user_IP,
+					Browser:BrowserDetect.browser,
+					Version:BrowserDetect.version,
+					OpSys:BrowserDetect.OS,
+					WindowHeight:winH,
+					WindowWidth:winW,
+					ScreenHeight:vertical,
+					ScreenWidth:horizontal
+					});	  */
+	  
+	document.getElementById("assignmentId").value = aID;
+	document.getElementById("data").value = JSON.stringify(resultsobj);
+	document.getElementById("postdata").submit();	
+  }
+    else if (jQuery.inArray(trialNumber,BreakTimes) > -1) {
+	  takeABreak();
+  }
+  else
+  {
+    trialNumber++;
+    setTimeout(function() {showStim()},ISI);
+  }
+}
+
+function takeABreak() {
+	$('#main_test').attr('src',breakscreen.src);
+	$('.fixation').hide();
+	$('.test').show()
+	$('#_preload').html("<font color=red style=background-color:white>You have completed "+Math.round((trialNumber/totalTrials)*100)+"% of the experiment. Be sure to pay attention so that you know you can finish on time!");
+	$('#_preload').show();
+	document.onkeypress = function(e){  
+			var evtobj = window.event? event : e;
+			var unicode = evtobj.charCode? evtobj.charCode : evtobj.keyCode;
+			var actualKey = String.fromCharCode(unicode);
+				if (actualKey=='z'){
+					trialNumber++;
+					$('.test').hide()
+					$('#_preload').hide();
+					$('.fixation').show();	
+					var thisStim = WHITE_IMG;
+					$('#main_test').attr('src',thisStim)	
+					setTimeout(function() {showStim()},ISI)};		
+		};
+	
+}
+
+//!!==END DYNAMIC TRIAL CODE==!!//
+
+function gup( name )
+{
+  name = name.replace(/[\[]/,"\[").replace(/[\]]/,"\]");
+  var regexS = "[\?&]"+name+"=([^&#]*)";
+  var regex = new RegExp( regexS );
+  var param = regex.exec( window.location.href );
+  if( param == null )
+    return "";
+  else
+    return param[1];
+}
+
+function init_vars() {
+	zoom = DetectZoom.zoom();
+	aID = gup("assignmentId");  
+	response = new Array();
+	trialDurations = new Array();
+	trialStartTime = new Date();
+	StimDone = new Array();
+	imgFiles_new = new Array();
+	fixationImage = new Image;
+	fixationImage.src = BLACK_IMG;
+	breakscreen = new Image;
+	breakscreen.src = "http://s3.amazonaws.com/monkeyimgs/2way_impute/break.png";
+	stimduration = 100;
+	ISI = 500;
+	trialNumber = 0;
+	totalTrials = 500;
+	BreakTimes = [];
+	begin = false;
+	startpoint = 198;
+	exp_type = '2resp_64obj'
+}
+	
+function preload_resources() {
+	imgFiles_new = [BLACK_IMG, WHITE_IMG];
+	stimFiles = imgFiles_new;
+}
+
+$(document).ready(function() {
+	
+	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
+	
+	init_vars();
+	preload_resources();
+	
+	preload(stimFiles, function() {
+							   $("#begintask").click(function(){
+															  beginExp();
+															  });
+							   });		
+
+	$('.test').hide();
+	$('#warning').hide();
+		
+	$("#tutorial").html($("#tutorial_original").html());
+	$("#tutorial").dialog({height:600,
+							width:600,
+							position:"center",
+							title:"Instructions"
+							});
+							
+	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE"){
+	$('#warning').show();
+	$('#warning').html("<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>")
+	}
+	
+});
+
+</script>
+
+</head>
+
+<body bgcolor="#000">
+<div style="height:1000px; width:auto;">
+<div align="center" id="warning"></div>
+<div align="center"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
+<div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
+<div class="fixation" align="center" style="position:relative; z-index:201; top:250px; left:0px;"><img id="fixation_dot" src="" /></div>
+<div class="test" align="center" style="position:relative; z-index:200; top:225px; left:0px;">
+<img id="main_test" src="" height=360 width=360 style="position:relative; top:0px; left:0px; z-index:200;"/>
+</div>
+<div id="group_container" align="center">
+<table width="900" cellpadding="0" cellspacing="0" height="800" border="0" align="center" style="visibility:visible" id="responsetable">
+  <tr>
+    <td align="center">
+    </td>
+    <td align="center">
+   </td>
+    <td align="center">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><img id="img4" style="position:relative; top:0px; border:1px solid #444;" height=200 width=200 src ="" onclick="clicked($(this).attr('src'))" border="1"/>
+    </td>
+    <td width="100" height="100" align="left" style="vertical-align:center;">
+    <center style="margin-top:15px; position:relative; top:-30px;">
+    <div id="trialCounter"></div>
+    </center>
+	</td>
+    <td align="center"><img id="img5" style="position:relative; top:0px; border:1px solid #444;" height=200 width=200 src ="" onclick="clicked($(this).attr('src'))" border="1"/>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+    </td>
+    <td align="center">
+    </td>
+    <td align="center">
+	</td>
+  	</tr>
+</table>
+</div>
+
+<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,							width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
+
+<div id="tutorial" style="position:relative; z-index:-1"></div>
+<div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: This is designed mainly for IN-LAB oscilloscope tests.  This will not behave as expected as an regular MTurk experiment! ***</b>
+<p>This implementation is based on Ethan's original code that uses setTimeout(), and simulates the effect of resizing 256x256 images on every trial.</p>
+
+<center><font color=blue><u><p onclick="$('#tutorial').dialog('close')">Click here to close the instructions</p></center></font></u>
+</div>
+
+</div>
+	<form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
+	<input type="text" name="data" id="data" value="">
+    <input type="text" name="assignmentId" id="assignmentId" value="">
+	</form>
+
+</body>
+</html>

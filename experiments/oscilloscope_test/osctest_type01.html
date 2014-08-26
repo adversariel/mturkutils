@@ -68,6 +68,8 @@ var begin = false;
 var benchmark_finished = false;
 var timer = null;
 var full_history;
+var full_history_delta;
+var full_history_delta_flush;
 
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
@@ -102,7 +104,7 @@ function runTrialOnce() {
         });
 
     // Queue experiment
-    dltk.queueTrial(trial_specs, function(hist) {
+    dltk.queueTrial(trial_specs, function(hist, hist_delta, hist_delta_flush) {
         // now response images are up
         trialStartTime = new Date();
         setTimeout(function() {
@@ -112,6 +114,8 @@ function runTrialOnce() {
             var t_stim = t_spent[2];
             var t_ISI2 = t_spent[3];
             full_history = hist;
+            full_history_delta = hist_delta;
+            full_history_delta_flush = hist_delta_flush;
 
             measuredStimdur.push(t_stim);
             measuredISI1.push(t_ISI1);
@@ -404,6 +408,7 @@ $(document).ready(main);
 
 <div id="tutorial" style="position:relative; z-index:-1"></div>
 <div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: This is designed mainly for IN-LAB oscilloscope tests.  This will not behave as expected as an regular MTurk experiment! ***</b>
+<p>This is the first implementation of oscilloscope test that uses the first stable version of new javascript framework from dltk.js.</p>
 <center><font color=blue><u><p onclick="$('#tutorial').dialog('close')">Click here to close the instructions</p></u></font></center>
 </div>
 </div>
