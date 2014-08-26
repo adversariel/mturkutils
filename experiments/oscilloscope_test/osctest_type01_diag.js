@@ -9,7 +9,7 @@ function installKeyHandler() {
             // if number entered...
             nframes = parseInt(actualKey, 10);
             $('#_preload').show();
-            $('#_preload').html("<font color=black style=background-color:gray>Entry #" + (numFrames.length + 1) + ": " + nframes + " (Press 'w' or 'a' or '.' to commit.  Press 'x' to skip.  Press 'c' to show buffers.)</font>");
+            $('#_preload').html("<font color=black style=background-color:gray>Entry #" + (numFrames.length + 1) + ": " + nframes + " (Press 'w' or 'a' or '.' to commit.  Press 'x' to skip.  Press 'c' to show buffers.  Press 'p' to show buffers as a new popup.)</font>");
         }
         else if (actualKey == 'x') {
             $('#_preload').hide();
@@ -30,6 +30,9 @@ function installKeyHandler() {
         else if (actualKey == 'c') {
             promptDiagVariables();
         }
+        else if (actualKey == 'p') {
+            promptDiagVariables(true);
+        }
     };
 }
 
@@ -43,14 +46,24 @@ function pushExpSpecificDiagVariables() {
     l_full_history_delta_flush.push(full_history_delta_flush);
 }
 
-function promptDiagVariables() {
-    window.prompt("Copy to clipboard:", JSON.stringify({
+function promptDiagVariables(asPopup) {
+    var strout = JSON.stringify({
         numFrames: numFrames,
         // must include experiment specific variables:
         l_full_history: l_full_history,
         l_full_history_delta: l_full_history_delta,
         l_full_history_delta_flush: l_full_history_delta_flush,
-    }));
+    });
+
+    if (asPopup === true) {
+        var ScreenWidth = window.screen.width;
+        var ScreenHeight = window.screen.height;
+        var movefromedge = 0;
+        var placementx = (ScreenWidth/2)-((400)/2);
+        var placementy = (ScreenHeight/2)-((300+50)/2);
+        var WinPop = window.open("About:Blank","","width=400,height=300,toolbar=0,location=0,directories=0,status=0,scrollbars=0,menubar=0,resizable=0,left="+placementx+",top="+placementy+",scre enX="+placementx+",screenY="+placementy+",");
+        var SayWhat = "<p>" + strout + "</p>";
+        WinPop.document.write('<html>\n<head>\n</head>\n<body>'+SayWhat+'</body></html>');
+    }
+    else window.prompt("Copy to clipboard:", strout);
 }
-
-
