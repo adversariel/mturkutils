@@ -29,6 +29,7 @@ padding: 10px;
 <script type="text/javascript" src="http://esolomon.scripts.mit.edu/ip.php"></script>
 <script src="http://web.mit.edu/esolomon/www/javascripts/detect-zoom.js" type="text/javascript"></script>
 <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="osctest_type00_diag.js"></script>
 
 <script type="text/javascript">
 var BLACK_IMG = 'https://s3.amazonaws.com/task_images/black_360x360.png';
@@ -99,7 +100,7 @@ function showResponse() {
 		}
 	$('#main_test').attr('src',thisStim);
 	setTimeout(function() { t2q = performance.now(); console.log('T(actual ISI) = ' + (t2q - t1q)); }, 0);
-	
+    installKeyHandler();	
 }
 
 function clicked(myval) {
