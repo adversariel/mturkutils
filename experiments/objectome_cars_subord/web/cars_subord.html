@@ -23,7 +23,7 @@ div#tutorial { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140822-34190c1.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140827-0fa8566.js"></script>
 
 <script type="text/javascript">
 ExperimentData = null;
@@ -31,6 +31,8 @@ var IMG_FIXATION = 'https://s3.amazonaws.com/task_images/fixation_360x360.png';
 var IMG_BLANK = 'https://s3.amazonaws.com/task_images/blank_360x360.png';
 var JS_TRES_TOL = 17;            // An example tolerance value for js timing (~60Hz frame rate)
 var JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
+var FRAME_INTERVAL_TOL = 1000 / 60 + 2;   // mean frame interval should be smaller than 16.66ms + 2ms
+var FRAME_INTERVAL_VAR_TOL = 5 * 5;       // jitter shouldn't be larger than 5ms
 
 // var labels = ExperimentData.labels;   // unused here
 var imgFiles = ExperimentData.imgFiles;
@@ -48,12 +50,10 @@ reward related: var reward_scale = ExperimentData.reward_scale; */
 
 var zoom;
 var aID;
-var js_tres;
-var js_tres_variance;
 var ctx_test_on;
 var ctx_resp0_on;
 var ctx_resp1_on;
-var bogoMIPS;
+var benchmark;
 
 var trialStartTime, trialEndTime;
 var response = [];
@@ -64,7 +64,7 @@ var measuredStimdur = [];
 var StimDone = [];
 
 var breakscreen;
-var begin = false;
+var exp_started = false;
 var benchmark_finished = false;
 var timer = null;
 
@@ -144,7 +144,7 @@ function preResponse(hist) {
 }
 
 function clicked(index) {
-    if (!begin) return;
+    if (!exp_started) return;
     trialEndTime = new Date();
     var myval = imgFiles[trialNumber][1][index];
     /* hahong: reward related
@@ -188,10 +188,8 @@ function endTrial() {
             measISI1: measuredISI1,
             measISI2: measuredISI2,
             measStimdur: measuredStimdur,
-            bogoMIPS: bogoMIPS,
             ImgData: imgData,
-            jsTimeRes: js_tres,
-            jsTimeResVariance: js_tres_variance,
+            benchmark: benchmark,
             /* hahong: reward related
                 Performance:acc,
                 Bonus:reward */
@@ -233,14 +231,19 @@ function takeABreak() {
 
 function initSetup() {
     // initial layout
+    $("#tutorial").hide();
+    $("#tutorial_link").hide();
     $('#tutorial_original').hide();
     $('#tutorial2').hide();
     $('#tutorial3').hide();
     $('.test').hide();
     $('#group_container').hide();
+    // begintask button is enabled, but hidden at start
+    $("#begintask").click(beginExp);
+    $("#begintask").hide();
 
     // setup variables
-    $('#_preload').html("<font color=red style=background-color:white><b>Wait...</b></font>");
+    $('#_preload').html("<font color=red style=background-color:white><b>Wait: your system is being tested to check if it can run this task...</b></font>");
     breakscreen = new Image();
     breakscreen.src = "https://s3.amazonaws.com/task_images/break.png";
     zoom = DetectZoom.zoom();
@@ -250,32 +253,58 @@ function initSetup() {
     ctx_test_on = dltk.getOnScreenContextFromCanvas('main_test');
     ctx_resp0_on = dltk.getOnScreenContextFromCanvas('img4');
     ctx_resp1_on = dltk.getOnScreenContextFromCanvas('img5');
+
+    // setup and show pre-experiment standby screen
+    $('#warning').hide();
+    if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
+        $('#warning').show();
+        $('#warning').html(
+            "<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
+        );
+    }
+    if (BrowserDetect.browser == 'Explorer') {
+        $('#warning').show();
+        $('#warning').append(
+            "<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT. Thank you!</b></font></span>"
+        );
+        return false;
+    }
+
+    return true;  // successful init
 }
 
-function checkSystem(benchmark) {
+function round2(num) {
+    return Math.round(num * 100) / 100;
+}
+
+function checkSystem(benchmark_) {
     // determine if this system is capable of running this task
     // based on the benchmark result
     var nook = false;
-    var details, api_support;
+    var details;
 
     if (benchmark_finished) return;
     benchmark_finished = true;
+    benchmark = benchmark_;
 
-    js_tres = benchmark.js_tres;
-    js_tres_variance = benchmark.js_tres_variance;
-    bogoMIPS = benchmark.bogoMIPS;
-    api_support = benchmark.api_support;
-
-    if (!api_support) {
+    if (!benchmark.api_support) {
         details = "Your browser seems to be outdated to run this task.  Please try with the newest Chrome or Firefox please.";
         nook = true;
     }
-    else if (js_tres > JS_TRES_TOL) {
-        details = "Your system is too slow to complete this task.  Close other programs and try again please.";
+    else if (benchmark.js_tres > JS_TRES_TOL) {
+        details = "Your system is too slow to complete this task (t=" + round2(benchmark.js_tres) + ").  Close other programs/tabs and try again please.";
         nook = true;
     }
-    else if (js_tres_variance > JS_TRES_VAR_TOL) {
-        details = "Your system's clock varies too much.  Close other programs and try again please.";
+    else if (benchmark.js_tres_variance > JS_TRES_VAR_TOL) {
+        details = "Your system's clock varies too much (v=" + round2(benchmark.js_tres_variance) + ").  Close other programs/tabs and try again please.";
+        nook = true;
+    }
+    else if (benchmark.refresh_interval > FRAME_INTERVAL_TOL) {
+        details = "Your browser's refresh rate is slower than 60fps (f=" + round2(1000 / benchmark.refresh_interval) + ").  Close other programs/tabs and try again please.";
+        nook = true;
+    }
+    else if (benchmark.refresh_interval_variance > FRAME_INTERVAL_VAR_TOL) {
+        details = "Your browser's refresh rate varies too much (v=" + round2(benchmark.refresh_interval_variance) + ").  Close other programs/tabs and try again please.";
         nook = true;
     }
 
@@ -288,12 +317,15 @@ function checkSystem(benchmark) {
         );
         alert(details);
     }
-    // otherwise, proceed to experiment.
+    // passed! proceed to experiment preps.
     else {
         if (timer !== null) {
             clearTimeout(timer);
             timer = null;
         }
+
+        $("#tutorial_link").show();
+        showTutorial();
         preloadResources();
     }
 }
@@ -321,20 +353,20 @@ function preBeginExp() {
     // Show Begin button and make it clickable
     $('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
     $("#begintaskdiv").css('visibility', 'visible');
-    $("#begintask").click(beginExp);
+    $('#fps_bench').hide();
 }
 
 function beginExp() {
-    begin = true;
+    exp_started = true;
     $("#begintask").hide();
     $("#begintaskdiv").hide();
     $("#_preload").hide();
     runTrialOnce();
 }
 
-function standby() {
-    // setup and show pre-experiment standby screen
-    $('#warning').hide();
+function showTutorial() {
+    $("#begintask").hide();
+    $("#tutorial").show();
     $("#tutorial").html($("#tutorial_original").html());
     $("#tutorial").dialog({
         height: 500,
@@ -342,24 +374,15 @@ function standby() {
         position: ['middle', 20],
         title: "Instructions"
     });
-    if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
-        $('#warning').show();
-        $('#warning').html(
-            "<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
-        );
-    }
-    if (BrowserDetect.browser == 'Explorer') {
-        $('#warning').show();
-        $('#warning').append(
-            "<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT. Thank you!</b></font></span>"
-        );
-    }
+    // able to start the experiment only when the tutorial window is closed.
+    $('#tutorial').bind('dialogclose', function() { 
+        if (!exp_started) $("#begintask").show();
+    });
 }
 
 function main() {
-    initSetup();
-    standby();
-    dltk.runBenchmark(checkSystem);   // run benchmark...
+    if (!initSetup()) return;   // abort if initSetup() fails
+    dltk.runBenchmark(checkSystem, {canvas_test_fps: 'fps_test'});   // run benchmark...
     timer = setTimeout(function() {           // ... or fall back to failure mode in 1 min.
         checkSystem({api_support: false}); 
         }, 60 * 1000);
@@ -375,6 +398,9 @@ $(document).ready(main);
 <div align="center" id="warning"></div>
 <div id="begintaskdiv" style="position:absolute; top:40px; left: 47%; visibility: hidden;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
+<div id="fps_bench" align="center" style="position:fixed; top:20px; left:10px;">
+<canvas id="fps_test" width="50" height="50" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
+</div>
 <!-- try to aim 8 deg -->
 <div class="test" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-180px;">
 <canvas id="main_test" width="360" height="360" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
@@ -411,10 +437,10 @@ $(document).ready(main);
 </table>
 </div>
 
-<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:500,width:900,position:['middle', 20],title:'Instructions'})"><u>View Instructions</u></div>
+<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="showTutorial();"><u>View Instructions</u></div>
 
 <div id="tutorial" style="position:relative; z-index:-1"></div>
-<div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: Instructions have changed, and low performance will lead to rejection: make sure to read!**</b>
+<div id="tutorial_original" style="position:absolute; z-index:-1;"><p><b>NOTE: Please close all other programs/taps while running this task to get the optimal system performance.  Users on a suboptimal system can experience glitches that will lead to rejection.  Also, low scores on this task will lead to rejection: make sure to read this instruction!</b></p>
 <p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
 <p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 15 minutes, although we expect this to take about 5-10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
 <p><font color=red><b>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</b></font></p>
