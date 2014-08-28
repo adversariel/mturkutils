@@ -690,6 +690,7 @@ class MatchToSampleFromDLDataExperiment(Experiment):
         seed = html_data.get('seed', 0)  # no need to change most cases
         urls = html_data.get('urls')
         meta = html_data.get('meta')
+        shuffle_test = html_data.get('shuffle_test', False)
 
         if meta is None:
             if dataset is None:
@@ -765,26 +766,36 @@ class MatchToSampleFromDLDataExperiment(Experiment):
         labels = []
         for c, ri in zip(combs, response_images):
             #We cycle through the possible sample categories one by one.
-            for _ in np.arange(np.ceil(float(k) / n)):
+            for _rep in np.arange(np.ceil(float(k) / n)):
                 for sample_synset in c:
+                    rng = np.random.RandomState(seed=(seed, _rep))
                     sample = synset_urls[sample_synset].pop()
                     sample_meta = category_meta_dicts[sample_synset].pop()
+
                     if ri is None:
                         test = [synset_urls[s].pop() for s in c]
                         test_meta = [category_meta_dicts[s].pop() for s in c]
+                        if labelfunc is None:
+                            lbls = [''] * len(test_meta)
+                        else:
+                            lbls = [labelfunc(meta_dict, dataset)
+                                for meta_dict in test_meta]
                     else:
                         test = ri['urls']
                         test_meta = ri['meta']
-                    imgs.append([sample, test])
-                    imgData.append({"Sample": sample_meta, "Test": test_meta})
-                    if ri is None:
-                        if labelfunc is None:
-                            labels.append([''] * len(test_meta))
-                        else:
-                            labels.append([labelfunc(meta_dict, dataset)
-                                for meta_dict in test_meta])
-                    else:
-                        labels.append(ri['labels'])
+                        lbls = ri['labels']
+
+                    si = range(len(lbls))
+                    assert len(si) == len(test) == len(test_meta)
+                    if shuffle_test:
+                        rng.shuffle(si)
+
+                    # write down one prepared trial
+                    imgs.append([sample, [test[e] for e in si]])
+                    imgData.append({
+                        "Sample": sample_meta,
+                        "Test": [test_meta[e] for e in si]})
+                    labels.append([lbls[e] for e in si])
 
         for list_data in [imgs, imgData, labels]:
             rng = np.random.RandomState(seed=seed)

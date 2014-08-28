@@ -23,10 +23,10 @@ div#tutorial { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140827-0fa8566.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140828-1c104b8.js"></script>
 
 <script type="text/javascript">
-ExperimentData = null;
+var ExperimentData = null;
 var IMG_FIXATION = 'https://s3.amazonaws.com/task_images/fixation_360x360.png';
 var IMG_BLANK = 'https://s3.amazonaws.com/task_images/blank_360x360.png';
 var JS_TRES_TOL = 17;            // An example tolerance value for js timing (~60Hz frame rate)
@@ -34,9 +34,9 @@ var JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
 var FRAME_INTERVAL_TOL = 1000 / 60 + 2;   // mean frame interval should be smaller than 16.66ms + 2ms
 var FRAME_INTERVAL_VAR_TOL = 5 * 5;       // jitter shouldn't be larger than 5ms
 
-// var labels = ExperimentData.labels;   // unused here
+// var labels = ExperimentData.labels;    // unused here
+// var imgData = ExperimentData.imgData;  // unused here
 var imgFiles = ExperimentData.imgFiles;
-var imgData = ExperimentData.imgData;
 var totalTrials = imgFiles.length;
 var BreakTimes = [];
 var exp_type = 'two_way';
@@ -54,8 +54,10 @@ var ctx_test_on;
 var ctx_resp0_on;
 var ctx_resp1_on;
 var benchmark;
+var extInfo = {language: navigator.language, userAgent: navigator.userAgent};
 
-var trialStartTime, trialEndTime;
+var expLoadTime = new Date();
+var trialStartTime, trialEndTime, trialStartTimes = [];
 var response = [];
 var trialDurations = [];
 var measuredISI1 = [];
@@ -68,6 +70,12 @@ var exp_started = false;
 var benchmark_finished = false;
 var timer = null;
 
+var l_full_history = [], l_full_history_delta = [];
+var _hist, _hist_delta;
+
+function round2(num) {
+    return Math.round(num * 100) / 100;
+}
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
 function runTrialOnce() {
@@ -101,32 +109,39 @@ function runTrialOnce() {
         });
 
     // Queue experiment
-    dltk.queueTrial(trial_specs, function(hist) {
+    dltk.queueTrial(trial_specs, function(hist, hist_delta) {
         // now response images are up
         trialStartTime = new Date();
         setTimeout(function() {
             // schedule all less time critical jobs later here
             var t_spent = dltk.getTimeSpent(hist);
-            var t_ISI1 = t_spent[1];
-            var t_stim = t_spent[2];
-            var t_ISI2 = t_spent[3];
+            var t_ISI1 = round2(t_spent[1]);
+            var t_stim = round2(t_spent[2]);
+            var t_ISI2 = round2(t_spent[3]);
 
             measuredStimdur.push(t_stim);
             measuredISI1.push(t_ISI1);
             measuredISI2.push(t_ISI2);
+
+            _hist = hist;
+            _hist_delta = hist_delta;
+
+            l_full_history.push(dltk.getTimingHistoryExcerpt(hist, 'diff'));
+            l_full_history_delta.push(dltk.getTimingHistoryExcerpt(hist_delta, 'diffeach'));
+            trialStartTimes.push(trialStartTime - expLoadTime);
 
             console.log('ISI1, stimon, ISI2 = ', + t_ISI1 + ', ' + t_stim + ', ' + t_ISI2);
         }, 0);
     });
 }
 
-function preTrial(hist) {
+function preTrial() {
     $('#group_container').hide();
     $('.test').show();
     // window.scrollTo(0, 0); // this causes suboptimal performance (forced sync)
 }
 
-function preResponse(hist) {
+function preResponse() {
     /* hahong: simplify
     $('#label1').html(labels[trialNumber][0]);
     $('#label2').html(labels[trialNumber][1]);
@@ -161,7 +176,7 @@ function clicked(index) {
 }
 
 function pushData(myval) {
-    StimDone.push(imgFiles[trialNumber]);
+    StimDone.push(trialNumber);
     response.push(myval);
     trialDurations.push(trialEndTime - trialStartTime);
 }
@@ -169,6 +184,10 @@ function pushData(myval) {
 function endTrial() {
     if (trialNumber >= (totalTrials - 1)) {
         var resultsobj = [];
+
+        $('#_preload').show();
+        $('#_preload').html("<font color=red style=background-color:white><b>Finished! Please wait while your responses are being submitted...</b></font>");
+
         resultsobj.push({
             Response: response,
             ImgOrder: imgFiles,
@@ -181,23 +200,25 @@ function endTrial() {
             Browser: BrowserDetect.browser,
             Version: BrowserDetect.version,
             OpSys: BrowserDetect.OS,
+            ExtInfo: extInfo,
             WindowHeight: winH,
             WindowWidth: winW,
             ScreenHeight: vertical,
             ScreenWidth: horizontal,
-            measISI1: measuredISI1,
-            measISI2: measuredISI2,
-            measStimdur: measuredStimdur,
-            ImgData: imgData,
-            benchmark: benchmark,
+            Benchmark: benchmark,
+            TimingInfo: { 
+                TrialStartTimes: trialStartTimes, ExpLoadTime: expLoadTime,
+                ISI1: measuredISI1, ISI2: measuredISI2, Stimdur: measuredStimdur,
+                HistoryDiff: l_full_history, HistoryDeltaDiffEach: l_full_history_delta },
             /* hahong: reward related
-                Performance:acc,
-                Bonus:reward */
+            ImgData: imgData,
+            Performance: acc,
+            Bonus: reward */
         });
         document.getElementById("assignmentId").value = aID;
         document.getElementById("data").value = JSON.stringify(resultsobj);
         document.getElementById("postdata").submit();
-    } else if (jQuery.inArray(trialNumber, BreakTimes) > -1) {
+    } else if (BreakTimes.indexOf(trialNumber) > -1) {
         takeABreak();
     } else {
         trialNumber++;
@@ -256,12 +277,6 @@ function initSetup() {
 
     // setup and show pre-experiment standby screen
     $('#warning').hide();
-    if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
-        $('#warning').show();
-        $('#warning').html(
-            "<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
-        );
-    }
     if (BrowserDetect.browser == 'Explorer') {
         $('#warning').show();
         $('#warning').append(
@@ -273,8 +288,16 @@ function initSetup() {
     return true;  // successful init
 }
 
-function round2(num) {
-    return Math.round(num * 100) / 100;
+function afterPassBenchmark() {
+    if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
+        $('#warning').show();
+        $('#warning').html(
+            "<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
+        );
+    }
+    $("#tutorial_link").show();
+    showTutorial();
+    preloadResources();
 }
 
 function checkSystem(benchmark_) {
@@ -323,10 +346,7 @@ function checkSystem(benchmark_) {
             clearTimeout(timer);
             timer = null;
         }
-
-        $("#tutorial_link").show();
-        showTutorial();
-        preloadResources();
+        afterPassBenchmark();
     }
 }
 
