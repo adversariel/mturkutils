@@ -85,6 +85,7 @@ def get_exp(sandbox=True, selected_basic_objs=SELECTED_BASIC_OBJS):
             'meta_field': 'obj',
             'meta': meta,
             'urls': urls,
+            'shuffle_test': True,
     }
 
     exp = MatchToSampleFromDLDataExperiment(
@@ -101,7 +102,9 @@ def get_exp(sandbox=True, selected_basic_objs=SELECTED_BASIC_OBJS):
             max_assignments=1,
             bucket_name='objectome_cars_subord',
             trials_per_hit=ACTUAL_TRIALS_PER_HIT + 24,  # 150 + 6x4 repeats
-            html_data=html_data)
+            html_data=html_data,
+            frame_height_pix=640,
+            )
 
     # -- create trials
     exp.createTrials(sampling='with-replacement', verbose=1)
