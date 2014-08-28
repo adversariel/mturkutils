@@ -26,7 +26,7 @@ div#tutorial { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140828-1c104b8.js"></script>
 
 <script type="text/javascript">
-ExperimentData = null;
+var ExperimentData = null;
 var IMG_FIXATION = 'https://s3.amazonaws.com/task_images/fixation_360x360.png';
 var IMG_BLANK = 'https://s3.amazonaws.com/task_images/blank_360x360.png';
 var JS_TRES_TOL = 17;            // An example tolerance value for js timing (~60Hz frame rate)
@@ -277,12 +277,6 @@ function initSetup() {
 
     // setup and show pre-experiment standby screen
     $('#warning').hide();
-    if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
-        $('#warning').show();
-        $('#warning').html(
-            "<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
-        );
-    }
     if (BrowserDetect.browser == 'Explorer') {
         $('#warning').show();
         $('#warning').append(
@@ -292,6 +286,18 @@ function initSetup() {
     }
 
     return true;  // successful init
+}
+
+function afterPassBenchmark() {
+    if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
+        $('#warning').show();
+        $('#warning').html(
+            "<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
+        );
+    }
+    $("#tutorial_link").show();
+    showTutorial();
+    preloadResources();
 }
 
 function checkSystem(benchmark_) {
@@ -340,10 +346,7 @@ function checkSystem(benchmark_) {
             clearTimeout(timer);
             timer = null;
         }
-
-        $("#tutorial_link").show();
-        showTutorial();
-        preloadResources();
+        afterPassBenchmark();
     }
 }
 
