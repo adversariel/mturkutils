@@ -82,6 +82,10 @@ function round2(num) {
     return Math.round(num * 100) / 100;
 }
 
+function defined(obj) {
+    return typeof(obj) != 'undefined';
+}
+
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
 function runTrialOnce() {
     // Run single trial by using the new framework
@@ -288,10 +292,17 @@ function initSetup() {
     ctx_resp1_on = dltk.getOnScreenContextFromCanvas('img5');
 
     // setup and show pre-experiment standby screen
-    if (BrowserDetect.browser == 'Explorer') {
+    if (BrowserDetect.browser == 'Explorer' || navigator.userAgent.indexOf('Trident/') >= 0 || !defined(vertical) || !defined(horizontal)) {
         $('#warning').show();
         $('#warning').append(
-            "<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT. Thank you!</b></font></span>"
+            "<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT.<br />Thank you!</b></font></span>"
+        );
+        return false;
+    }
+    if (vertical < 590 || horizontal < 1000) {
+        $('#warning').show();
+        $('#warning').append(
+            "<span><font color=red style=background-color:white><b>Screen smaller than 1024x600 is not supported.<br />Please try again with higher resolution. Thank you!</b></font></span>"
         );
         return false;
     }
@@ -306,7 +317,7 @@ function afterPassBenchmark() {
     if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
         $('#warning').show();
         $('#warning').html(
-            "<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
+            "<font color=red style=background-color:white><b>You are in PREVIEW mode.<br />Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
         );
     }
     $("#tutorial_link").show();
