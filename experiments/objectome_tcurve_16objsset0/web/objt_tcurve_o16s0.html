@@ -86,6 +86,16 @@ function defined(obj) {
     return typeof(obj) != 'undefined';
 }
 
+function detectmob() { 
+    // from: http://stackoverflow.com/questions/11381673/javascript-solution-to-detect-mobile-browser
+    if (navigator.userAgent.match(/Android/i) || navigator.userAgent.match(/webOS/i) ||
+            navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i) ||
+            navigator.userAgent.match(/iPod/i) || navigator.userAgent.match(/BlackBerry/i) ||
+            navigator.userAgent.match(/Windows Phone/i))
+        return true;
+    return false;
+}
+
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
 function runTrialOnce() {
     // Run single trial by using the new framework
@@ -291,8 +301,17 @@ function initSetup() {
     ctx_resp0_on = dltk.getOnScreenContextFromCanvas('img4');
     ctx_resp1_on = dltk.getOnScreenContextFromCanvas('img5');
 
-    // setup and show pre-experiment standby screen
-    if (BrowserDetect.browser == 'Explorer' || navigator.userAgent.indexOf('Trident/') >= 0 || !defined(vertical) || !defined(horizontal)) {
+    // reject unsupported env
+    if (detectmob() || !(BrowserDetect.OS == 'Mac' || BrowserDetect.OS == 'Windows' || BrowserDetect.OS == 'Linux')) {
+        $('#warning').show();
+        $('#warning').append(
+            "<span><font color=red style=background-color:white><b>Only Windows, Mac, and Linux are supported.<br />Thank you!</b></font></span>"
+        );
+        return false;
+    }
+    if (navigator.userAgent.indexOf('Trident/') >= 0 ||   // IE11+ reports as Firefox...
+            !(BrowserDetect.browser == 'Chrome' || BrowserDetect.browser == 'Firefox') ||  // must be either Chrome or FF
+            !defined(vertical) || !defined(horizontal)) {
         $('#warning').show();
         $('#warning').append(
             "<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT.<br />Thank you!</b></font></span>"
