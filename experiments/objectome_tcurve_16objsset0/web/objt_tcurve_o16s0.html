@@ -253,6 +253,7 @@ function takeABreak() {
 function initSetup() {
     // initial layout
     $("#tutorial").hide();
+    $("#notice").hide();
     $("#tutorial_link").hide();
     $('#tutorial_original').hide();
     $('#tutorial2').hide();
@@ -296,6 +297,8 @@ function afterPassBenchmark() {
         );
     }
     $("#tutorial_link").show();
+    $('#fps_bench').hide();
+    $("#notice").show();
     showTutorial();
     preloadResources();
 }
@@ -373,7 +376,6 @@ function preBeginExp() {
     // Show Begin button and make it clickable
     $('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
     $("#begintaskdiv").css('visibility', 'visible');
-    $('#fps_bench').hide();
 }
 
 function beginExp() {
@@ -381,6 +383,7 @@ function beginExp() {
     $("#begintask").hide();
     $("#begintaskdiv").hide();
     $("#_preload").hide();
+    $("#notice").hide();
     runTrialOnce();
 }
 
@@ -416,15 +419,16 @@ $(document).ready(main);
 <body bgcolor="#7F7F7F">
 <div style="height:90%; width:95%; position:absolute;">
 <div align="center" id="warning"></div>
-<div id="begintaskdiv" style="position:absolute; top:40px; left: 47%; visibility: hidden;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
+<div id="begintaskdiv" style="position:absolute; top:50%; left:50%; visibility: hidden; margin-top:220px; margin-left:-35px;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
-<div id="fps_bench" align="center" style="position:fixed; top:20px; left:10px;">
+<div id="fps_bench" align="center" style="position:fixed; top:50px; left:10px;">
 <canvas id="fps_test" width="50" height="50" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
 </div>
 <!-- try to aim 8 deg -->
 <div class="test" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-180px;">
 <canvas id="main_test" width="360" height="360" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
 </div>
+<div id="notice" align="center" style="position:absolute; z-index:200; top:50%; left:50%; height:366px; margin-top:-183px; margin-left:-180px;"><img src="https://s3.amazonaws.com/task_images/notice.png" height="360" width="360"/></div>
 <div id="group_container"  style="position:relative; width:100%; top:50%; height:200px; margin-top:-100px;" align="center">
 <table width="900" cellpadding="0" cellspacing="0" border="0" align="center" style="visibility:visible" id="responsetable">
   <tr>
@@ -483,11 +487,11 @@ $(document).ready(main);
 <div id="tutorial3" style="position:absolute; z-index:-1;">
 <ul>
 <p>
-<li>Please be sure to maximize your browser window before beginning this experiment. .</li>
+<li>Please be sure to maximize your browser window before beginning this experiment.</li>
 <p>
 <li><b>In total, you will see 174 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
 <p>
-<li>When you are ready to begin, click the "Begin" button at the very top of the screen. <b>Be prepared to see the first image -- it happens very fast!</b></li>
+<li>When you are ready to begin, click the "Begin" button. <b>Be prepared to see the first image -- it happens very fast!</b></li>
 <p>
 <li>If you have questions or concerns about this HIT, feel free to contact the requester. You can re-read these instructions at any time by clicking the link in the upper right-hand corner of the screen. Good luck!</li>
 </ul>

@@ -102,7 +102,7 @@ def get_exp(sandbox=True, stimdur=100,
             trials_per_hit=ACTUAL_TRIALS_PER_HIT + 24,  # 150 + 6x4 repeats
             html_data=html_data,
             tmpdir='tmp/t%04d' % int(stimdur),
-            frame_height_pix=640,
+            frame_height_pix=1200,
             additionalrules=[{
                 'old': 'stimduration = 100;',
                 'new': 'stimduration = %f;' % stimdur,

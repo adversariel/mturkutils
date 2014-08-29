@@ -103,7 +103,7 @@ def get_exp(sandbox=True, selected_basic_objs=SELECTED_BASIC_OBJS):
             bucket_name='objectome_cars_subord',
             trials_per_hit=ACTUAL_TRIALS_PER_HIT + 24,  # 150 + 6x4 repeats
             html_data=html_data,
-            frame_height_pix=640,
+            frame_height_pix=1200,
             )
 
     # -- create trials
