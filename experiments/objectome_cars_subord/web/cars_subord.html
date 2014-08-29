@@ -13,6 +13,7 @@ p.intro { margin: 0; padding: 15px; background: #eee; font-size: small; }
 div.thumb { position:absolute; float:left; padding: 1px; width: 64px; height: 64px;}
 div.thumb img { border: 2px solid white; width:64px; height:64px; }
 div#tutorial { position:relative; background-color: white; padding: 10px; }
+div#systemmsg { position:relative; background-color: white; padding: 10px; }
 </style>
 
 
@@ -54,6 +55,7 @@ var ctx_test_on;
 var ctx_resp0_on;
 var ctx_resp1_on;
 var benchmark;
+var maxHeightInThisExp = 450;
 var extInfo = {language: navigator.language, userAgent: navigator.userAgent};
 
 var expLoadTime = new Date();
@@ -68,7 +70,10 @@ var StimDone = [];
 var breakscreen;
 var exp_started = false;
 var benchmark_finished = false;
-var timer = null;
+var benchmark_passed = false;
+var timer_bench = null;
+var timer_disp = null;
+var retry = 0;
 
 var l_full_history = [], l_full_history_delta = [];
 var _hist, _hist_delta;
@@ -81,6 +86,9 @@ function round2(num) {
 function runTrialOnce() {
     // Run single trial by using the new framework
     var trial_specs = [];
+
+    stopClock();   // stop to minimize display burden
+
     // ISI 1 fixation dot
     trial_specs.push({
         urls: [IMG_FIXATION],
@@ -129,6 +137,7 @@ function runTrialOnce() {
             l_full_history.push(dltk.getTimingHistoryExcerpt(hist, 'diff'));
             l_full_history_delta.push(dltk.getTimingHistoryExcerpt(hist_delta, 'diffeach'));
             trialStartTimes.push(trialStartTime - expLoadTime);
+            startClock();
 
             console.log('ISI1, stimon, ISI2 = ', + t_ISI1 + ', ' + t_stim + ', ' + t_ISI2);
         }, 0);
@@ -253,6 +262,7 @@ function takeABreak() {
 function initSetup() {
     // initial layout
     $("#tutorial").hide();
+    $("#systemmsg").hide();
     $("#notice").hide();
     $("#tutorial_link").hide();
     $('#tutorial_original').hide();
@@ -263,9 +273,10 @@ function initSetup() {
     // begintask button is enabled, but hidden at start
     $("#begintask").click(beginExp);
     $("#begintask").hide();
+    $('#warning').hide();
+    recomputeOffset();
 
     // setup variables
-    $('#_preload').html("<font color=red style=background-color:white><b>Wait: your system is being tested to check if it can run this task...</b></font>");
     breakscreen = new Image();
     breakscreen.src = "https://s3.amazonaws.com/task_images/break.png";
     zoom = DetectZoom.zoom();
@@ -277,7 +288,6 @@ function initSetup() {
     ctx_resp1_on = dltk.getOnScreenContextFromCanvas('img5');
 
     // setup and show pre-experiment standby screen
-    $('#warning').hide();
     if (BrowserDetect.browser == 'Explorer') {
         $('#warning').show();
         $('#warning').append(
@@ -290,6 +300,9 @@ function initSetup() {
 }
 
 function afterPassBenchmark() {
+    benchmark_passed = true;
+    recomputeOffset();
+
     if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
         $('#warning').show();
         $('#warning').html(
@@ -299,6 +312,7 @@ function afterPassBenchmark() {
     $("#tutorial_link").show();
     $('#fps_bench').hide();
     $("#notice").show();
+    startClock();
     showTutorial();
     preloadResources();
 }
@@ -307,30 +321,38 @@ function checkSystem(benchmark_) {
     // determine if this system is capable of running this task
     // based on the benchmark result
     var nook = false;
+    var failed_permanently = false;
     var details;
 
     if (benchmark_finished) return;
+
     benchmark_finished = true;
     benchmark = benchmark_;
+    benchmark.retry = retry;
+    if (timer_bench !== null) {
+        clearTimeout(timer_bench);
+        timer_bench = null;
+    }
 
     if (!benchmark.api_support) {
         details = "Your browser seems to be outdated to run this task.  Please try with the newest Chrome or Firefox please.";
         nook = true;
+        failed_permanently = true;
     }
     else if (benchmark.js_tres > JS_TRES_TOL) {
-        details = "Your system is too slow to complete this task (t=" + round2(benchmark.js_tres) + ").  Close other programs/tabs and try again please.";
+        details = "Your system is too slow to complete this task (t=" + round2(benchmark.js_tres) + ").  Close other programs/tabs please.";
         nook = true;
     }
     else if (benchmark.js_tres_variance > JS_TRES_VAR_TOL) {
-        details = "Your system's clock varies too much (v=" + round2(benchmark.js_tres_variance) + ").  Close other programs/tabs and try again please.";
+        details = "Your system's clock varies too much (v=" + round2(benchmark.js_tres_variance) + ").  Close other programs/tabs please.";
         nook = true;
     }
     else if (benchmark.refresh_interval > FRAME_INTERVAL_TOL) {
-        details = "Your browser's refresh rate is slower than 60fps (f=" + round2(1000 / benchmark.refresh_interval) + ").  Close other programs/tabs and try again please.";
+        details = "Your browser's refresh rate is slower than 60fps (f=" + round2(1000 / benchmark.refresh_interval) + ").  Close other programs/tabs please.";
         nook = true;
     }
     else if (benchmark.refresh_interval_variance > FRAME_INTERVAL_VAR_TOL) {
-        details = "Your browser's refresh rate varies too much (v=" + round2(benchmark.refresh_interval_variance) + ").  Close other programs/tabs and try again please.";
+        details = "Your browser's refresh rate varies too much (v=" + round2(benchmark.refresh_interval_variance) + ").  Close other programs/tabs please.";
         nook = true;
     }
 
@@ -341,16 +363,32 @@ function checkSystem(benchmark_) {
         $('#warning').html(
             "<font color=red style=background-color:white><b>Your system CANNOT run this HIT at this point:" + details + "</b></font>"
         );
-        alert(details);
+        if (failed_permanently) alert(details);
+        else {
+            $("#systemmsg").show();
+            $("#systemmsg").html(details + " Do you want to retry?");
+            $("#systemmsg").dialog({
+                height: 260,
+                width: 460,
+                modal: true,
+                position: ['middle', 30],
+                title: "Warning",
+                buttons: {
+                    "Retry": function() {
+                        $(this).dialog("close");
+                        benchmark_finished = false;
+                        retry++;
+                        testSystemAndPrepExp();
+                    },
+                    Cancel: function() {
+                        $(this).dialog("close");
+                    }
+                }
+            });
+        }
     }
     // passed! proceed to experiment preps.
-    else {
-        if (timer !== null) {
-            clearTimeout(timer);
-            timer = null;
-        }
-        afterPassBenchmark();
-    }
+    else afterPassBenchmark();
 }
 
 function preloadResources() {
@@ -374,7 +412,8 @@ function preloadResources() {
 
 function preBeginExp() {
     // Show Begin button and make it clickable
-    $('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
+    //$('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
+    $('#_preload').hide();
     $("#begintaskdiv").css('visibility', 'visible');
 }
 
@@ -392,9 +431,10 @@ function showTutorial() {
     $("#tutorial").show();
     $("#tutorial").html($("#tutorial_original").html());
     $("#tutorial").dialog({
-        height: 500,
+        height: 560,
         width: 900,
-        position: ['middle', 20],
+        modal: true,
+        position: 'center',
         title: "Instructions"
     });
     // able to start the experiment only when the tutorial window is closed.
@@ -403,22 +443,83 @@ function showTutorial() {
     });
 }
 
-function main() {
-    if (!initSetup()) return;   // abort if initSetup() fails
+function testSystemAndPrepExp() {
+    $('#warning').hide();
+    $('#_preload').show();
+    $('#_preload').html("<font color=red style=background-color:white><b>Wait: your system is being tested to check if it can run this task...</b></font>");
+
     dltk.runBenchmark(checkSystem, {canvas_test_fps: 'fps_test'});   // run benchmark...
-    timer = setTimeout(function() {           // ... or fall back to failure mode in 1 min.
+    timer_bench = setTimeout(function() {           // ... or fall back to failure mode in 1 min.
         checkSystem({api_support: false}); 
         }, 60 * 1000);
 }
 
+function stopClock() {
+    if (timer_disp === null) return;
+    clearInterval(timer_disp);
+    timer_disp = null;
+}
+
+function startClock() {
+    timer_disp = setInterval(function () {
+        var slop = 5;
+        var elapsed = parseInt((new Date() - expLoadTime) / 1000, 10) + slop;
+        var minutes = parseInt(elapsed / 60, 10);
+        var seconds = elapsed % 60;
+        var minutes_str = (minutes <= 9) ? '0' : '';
+        var seconds_str = (seconds <= 9) ? '0' : '';
+        minutes_str += minutes;
+        seconds_str += seconds;
+
+        $('#timedisp').html('Time Passed: ' + minutes_str + ':' + seconds_str);
+        }, 1000);
+}
+
+function recomputeOffset() {
+    // Sets the optimal top position of few stuffs.
+    // This is needed to circumvent bad rendetion of position:fixed inside iframe
+    winW = window.innerWidth;
+    winH = window.innerHeight;
+    vertical = screen.height;
+    horizontal = screen.width;
+
+    // kludge...
+    var thickness = window.outerHeight - winH;
+    if (thickness < 10) thickness = 100;
+    else if (thickness > 250) thickness = 250;
+    thickness += 80;
+
+    var offsetToTop = -parseInt(Math.min(Math.max((vertical - thickness) / 2, maxHeightInThisExp / 2), winH / 2), 10);
+    extInfo.offsetToTop = offsetToTop;
+
+    $("#tutorial_link").css('margin-top', offsetToTop + 'px');
+    if (benchmark_passed) {
+        $("#warning").css('position', 'absolute');
+        $("#warning").css('top', '50%');
+        $("#warning").css('margin-top', offsetToTop + 'px');
+
+        $("#_preload").css('position', 'absolute');
+        $("#_preload").css('top', '50%');
+        $("#_preload").css('margin-top', offsetToTop + 'px');
+    }
+
+    console.log('Resized event detected:' + offsetToTop);
+}
+
+function main() {
+    if (!initSetup()) return;   // abort if initSetup() fails
+    testSystemAndPrepExp();
+}
+
+window.onresize = recomputeOffset;
 $(document).ready(main);
 </script>
 
 </head>
 
 <body bgcolor="#7F7F7F">
-<div style="height:90%; width:95%; position:absolute;">
-<div align="center" id="warning"></div>
+<div style="height:100%; width:100%; position:absolute;">
+<div id="warning" align="center" style="position:fixed; align-content:center; width:100%; top:0px;"></div>
 <div id="begintaskdiv" style="position:absolute; top:50%; left:50%; visibility: hidden; margin-top:220px; margin-left:-35px;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
 <div id="fps_bench" align="center" style="position:fixed; top:50px; left:10px;">
@@ -461,8 +562,9 @@ $(document).ready(main);
 </table>
 </div>
 
-<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="showTutorial();"><u>View Instructions</u></div>
+<div id="tutorial_link" align="right" style="position:absolute; top:50%; right:10px; margin-top:-250px"><div onclick="showTutorial()"><u>View Instructions</u></div><div id="timedisp"></div></div>
 
+<div id="systemmsg" style="position:relative; z-index:-1"></div>
 <div id="tutorial" style="position:relative; z-index:-1"></div>
 <div id="tutorial_original" style="position:absolute; z-index:-1;"><p><b>NOTE: Please close all other programs/taps while running this task to get the optimal system performance.  Users on a suboptimal system can experience glitches that will lead to rejection.  Also, low scores on this task will lead to rejection: make sure to read this instruction!</b></p>
 <p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
