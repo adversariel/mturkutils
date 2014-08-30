@@ -119,13 +119,30 @@ def get_exp(sandbox=True, stimdur=100,
 
     # -- in each HIT, the followings will be repeated 4 times to
     # estimate "quality" of data
-    ind_repeats = [0, 4, 12, 9, 17, 18] * REPEATS_PER_QE_IMG
+    ind_repeats = [0, 4, 47, 9, 17, 18] * REPEATS_PER_QE_IMG
     rng = np.random.RandomState(0)
     rng.shuffle(ind_repeats)
     trials_qe = {e: [copy.deepcopy(exp._trials[e][r]) for r in ind_repeats]
             for e in exp._trials}
-    print np.unique([e[0] for e in trials_qe['imgFiles']])
-    print np.unique([tuple(e) for e in trials_qe['labels']])
+    #print np.unique([e[0] for e in trials_qe['imgFiles']])
+    #print np.unique([tuple(e) for e in trials_qe['labels']])
+
+    # -- flip answer choices of some repeated images
+    n_qe = len(trials_qe['labels'])
+    # if True, flip
+    flips = [True] * (n_qe / 2) + [False] * (n_qe - n_qe / 2)
+    assert len(flips) == n_qe
+    rng.shuffle(flips)
+    assert len(trials_qe.keys()) == 4
+
+    for i, flip in enumerate(flips):
+        if not flip:
+            continue
+        trials_qe['imgFiles'][i][1].reverse()
+        trials_qe['labels'][i].reverse()
+        trials_qe['imgData'][i]['Test'].reverse()
+
+    # -- actual application
     offsets = np.arange(
                 ACTUAL_TRIALS_PER_HIT - 3, -1,
                 -ACTUAL_TRIALS_PER_HIT / float(len(ind_repeats))
@@ -149,12 +166,16 @@ def get_exp(sandbox=True, stimdur=100,
     # -- sanity check
     assert 200 == n_applied_hits, n_applied_hits
     assert len(exp._trials['imgFiles']) == 200 * 174
-    s_ref_labels = set([tuple(e) for e in trials_qe['labels']])
+    s_ref_labels = [tuple(e) for e in trials_qe['labels']]
     offsets2 = np.arange(24)[::-1] + offsets
     ibie = zip(range(0, 200 * 174, 174), range(174, 201 * 174, 174))
-    assert all([set([(e1, e2) for e1, e2 in
-        np.array(exp._trials['labels'][ib:ie])[offsets2]]) == s_ref_labels
+    assert all([[(e1, e2) for e1, e2 in
+        np.array(exp._trials['labels'][ib:ie])[offsets2]] == s_ref_labels
         for ib, ie in ibie])
+    #print set(s_ref_labels), len(set(s_ref_labels))
+
+    # -- drop unneeded, potentially abusable stuffs
+    del exp._trials['imgData']
     print '** Finished creating trials.'
 
     return exp, html_data
