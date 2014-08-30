@@ -55,18 +55,19 @@ additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
                     'new':  str(LEARNING_PERIOD)}]
 exp = HvMPositionExperiment(htmlsrc = 'hvm_position_newtiming.html',
                               htmldst = 'hvm_position_newtiming_n%04d.html',
-                              othersrc = ['raphael.min.js'],
+                              othersrc = ['raphael.min.js', 'dltk.js'],
                               sandbox = True,
                               title = 'Position Judgement',
                               reward = 0.5,
                               duration = 1500,
                               description = 'Make position judgements for up to 50 cent bonus',
                               comment = "Position judgement in HvM dataset",
-                              collection_name = 'hvm_position_newtiming',
+                              collection_name = 'hvm_position_newtiming_test',
                               max_assignments=1,
                               bucket_name='hvm_position',
                               trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD,
-                              additionalrules=additionalrules)
+                              additionalrules=additionalrules,
+                              frame_height_pix=1200)
 
 if __name__ == '__main__':
 
@@ -74,7 +75,7 @@ if __name__ == '__main__':
     exp.prepHTMLs()
     exp.testHTMLs()
     exp.uploadHTMLs()
-    exp.createHIT()
+    #exp.createHIT()
     #exp.updateDBwithHITs()
     #exp.payBonuses()
 

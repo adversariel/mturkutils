@@ -39,15 +39,14 @@ img {
 
 
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
-<script type="text/javascript" src="raphael.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/slider-1.0.2.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140828-1c104b8.js"></script>
-
+<script type="text/javascript" src="dltk.js"></script>
+<script type="text/javascript" src="raphael.min.js"></script>
 
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 
@@ -56,6 +55,7 @@ img {
 
 ExperimentData = null;
 var LEARNING_PERIOD = LEARNINGPERIODNUMBER;
+var exp_type = 'click_object_centroid';
 
 var IMG_FIXATION = 'https://s3.amazonaws.com/task_images/fixation_360x360.png';
 var IMG_BLANK = 'https://s3.amazonaws.com/task_images/blank_360x360.png';
@@ -119,8 +119,6 @@ function reward_scale(error){
 
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
-
-
 
 
 function showResponse() {
@@ -396,17 +394,39 @@ function initSetup() {
 
 
     // setup and show pre-experiment standby screen
-    $('#warning').hide();
     if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
         $('#warning').show();
         $('#warning').html(
             "<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
         );
     }
-    if (BrowserDetect.browser == 'Explorer') {
+
+    // reject unsupported env
+    if (detectmob() || !(BrowserDetect.OS == 'Mac' || BrowserDetect.OS == 'Windows' || BrowserDetect.OS == 'Linux')) {
+        $('#_preload').hide();
         $('#warning').show();
         $('#warning').append(
-            "<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT. Thank you!</b></font></span>"
+            "<span><font color=red style=background-color:white><b>Only Windows, Mac, and Linux are supported.<br />Thank you!</b></font></span>"
+        );
+        return false;
+    }
+
+    if (navigator.userAgent.indexOf('Trident/') >= 0 ||   // IE11+ reports as Firefox...
+            !(BrowserDetect.browser == 'Chrome' || BrowserDetect.browser == 'Firefox' || BrowserDetect.browser == 'Safari') ||  // must be either Chrome or FF
+            !defined(vertical) || !defined(horizontal)) {
+        $('#_preload').hide();
+        $('#warning').show();
+        $('#warning').append(
+            "<span><font color=red style=background-color:white><b>Your browser is not supported by this HIT.  Please only use the latest version of Chrome or Firefox for this HIT.<br />Thank you!</b></font></span>"
+        );
+        return false;
+    }
+
+    if (vertical < 590 || horizontal < 1000) {
+        $('#_preload').hide();
+        $('#warning').show();
+        $('#warning').append(
+            "<span><font color=red style=background-color:white><b>Screen smaller than 1024x600 is not supported.<br />Please try again with higher resolution. Thank you!</b></font></span>"
         );
         return false;
     }
@@ -416,6 +436,20 @@ function initSetup() {
 
 function round2(num) {
     return Math.round(num * 100) / 100;
+}
+
+function defined(obj) {
+    return typeof(obj) != 'undefined';
+}
+
+function detectmob() {
+    // from: http://stackoverflow.com/questions/11381673/javascript-solution-to-detect-mobile-browser
+    if (navigator.userAgent.match(/Android/i) || navigator.userAgent.match(/webOS/i) ||
+            navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i) ||
+            navigator.userAgent.match(/iPod/i) || navigator.userAgent.match(/BlackBerry/i) ||
+            navigator.userAgent.match(/Windows Phone/i))
+        return true;
+    return false;
 }
 
 function checkSystem(benchmark_) {
@@ -448,7 +482,6 @@ function checkSystem(benchmark_) {
         details = "Your browser's refresh rate varies too much (v=" + round2(benchmark.refresh_interval_variance) + ").  Close other programs/tabs and try again please.";
         nook = true;
     }
-
     // if something's wrong, display message and quit
     if (nook) {
         $('#_preload').hide();
@@ -478,7 +511,8 @@ function showTutorial() {
     $("#tutorial").dialog({
         height: 500,
         width: 900,
-        position: ['middle', 20],
+        modal: true,
+        position: ['middle', 30],
         title: "Instructions"
     });
     // able to start the experiment only when the tutorial window is closed.
@@ -536,12 +570,20 @@ function beginExp() {
     runTrialOnce();
 }
 
-function main() {
-    if (!initSetup()) return;   // abort if initSetup() fails
+function testSystemAndPrepExp() {
+    $('#warning').hide();
+    $('#_preload').show();
+    $('#_preload').html("<font color=red style=background-color:white><b>Wait: your system is being tested to check if it can run this task...</b></font>");
+
     dltk.runBenchmark(checkSystem, {canvas_test_fps: 'fps_test'});   // run benchmark...
-    timer = setTimeout(function() {           // ... or fall back to failure mode in 1 min.
+    timer_bench = setTimeout(function() {           // ... or fall back to failure mode in 1 min.
         checkSystem({api_support: false});
         }, 60 * 1000);
+}
+
+function main() {
+    if (!initSetup()) return;   // abort if initSetup() fails
+    testSystemAndPrepExp();
 }
 
 $(document).ready(main);
@@ -585,7 +627,7 @@ $(document).ready(main);
 <ul>
 <li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
 <p>
-<li>After you see an image, you will be presented with a blank gray screen.  You must then <b>click on the screen in the position where the object was located in the  original image.</b>  For example, if you think you see an elephant located somewhere in the screen, place your click in the center of the elephant.</li>
+<li>After you see an image, you will be presented with a blank gray screen.  You must then <b>click on the screen in the position where the object was located in the original image.</b>  For example, if you think you see an elephant located somewhere in the screen, place your click in the <b>center</b> of the elephant.</li>
 <p>
 <li>The first several trials consist of a learning period.  During this period, the correct answer will be indicated on the screen with a blue marker, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the interface.</li>
 <p>
@@ -600,7 +642,7 @@ $(document).ready(main);
 <p>
 <li>Please be sure to maximize your browser window before beginning this experiment. .</li>
 <p>
-<li><b>In total, you will see 100 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
+<li><b>In total, you will see 130 images.  We expect this experiment to take about 10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
 <p>
 <li>When you are ready to begin, click the "Begin" button at the very top of the screen. <b>Be prepared to see the first image -- it happens very fast!</b></li>
 <p>
