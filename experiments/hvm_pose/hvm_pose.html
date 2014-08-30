@@ -68,7 +68,7 @@ img {
 
 <script type="text/javascript">
 
-ExperimentData = null; 
+ExperimentData = null;
 
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
@@ -334,12 +334,12 @@ function reward_scale(error){
         var _score = ((maxdist - error) / maxdist);
         var _randscore = ((maxdist - randomerror) / maxdist);
         var _scorediff = (_score - _randscore) / (1 - _randscore);
-        _score = Math.max(_scorediff, 0).toPrecision(2);
+        _score = Math.max(_scorediff, 0).toFixed(2);
         return _score
      } else{
         return 0;
      }
-    };
+};
 
 var reward;
 var error = null;
@@ -485,11 +485,11 @@ function clicked() {
         var e = getDistance()
         distances.push(e);
         pushData({"rand_rot_x": randx, "rand_rot_y": randy, "rand_rot_z": randz,
-                  "camera_pos0": new THREE.Vector3().copy(camera_pos0), 
+                  "camera_pos0": new THREE.Vector3().copy(camera_pos0),
                   "camera_rot0": new THREE.Quaternion().copy(camera_rot0),
-                  "camera_pos1": new THREE.Vector3().copy(camera_pos1), 
+                  "camera_pos1": new THREE.Vector3().copy(camera_pos1),
                   "camera_rot1": new THREE.Quaternion().copy(camera_rot1),
-                  "camera_angle": camera_angle, 
+                  "camera_angle": camera_angle,
                   "camera_val": new THREE.Quaternion().copy(camera_rval),
                   '_stimduration': _stimduration
                   });

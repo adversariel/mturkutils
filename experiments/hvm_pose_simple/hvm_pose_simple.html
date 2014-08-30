@@ -68,7 +68,7 @@ img {
 
 <script type="text/javascript">
 
-ExperimentData = null; 
+ExperimentData = null;
 
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
@@ -140,23 +140,23 @@ function createScene( geometry, materials) {
     meshDict[objname] = mesh;
     makeScene();
 }
-    
+
 function makeScene() {
     mesh.position.set(0, 0, 0);
     mesh.scale.set(1, 1, 1);
     mesh.setRotationFromEuler(new THREE.Euler(0, 0, 0));
-    
+
     rotateAroundWorldAxis(mesh, 0, 0, -posdict[objname]['z']);
     rotateAroundWorldAxis(mesh, 0, -posdict[objname]['y'], 0);
     rotateAroundWorldAxis(mesh, -posdict[objname]['x'], 0, 0);
-    
+
     var _angl = get_angle();
     rotateAroundWorldAxis(mesh, _angl['x'], _angl['y'], _angl['z']);
 
     var rzrot = imgData[trialNumber]['ryz'] / 180 * Math.PI;
     var ryrot = imgData[trialNumber]['rxy'] / 180 * Math.PI;
     var rxrot = imgData[trialNumber]['rxz'] / 180 * Math.PI;
-    
+
     var realRotation1 = getRotationAroundWorldAxis(0, -ryrot, 0);
     var realRotation2 = getRotationAroundWorldAxis(rxrot, 0, 0);
     var realRotation3 = getRotationAroundWorldAxis(0, 0, -rzrot);
@@ -223,7 +223,7 @@ function init_scene() {
     controls.rotateSpeed = 2.0;
     controls.noZoom = true;
     controls.noPan = true;
-    
+
     controls.staticMoving = true;
     controls.dynamicDampingFactor = 0.3;
 
@@ -362,7 +362,7 @@ function reward_scale(error){
      } else{
         return 0;
      }
-    };
+};
 
 var reward;
 var error = null;
@@ -468,7 +468,7 @@ function showStim() {
                         if (trialNumber+1 !== totalTrials) {
                             var thisStim = imgFiles_new[trialNumber+1];
                             $('#main_test').attr('src', thisStim);
-                            }											
+                            }
 						setTimeout("showResponse()", ISI);
 						}, _stimduration);
 }
@@ -499,7 +499,7 @@ function showResponse() {
         $("#disptest").show();
         var thisStim = imgFiles_new[trialNumber];
 		$('#main_disptest').attr('src', thisStim);
-		
+
     } else {
     	$('#instruct').html('Rotate the pointer into the same orientation as the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> you just saw.<br/>(object top = <font color=red>red cone</font>, object front = <font color=blue>blue triangle</font>)');
     }
@@ -515,11 +515,11 @@ function clicked() {
         var e = getDistance()
         distances.push(e);
         pushData({"rand_rot_x": randx, "rand_rot_y": randy, "rand_rot_z": randz,
-                  "camera_pos0": new THREE.Vector3().copy(camera_pos0), 
+                  "camera_pos0": new THREE.Vector3().copy(camera_pos0),
                   "camera_rot0": new THREE.Quaternion().copy(camera_rot0),
-                  "camera_pos1": new THREE.Vector3().copy(camera_pos1), 
+                  "camera_pos1": new THREE.Vector3().copy(camera_pos1),
                   "camera_rot1": new THREE.Quaternion().copy(camera_rot1),
-                  "camera_angle": camera_angle, 
+                  "camera_angle": camera_angle,
                   "camera_val": new THREE.Quaternion().copy(camera_rval),
                   '_stimduration': _stimduration
                   });

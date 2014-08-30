@@ -52,7 +52,7 @@ img {
 
 <script type="text/javascript">
 
-
+var expLoadTime = new Date();
 ExperimentData = null;
 var LEARNING_PERIOD = LEARNINGPERIODNUMBER;
 var exp_type = 'click_object_centroid';
@@ -106,17 +106,19 @@ var distances = [];
 
 
 function reward_scale(error){
-     if (error !== null){
-         var random_error = 0.5;
-         var bonus = Math.max((random_error - error) / random_error, 0);
+    var maxdist = 1;
+    var randomerror = .32;  //empirically observed random error
+    console.log('error', error);
+    if (error !== null){
+        var _score = ((maxdist - error) / maxdist);
+        var _randscore = ((maxdist - randomerror) / maxdist);
+        var _scorediff = (_score - _randscore) / (1 - _randscore);
+        _score = Math.max(_scorediff, 0).toFixed(2);
+        return _score
      } else{
-         bonus = 0.0
+        return 0;
      }
-     return bonus.toFixed(2)
-    };
-
-
-
+};
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
 
@@ -392,15 +394,6 @@ function initSetup() {
     ctx_test_on = dltk.getOnScreenContextFromCanvas('main_test');
     ctx_resp_on = dltk.getOnScreenContextFromCanvas('getClick');
 
-
-    // setup and show pre-experiment standby screen
-    if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
-        $('#warning').show();
-        $('#warning').html(
-            "<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
-        );
-    }
-
     // reject unsupported env
     if (detectmob() || !(BrowserDetect.OS == 'Mac' || BrowserDetect.OS == 'Windows' || BrowserDetect.OS == 'Linux')) {
         $('#_preload').hide();
@@ -489,19 +482,64 @@ function checkSystem(benchmark_) {
         $('#warning').html(
             "<font color=red style=background-color:white><b>Your system CANNOT run this HIT at this point:" + details + "</b></font>"
         );
-        alert(details);
-    }
-    // passed! proceed to experiment preps.
-    else {
-        if (timer !== null) {
-            clearTimeout(timer);
-            timer = null;
+        if (failed_permanently) alert(details);
+        else {
+            $("#systemmsg").show();
+            $("#systemmsg").html(details + " Do you want to retry?");
+            $("#systemmsg").dialog({
+                height: 'auto',
+                width: 460,
+                modal: true,
+                position: ['middle', 30],
+                title: "Warning",
+                buttons: {
+                    "Retry": function() {
+                        $(this).dialog("close");
+                        benchmark_finished = false;
+                        retry++;
+                        testSystemAndPrepExp();
+                    },
+                    Cancel: function() {
+                        $(this).dialog("close");
+                    }
+                }
+            });
         }
-
-        $("#tutorial_link").show();
-        showTutorial();
-        preloadResources();
     }
+    else afterPassBenchmark();
+
+}
+
+function startClock() {
+    timer_disp = setInterval(function () {
+        var slop = 5;
+        var elapsed = parseInt((new Date() - expLoadTime) / 1000, 10) + slop;
+        var minutes = parseInt(elapsed / 60, 10);
+        var seconds = elapsed % 60;
+        var minutes_str = (minutes <= 9) ? '0' : '';
+        var seconds_str = (seconds <= 9) ? '0' : '';
+        minutes_str += minutes;
+        seconds_str += seconds;
+
+        $('#timedisp').html('Time Passed: ' + minutes_str + ':' + seconds_str);
+        }, 1000);
+}
+
+function afterPassBenchmark(){
+    benchmark_passed = true;
+
+    if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
+        $('#warning').show();
+        $('#warning').html(
+            "<font color=red style=background-color:white><b>You are in PREVIEW mode.<br />Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
+        );
+    }
+
+    $("#tutorial_link").show();
+    $('#fps_bench').hide();
+    startClock();
+    showTutorial();
+    preloadResources();
 }
 
 function showTutorial() {
@@ -509,7 +547,7 @@ function showTutorial() {
     $("#tutorial").show();
     $("#tutorial").html($("#tutorial_original").html());
     $("#tutorial").dialog({
-        height: 500,
+        height: 'auto',
         width: 900,
         modal: true,
         position: ['middle', 30],
@@ -614,13 +652,14 @@ $(document).ready(main);
 </div>
 
 
-<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,	width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
+<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,	width:600,position:'center',title:'Instructions'})"><u>View Instructions</u><div id="timedisp"></div></div>
 
 <div id="tutorial" style="position:relative; z-index:-1"></div>
 <div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: Instructions have changed, and low performance will lead to rejection: make sure to read!**</b>
 <p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
-<p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
-<p><font color=red><b>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</b></font></p>
+<p>This task will require you to look at images on your computer screen and click to indicate a response for up to about 10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</p>
+<p>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</p>
+<p>The base compensation for this hit is $0.35.   We will also pay a <b>performance-based bonus</b> that can be as high as $0.50.  The <b>more accurate</b> your answers are, the <b>larger the bonus</b> you will receive.</p>
 <p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
 <center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
 <div id="tutorial2" style="position:absolute; z-index:-1;">
