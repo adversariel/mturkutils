@@ -46,11 +46,13 @@ img {
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/slider-1.0.2.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140827-0fa8566.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140828-1c104b8.js"></script>
+
 
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 
 <script type="text/javascript">
+
 
 ExperimentData = null;
 var LEARNING_PERIOD = LEARNINGPERIODNUMBER;
@@ -63,6 +65,7 @@ var FRAME_INTERVAL_TOL = 1000 / 60 + 2;   // mean frame interval should be small
 var FRAME_INTERVAL_VAR_TOL = 5 * 5;       // jitter shouldn't be larger than 5ms
 
 var imgFiles = ExperimentData.imgFiles;
+var imgFilesProcessed;
 var imgData = ExperimentData.imgData;
 var totalTrials = imgFiles.length;
 var BreakTimes = [];
@@ -99,6 +102,7 @@ var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
                'Planes': 'plane', 'Tables': 'table'};
 
 var b1, remove_them;
+var distances = [];
 
 
 function reward_scale(error){
@@ -121,6 +125,7 @@ function reward_scale(error){
 
 function showResponse() {
 	console.log('showResponse');
+	$('#test').hide()
     obj = {};
 
 	$('#totalSeen').html('Total Objects Seen: 0');
@@ -142,12 +147,13 @@ function showResponse() {
 
     if (trialNumber < LEARNING_PERIOD){
         b1.remove();
-        var real_posx = 2 * imgData[trialNumber]['centroid_y'] ;
-        var real_posy = 2 * imgData[trialNumber]['centroid_x'];
+        var real_posx = 2 * imgData[trialNumber]['centroid_y'] * (360./512);
+        var real_posy = 2 * imgData[trialNumber]['centroid_x'] * (360./512);
         console.log(real_posx, real_posy)
-        canvas_context.fillStyle="blue";
-        canvas_context.fillRect(real_posx-5, real_posy-5, 10, 10);
-        canvas_context.stroke();
+        ctx_resp_on.fillStyle="blue";
+        ctx_resp_on.fillRect(real_posx-5, real_posy-5, 10, 10);
+        //ctx_resp_on.rect(0, 0, 360, 360)
+        ctx_resp_on.stroke();
     }
 
 	$('#getClick').show();
@@ -177,15 +183,17 @@ function runTrialOnce() {
 
 
     trial_specs.push({
-        urls: [imgFiles[trialNumber][0]],
+        urls: [imgFilesProcessed[trialNumber][0]],
         contexts: [ctx_test_on],
         duration: _stimduration,
+        pre: preTrial1
     });
     // ISI 2 blank
     trial_specs.push({
         urls: [IMG_BLANK],
         contexts: [ctx_test_on],
         duration: ISI,
+        pre: preTrial2
     });
 
     // Queue experiment
@@ -213,39 +221,51 @@ function runTrialOnce() {
 
 function preTrial(hist) {
     $('#getClick').hide();
-    $('.test').show();
+    $('#test').show();
+}
+
+function preTrial1(hist) {
     if (trialNumber < LEARNING_PERIOD){
-        var real_posx = 2 * imgData[trialNumber]['centroid_y'] ;
-        var real_posy = 2 * imgData[trialNumber]['centroid_x'];
+        var real_posx = 2 * imgData[trialNumber]['centroid_y'] * (360./512);
+        var real_posy = 2 * imgData[trialNumber]['centroid_x'] * (360./512);
         b1 = R1.rect(real_posx-5, real_posy-5, 10, 10);
         b1.attr({'fill': 'blue'});
         remove_them = true;
     } else{
         remove_them = false;
     }
-
-    // window.scrollTo(0, 0); // this causes suboptimal performance (forced sync)
 }
+
+
+function preTrial2(hist) {
+
+    if (remove_them){
+        b1.remove();
+    }
+
+}
+
 
 
 function clicked(pos_x, pos_y, eX, eY) {
     trialEndTime = new Date();
 	console.log('clicked');
-	if (begin) {
+	if (exp_started) {
  		trialEndTime = new Date();
-
+        var canvas = ctx_resp_on.canvas;
  		canvas.width = canvas.width;
 
         $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:red; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
 
-        var pos_xn = .6 * (pos_x - 256) / 256.;
-        var pos_yn = -1.2 * (pos_y - 256) / 256.;
+        var Kval = 180.
+        var pos_xn = .6 * (pos_x - Kval) / Kval;
+        var pos_yn = -1.2 * (pos_y - Kval) / Kval;
 
  		pushData({ 'X':pos_x, 'Y':pos_y, 'eX': eX, 'eY': eY,
  		           'pos_xn': pos_xn, 'pos_yn': pos_yn, '_stimduration': _stimduration})
 
-        var real_posx = -imgData[trialNumber]['ty'];
-        var real_posy = imgData[trialNumber]['tz'];
+        var real_posx = -imgData[trialNumber]['ty'] * (360./512);
+        var real_posy = imgData[trialNumber]['tz'] * (360./512);
         var dist = Math.sqrt(Math.pow(real_posx - pos_xn, 2) + Math.pow(real_posy - pos_yn, 2));
 
         distances.push(dist);
@@ -266,7 +286,7 @@ function clicked(pos_x, pos_y, eX, eY) {
 
 function pushData(myval) {
 	console.log('pushData');
-StimDone.push(imgFiles_new[trialNumber]);
+StimDone.push(imgFiles[trialNumber]);
 response.push(myval);
 trialDurations.push(trialEndTime - trialStartTime);
 }
@@ -279,7 +299,7 @@ function endTrial() {
 	var resultsobj = [];
 	resultsobj.push({
 					Response:response,
-					ImgOrder:imgFiles_new,
+					ImgOrder:imgFiles,
 					StimShown:StimDone,
 					StimDuration:stimduration,
 					RT:trialDurations,
@@ -312,9 +332,7 @@ function endTrial() {
     if (trialNumber === LEARNING_PERIOD){
         endLearningPeriod();
     } else {
-        $('.fixation img').attr('src',fixationImage.src);
-        $('.fixation').show();
-        setTimeout(runTrialOnce, ISI);
+        runTrialOnce();
     }
   }
 }
@@ -329,7 +347,7 @@ function endLearningPeriod(){
 
 function takeABreak() {
     dltk.drawToContext(breakscreen.src, ctx_test_on, null, false);
-    $('.test').show();
+    $('#test').show();
     $('#_preload').html(
         "<font color=red style=background-color:white>You have completed " +
         Math.round((trialNumber / totalTrials) * 100) +
@@ -342,7 +360,7 @@ function takeABreak() {
         var actualKey = String.fromCharCode(unicode);
         if (actualKey == 'z') {
             trialNumber++;
-            $('.test').hide();
+            $('#test').hide();
             $('#_preload').hide();
             runTrialOnce();
         }
@@ -472,10 +490,14 @@ function showTutorial() {
 
 function preloadResources() {
     // load fixation dot and blank image first...
+    imgFilesProcessed = [];
+    for (i=0;i < imgFiles.length; i++){
+        imgFilesProcessed.push([imgFiles[i], []])
+    }
     dltk.prepareResources([[IMG_FIXATION, []], [IMG_BLANK, []]], [ctx_test_on, []], function() {
         // ...then load trial images
         dltk.prepareResources(
-            imgFiles,
+            imgFilesProcessed,
             [ctx_test_on, []],
             preBeginExp,   // call this when successful
             function(progress, total) {
@@ -486,7 +508,7 @@ function preloadResources() {
             }
         );
     });
-    /
+
 }
 
 function preBeginExp() {
@@ -537,18 +559,18 @@ $(document).ready(main);
 <canvas id="fps_test" width="50" height="50" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
 </div>
 <div id="endLearningPeriodScreen" align="center" style="position:relative; z-index:200; height=512px; width=512px; top:75px; left:0px;font-size:100px">End of learning period!<br>Trials will commence in 5 seconds.<br>Be ready, as they will be fast!</div>
-<div align="center" id="markers">
 
-    <div id="test" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;">
-        <canvas id="main_test" width="360" height="360"></canvas>
-        <div id="inner_test" style="position: absolute;left: 0px; top:0px;z-index: 2; width: 300px;"></div>
-    </div>
-
-    <canvas id="getClick" align="center" width="512" height="512" style="position:relative; top:15px; left:0px;"></canvas>
-	<div id="instruct" style="position:relative; top:25px; font-size:150%;">Click where the object was!</div>
-	<div id="trialCounter" style="position:relative; top:65px; font-size:small;"></div>
-
+<div align="center" id="outer_container">
+<div id="test" style="position:relative; top:15px; left:0px;">
+    <canvas id="main_test" width="360" height="360"></canvas>
+    <div id="inner_test" style="position: absolute; left: 0; top:0; z-index: 2; width: 100%; height: 100%;"></div>
 </div>
+
+<canvas id="getClick" align="center" width="360" height="360" style="position:relative; top:15px; left:0px;"></canvas>
+<div id="instruct" style="position:relative; font-size:150%; top:15px">Click where the object was!</div>
+<div id="trialCounter" style="position:relative; font-size:small; top:25px"></div>
+</div>
+
 
 <div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,	width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
 
