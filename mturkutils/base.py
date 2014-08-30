@@ -1208,7 +1208,7 @@ def download_results(hitids, dstprefix=None, sandbox=True,
     """Download all assignment results in `hittids` and save one pickle file
     per HIT with `dstprefix` if it is not `None`.  If `dstprefix` is `None`,
     the downloaded info will be returned without saving files."""
-    exp = Experiment(sandbox=sandbox,
+    exp = Experiment(None, None, sandbox=sandbox,
         max_assignments=MTURK_PAGE_SIZE_LIMIT,
         reward=0.,
         collection_name=None,   # disables db connection
