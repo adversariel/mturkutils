@@ -60,7 +60,7 @@ img {
 var expLoadTime = new Date();
 ExperimentData = null;
 var LEARNING_PERIOD = LEARNINGPERIODNUMBER;
-var exp_type = 'click_object_centroid';
+var exp_type = 'cover_minimum_area_bounding_box';
 
 var IMG_FIXATION = 'https://s3.amazonaws.com/task_images/fixation_360x360.png';
 var IMG_BLANK = 'https://s3.amazonaws.com/task_images/blank_360x360.png';
@@ -693,6 +693,8 @@ function beginExp() {
     $("#_preload").hide();
 
     $('#delete').click(function(e){
+        click1data = null;
+        click2data = null;
         click3data = null;
         if (rect !== null){
             rect.remove();
@@ -702,6 +704,7 @@ function beginExp() {
             rect1.remove();
         }
         rect1 = null;
+        clicknum = 1;
         if (line !== null){
             line.remove()
         }
