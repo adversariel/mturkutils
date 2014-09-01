@@ -74,6 +74,40 @@ var full_history_delta_flush;
 
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
+function primeSystemAndRunTrialOnce() {
+    // Prime the browser by running a single blank trial
+    var trial_specs = [];
+
+    // blank
+    trial_specs.push({
+        urls: [IMG_BLACK],
+        contexts: [ctx_test_on],
+        duration: 50,
+        pre: preTrial   // this should be short to run
+    });
+    // another blank
+    trial_specs.push({
+        urls: [IMG_BLACK],
+        contexts: [ctx_test_on],
+        duration: 50,
+    });
+    // yet another blank
+    trial_specs.push({
+        urls: [IMG_BLACK],
+        contexts: [ctx_test_on],
+        duration: 50,
+    });
+
+    // Queue experiment
+    dltk.queueTrial(trial_specs, function() {
+        setTimeout(function() {
+            // by now, the system has been primed.  Proceed to actual experiment.
+            console.log('Primed.');
+            runTrialOnce();
+        }, 0);
+    });
+}
+
 function runTrialOnce() {
     // Run single trial by using the new framework
     var trial_specs = [];
@@ -324,7 +358,7 @@ function beginExp() {
     $("#begintask").hide();
     $("#begintaskdiv").hide();
     $("#_preload").hide();
-    runTrialOnce();
+    primeSystemAndRunTrialOnce();
 }
 
 function standby() {
