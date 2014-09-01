@@ -545,7 +545,7 @@ function stopClock() {
 }
 
 function startClock() {
-    timer_disp = setInterval(function () {
+    var updateTimer = function updateTimer () {
         var slop = 5;
         var elapsed = parseInt((new Date() - expLoadTime) / 1000, 10) + slop;
         var minutes = parseInt(elapsed / 60, 10);
@@ -556,7 +556,10 @@ function startClock() {
         seconds_str += seconds;
 
         $('#timedisp').html('Time Passed: ' + minutes_str + ':' + seconds_str);
-        }, 1000);
+    };
+
+    timer_disp = setInterval(updateTimer, 1000);
+    updateTimer();  // update once NOW.
 }
 
 function recomputeOffset() {
