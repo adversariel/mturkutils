@@ -63,6 +63,9 @@ var JS_TRES_TOL = 17;            // An example tolerance value for js timing (~6
 var JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
 var FRAME_INTERVAL_TOL = 1000 / 60 + 2;   // mean frame interval should be smaller than 16.66ms + 2ms
 var FRAME_INTERVAL_VAR_TOL = 5 * 5;       // jitter shouldn't be larger than 5ms
+var FRAME_INTERVAL_QUANTFAC_TOL = 0.8;    // fail if more than 80% of timestamps are multiples of 100us (FF)
+var FRAME_INTERVAL_UNIQFAC_TOL = 3;       // fail if there are <= 3 unique intervals (Chrome)
+
 
 var imgFiles = ExperimentData.imgFiles;
 var imgFilesProcessed;
@@ -163,7 +166,44 @@ function showResponse() {
 
 }
 
+function primeSystemAndRunTrialOnce() {
+    // Prime the browser by running a single blank trial
+    var trial_specs = [];
+
+    stopClock();   // stop to minimize display burden
+
+    // blank
+    trial_specs.push({
+        urls: [IMG_BLANK],
+        contexts: [ctx_test_on],
+        duration: 50,
+        pre: preTrial   // this should be short to run
+    });
+    // another blank
+    trial_specs.push({
+        urls: [IMG_BLANK],
+        contexts: [ctx_test_on],
+        duration: 50,
+    });
+    // yet another blank
+    trial_specs.push({
+        urls: [IMG_BLANK],
+        contexts: [ctx_test_on],
+        duration: 50,
+    });
+
+    // Queue experiment
+    dltk.queueTrial(trial_specs, function() {
+        setTimeout(function() {
+            // by now, the system has been primed.  Proceed to actual experiment.
+            runTrialOnce();
+        }, 0);
+    });
+}
+
 function runTrialOnce() {
+    stopClock();
+
     // Run single trial by using the new framework
     var trial_specs = [];
     // ISI 1 fixation dot
@@ -212,7 +252,7 @@ function runTrialOnce() {
             measuredISI2.push(t_ISI2);
 
             console.log('ISI1, stimon, ISI2 = ', + t_ISI1 + ', ' + t_stim + ', ' + t_ISI2);
-
+            startClock();
             showResponse();
 
         }, 0);
@@ -244,7 +284,6 @@ function preTrial2(hist) {
     }
 
 }
-
 
 
 function clicked(pos_x, pos_y, eX, eY) {
@@ -392,6 +431,15 @@ function initSetup() {
     ctx_test_on = dltk.getOnScreenContextFromCanvas('main_test');
     ctx_resp_on = dltk.getOnScreenContextFromCanvas('getClick');
 
+    R1 = Raphael("inner_test", 360, 360);
+
+	$('#getClick').click(function(e) {
+		var offset = $(this).offset()
+		var pos_x = e.pageX - offset.left;
+		var pos_y = e.pageY - offset.top;
+		clicked(pos_x, pos_y, e.pageX, e.pageY);
+	});
+
     // reject unsupported env
     if (detectmob() || !(BrowserDetect.OS == 'Mac' || BrowserDetect.OS == 'Windows' || BrowserDetect.OS == 'Linux')) {
         $('#_preload').hide();
@@ -456,23 +504,39 @@ function checkSystem(benchmark_) {
     if (!benchmark.api_support) {
         details = "Your browser seems to be outdated to run this task.  Please try with the newest Chrome or Firefox please.";
         nook = true;
+        failed_permanently = true;
     }
     else if (benchmark.js_tres > JS_TRES_TOL) {
-        details = "Your system is too slow to complete this task (t=" + round2(benchmark.js_tres) + ").  Close other programs/tabs and try again please.";
+        details = "Your system is too slow to complete this task (t=" + round2(benchmark.js_tres) + ").  Close other programs/tabs please.";
         nook = true;
     }
     else if (benchmark.js_tres_variance > JS_TRES_VAR_TOL) {
-        details = "Your system's clock varies too much (v=" + round2(benchmark.js_tres_variance) + ").  Close other programs/tabs and try again please.";
+        details = "Your system's clock varies too much (v=" + round2(benchmark.js_tres_variance) + ").  Close other programs/tabs please.";
         nook = true;
     }
+    else if (BrowserDetect.browser == 'Firefox' && benchmark.refresh_interval_quantization_factor > FRAME_INTERVAL_QUANTFAC_TOL) {
+        details = "Your browser's timestamps are too inaccurate (q=" + round2(benchmark.refresh_interval_quantization_factor) + ").  Please first make sure you're using the latest version of Firefox.  If this browser has been running for a long time or the computer was suspended while running this browser, you need to restart the browser (not just closing and re-opening this tab only) to run this task.";
+        suff = " If you believe this error was just a hiccup, you can try this browser testing again. Do you want to retry?";
+        nook = true;
+        msg_height = 350;
+        msg_width = 700;
+    }
+    else if (BrowserDetect.browser == 'Chrome' && benchmark.refresh_interval_uniqueness_factor <= FRAME_INTERVAL_UNIQFAC_TOL) {
+        details = "Your browser's timestamps are too inaccurate (u=" + round2(benchmark.refresh_interval_uniqueness_factor) + ").  Please first make sure you're using the latest version of Chrome.  If this browser has been running for a long time or the computer was suspended while running this browser, restarting the browser (not just closing and re-opening this tab only) will solve this problem most of the time.  However, if that doesn't work, one of the following options should fix the problem: (1) Use the latest version of Firefox; or (2) Restart your computer.";
+        suff = " If you believe this error was just a hiccup, you can try this browser testing again. Do you want to retry?";
+        nook = true;
+        msg_height = 350;
+        msg_width = 700;
+    }
     else if (benchmark.refresh_interval > FRAME_INTERVAL_TOL) {
-        details = "Your browser's refresh rate is slower than 60fps (f=" + round2(1000 / benchmark.refresh_interval) + ").  Close other programs/tabs and try again please.";
+        details = "Your browser's refresh rate is slower than 60fps (f=" + round2(1000 / benchmark.refresh_interval) + ").  Close other programs/tabs please.";
         nook = true;
     }
     else if (benchmark.refresh_interval_variance > FRAME_INTERVAL_VAR_TOL) {
-        details = "Your browser's refresh rate varies too much (v=" + round2(benchmark.refresh_interval_variance) + ").  Close other programs/tabs and try again please.";
+        details = "Your browser's refresh rate varies too much (v=" + round2(benchmark.refresh_interval_variance) + ").  Close other programs/tabs please.";
         nook = true;
     }
+
     // if something's wrong, display message and quit
     if (nook) {
         $('#_preload').hide();
@@ -522,6 +586,13 @@ function startClock() {
         $('#timedisp').html('Time Passed: ' + minutes_str + ':' + seconds_str);
         }, 1000);
 }
+
+function stopClock() {
+    if (timer_disp === null) return;
+    clearInterval(timer_disp);
+    timer_disp = null;
+}
+
 
 function afterPassBenchmark(){
     benchmark_passed = true;
@@ -593,17 +664,7 @@ function beginExp() {
     $("#begintask").hide();
     $("#begintaskdiv").hide();
     $("#_preload").hide();
-
-	$('#getClick').click(function(e) {
-		var offset = $(this).offset()
-		var pos_x = e.pageX - offset.left;
-		var pos_y = e.pageY - offset.top;
-		clicked(pos_x, pos_y, e.pageX, e.pageY);
-	});
-
-    R1 = Raphael("inner_test", 360, 360);
-
-    runTrialOnce();
+    primeSystemAndRunTrialOnce();
 }
 
 function testSystemAndPrepExp() {

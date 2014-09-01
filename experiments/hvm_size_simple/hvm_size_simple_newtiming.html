@@ -47,20 +47,20 @@ img {
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/slider-1.0.2.js"></script>
+<link rel="stylesheet" href="http://jqueryui.com/resources/demos/style.css">
 
 <script type="text/javascript" src="dltk.js"></script>
 <script type="text/javascript" src="raphael.min.js"></script>
-<script type="text/javascript" src="intersect.js"></script>
+<script type="text/javascript" src="posdict.js"></script>
+<script type="text/javascript" src="jstat.min.js"></script>
 
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 
-<script>
-
-
+<script type="text/javascript">
 var expLoadTime = new Date();
 ExperimentData = null;
 var LEARNING_PERIOD = LEARNINGPERIODNUMBER;
-var exp_type = 'cover_minimum_area_bounding_box';
+var exp_type = 'simple_size_slider';
 
 var IMG_FIXATION = 'https://s3.amazonaws.com/task_images/fixation_360x360.png';
 var IMG_BLANK = 'https://s3.amazonaws.com/task_images/blank_360x360.png';
@@ -107,48 +107,23 @@ var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
                'Chairs': 'chair', 'Faces': 'face', 'Fruits': 'fruit',
                'Planes': 'plane', 'Tables': 'table'};
 var distances = [];
-var pts;
-var R, sdist2, line = null, rect = null, rect1 = null;
-var remove_them, c1, c2, c3, c4, l1, l2, l3, l4;
-var p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y;
-var clicknum = 1;
-var click1data = null, click2data = null; click3data = null;
+var IMSIZE = 360;
 
+var container, posdict, sizes, bounding_boxes, imgObj;
+var realvals = new Array();
+var vals = new Array();
 
-function dpointline(x0, y0, x1, y1, x2, y2) {
-    var num = (x2 - x1) * (y1 - y0) - (x1 - x0) * (y2 - y1);
-    var denom = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-    return num/denom
-}
-
-
-function get_pos(e, offset){
-    var pos_x, posy;
-    if (e.offsetX == undefined){
-        pos_x = e.pageX - offset.left;
-        pos_y = e.pageY - offset.top;
-
-    }  else {
-        pos_x = e.offsetX;
-        pos_y = e.offsetY;
-    }
-    return [pos_x, pos_y]
-}
 
 function reward_scale(error){
-    var maxdist = 1;
-    var randomerror = .9;  //empirically observed random error??
-    console.log('error', error);
-    if (error !== null){
-        var _score = ((maxdist - error) / maxdist);
-        var _randscore = ((maxdist - randomerror) / maxdist);
-        var _scorediff = (_score - _randscore) / (1 - _randscore);
-        _score = Math.max(_scorediff, 0).toFixed(2);
-        return _score
+     if (error !== null){
+         var random_error = .9;
+         var bonus = Math.max((random_error - error) / random_error, 0);
      } else{
-        return 0;
+         bonus = 0.0
      }
-};
+     return bonus.toFixed(2)
+}
+
 
 function primeSystemAndRunTrialOnce() {
     // Prime the browser by running a single blank trial
@@ -186,7 +161,6 @@ function primeSystemAndRunTrialOnce() {
 }
 
 function runTrialOnce() {
-
     stopClock();
 
     // Run single trial by using the new framework
@@ -200,25 +174,23 @@ function runTrialOnce() {
     });
     // sample stimulus
 
-    if (trialNumber < LEARNING_PERIOD){
-        _stimduration = 2000;
-    } else {
-        _stimduration = stimduration;
-    }
-
+	if (trialNumber < LEARNING_PERIOD) {
+	    _stimduration = 2000;
+	} else {
+	    _stimduration = stimduration;
+	}
 
     trial_specs.push({
         urls: [imgFilesProcessed[trialNumber][0]],
         contexts: [ctx_test_on],
-        duration: _stimduration,
-        pre: preTrial1
+        duration: _stimduration
     });
+
     // ISI 2 blank
     trial_specs.push({
         urls: [IMG_BLANK],
         contexts: [ctx_test_on],
-        duration: ISI,
-        pre: preTrial2
+        duration: ISI
     });
 
     // Queue experiment
@@ -245,179 +217,213 @@ function runTrialOnce() {
 }
 
 function preTrial(hist) {
-    $('#getClick').hide();
-    $('#test').show();
-}
-
-function preTrial1(hist) {
-    var _r = (360./512);
-    p0y = 2*imgData[trialNumber]['area_bb_0_x'] * _r;
-    p0x = 2*imgData[trialNumber]['area_bb_0_y'] * _r;
-    p1y = 2*imgData[trialNumber]['area_bb_1_x'] * _r;
-    p1x = 2*imgData[trialNumber]['area_bb_1_y'] * _r;
-    p2y = 2*imgData[trialNumber]['area_bb_2_x'] * _r;
-    p2x = 2*imgData[trialNumber]['area_bb_2_y'] * _r;
-    p3y = 2*imgData[trialNumber]['area_bb_3_x'] * _r;
-    p3x = 2*imgData[trialNumber]['area_bb_3_y'] * _r;
-    pts = counterclockwise([[p0x, p0y], [p1x, p1y], [p2x, p2y], [p3x, p3y]]);
-    p0x = pts[0][0];  p0y = pts[0][1];
-    p1x = pts[1][0];  p1y = pts[1][1];
-    p2x = pts[2][0];  p2y = pts[2][1];
-    p3x = pts[3][0];  p3y = pts[3][1];
-    if (trialNumber < LEARNING_PERIOD){
-        c1 = R1.circle(p0x, p0y, 5);
-        c1.attr({'fill': 'blue'})
-        c2 = R1.circle(p1x, p1y, 5);
-        c2.attr({'fill': 'blue'})
-        c3 = R1.circle(p2x, p2y, 5);
-        c3.attr({'fill': 'blue'})
-        c4 = R1.circle(p3x, p3y, 5);
-        c4.attr({'fill': 'blue'})
-        l1 = R1.path( ["M", p0x, p0y, "L", p1x, p1y ] );
-        l2 = R1.path( ["M", p1x, p1y, "L", p2x, p2y ] );
-        l3 = R1.path( ["M", p2x, p2y, "L", p3x, p3y ] );
-        l4 = R1.path( ["M", p3x, p3y, "L", p0x, p0y ] );
-        remove_them = true;
-    } else{
-        remove_them = false;
-    }
-
-}
-
-
-function preTrial2(hist) {
-
-    if (remove_them){
-        c1.remove(); c2.remove(); c3.remove(); c4.remove();
-        l1.remove(); l2.remove(); l3.remove(); l4.remove();
-    }
+    $('#responseCanvas').hide();
+    $('#main_test').show();
 }
 
 
 function showResponse() {
-	$('#test').hide()
 
-    obj = {};
+    var fpath = "https://s3.amazonaws.com/dicarlocox-datasets/hvm_var0_masked_images/" + imgData[trialNumber]['obj'] + ".png"
+    imgObj = R.image(fpath, 0, 0, 360, 360);
+
+    $('#main_test').hide();
 
 	$('#totalSeen').html('Total Objects Seen: 0');
-	if (trialNumber > 0){
-    	error = (trialNumber / (trialNumber + 1)) * error + (1 / (trialNumber + 1)) * distances[trialNumber-1];
+	if (trialNumber > 2){
+    	//error = (trialNumber / (trialNumber + 1)) * error + (1 / (trialNumber + 1)) * distances[trialNumber-1];
+    	if (jStat.variance(vals) > 0){
+        	error = 1 - jStat.corrcoeff(realvals, vals);
+        }
+        else {
+            error = 1;
+        }
+
     };
     reward = reward_scale(error);
     console.log('reward', reward)
-    var format_error = (100 * error).toPrecision(3);
-
+    var format_error = (1 * error).toFixed(2);
     if (trialNumber < LEARNING_PERIOD){
         $('#trialCounter').html('<b><span style="color:red; font-size:large"><u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left</span> after this.</b>');
+        $('#correctBox').show()
     } else {
         $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
                      '<br/> Mean Error: '+ format_error +
                      '<br/> Expected Bonus: $'+ reward
                      );
+        $('#correctBox').hide()
     }
 
-    //var rect = R.rect(0, 0, 512, 512);
-    //rect.attr({fill: "white"});
-    if (trialNumber < LEARNING_PERIOD){
-        c1 = R.circle(p0x, p0y, 5);
-        c1.attr({'fill': 'blue'});
-        c2 = R.circle(p1x, p1y, 5);
-        c2.attr({'fill': 'blue'});
-        c3 = R.circle(p2x, p2y, 5);
-        c3.attr({'fill': 'blue'});
-        c4 = R.circle(p3x, p3y, 5);
-        c4.attr({'fill': 'blue'});
-        l1 = R.path( ["M", p0x, p0y, "L", p1x, p1y ] );
-        l2 = R.path( ["M", p1x, p1y, "L", p2x, p2y ] );
-        l3 = R.path( ["M", p2x, p2y, "L", p3x, p3y ] );
-        l4 = R.path( ["M", p3x, p3y, "L", p0x, p0y ] );
-        remove_them = true;
-    } else {
-        remove_them = false;
-    }
 
-	$('#getClick').show();
-	$('#delete').show();
+	$('#instruct').html('Slide the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> to the correct size!');
+    $('#slider').slider("option", "value", 50);
+    $('#slider').trigger('slide')
+
+    var realsize = imgData[trialNumber]['s'].toFixed(2);
+    var pct = get_val_inverse(realsize);
+    $('#correctBox').css('left', pct + '%');
+
+    $('#submitResponse').show();
+    $('#slider').show();
+    $('#responseCanvas').show();
     $('#trialCounter').show();
-	$('#instruct').html('Put a box around where the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> was!');
-	$('#instruct').show();
-
+    $('#instruct').show();
 
 }
 
+function get_val(val){
+    //return val * 0.02;
+    val = (val - 50.0) / 50.0;
+    return Math.pow(1.6, val)
+}
 
+function get_val_inverse(val){
+    //return val * 0.02;
+    val = Math.log(val) / Math.log(1.6);
+    return (50.0 * val) + 50.0
+}
 
-function clicked(pos_x, pos_y, eX, eY) {
-	console.log('clicked');
+function clicked() {
 	if (exp_started) {
  		trialEndTime = new Date();
+        var val = $('#slider').slider("option", "value");
+        val = get_val(val)
 
-        if (clicknum == 1){
+        var realsize = imgData[trialNumber]['s'];
+        console.log(realsize, val)
+        distances.push(Math.abs(realsize - val));
+        realvals.push(realsize);
+        vals.push(val);
 
-            $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:red; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
- 		    click1data = { 'X':pos_x, 'Y':pos_y, };
- 		    clicknum = 2;
+        pushData({"size": val,
+                 '_stimduration': _stimduration,
+                 'mult': mult,
+                 'bpp': bpp,
+                 'bsize': bsize,
+                 'mult1': mult1});
 
-        } else if (clicknum == 2) {
+        $('#responseCanvas').hide();
+        $('#submitResponse').hide();
+        $('#instruct').hide();
+        $('#slider').hide();
+        $('#trialCounter').hide();
 
-            $('body').prepend('<div class="marker" style="width:10px; height:10px; background-color:red; position:absolute; z-index:202; top:'+(eY-5)+'px; left:'+(eX-5)+'px;"></div>');
- 		    click2data = { 'X':pos_x, 'Y':pos_y,  };
- 		    clicknum = 3;
- 		    line = R.path( ["M", click1data['X'], click1data['Y'], "L", click2data['X'], click2data['Y'] ] );
+        endTrial();
 
-        } else {
-            clicknum = 1;
-
-            click3data = { 'X':pos_x, 'Y':pos_y};
-            var dist2 = Math.abs(sdist2);
-            var dist1 = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-            var costh = (x2 - x1) / dist1;
-            var sinth = (y2 - y1) / dist1;
-            var a = sdist2 * sinth;
-            var b = -sdist2 * costh;
-
-            var bbox = [[x1 , y1], [x1 + a, y1 + b], [x2+a, y2+b], [x2, y2]];
-            var rbbox = [[p0x, p0y], [p1x, p1y], [p2x, p2y], [p3x, p3y]];
-
-            var iarea = intersection_area(bbox, rbbox);
-            var area1 = get_convex_area(bbox);
-            var area2 = get_convex_area(rbbox);
-            console.log('IA', iarea, area1, area2, JSON.stringify(bbox), JSON.stringify(rbbox))
-            var dist = 1 - (iarea / (area1 + area2 - iarea));
-            console.log(dist)
-            distances.push(dist);
-
-            pushData({'click1': click1data,
-                      'click2': click2data,
-                      'click3': click3data,
-                      'bbox': bbox,
-                      'rbbox': rbbox,
-                      'intersection_area': iarea,
-                      'bbox_area': area1,
-                      'rbbox_area': area2,
-                      '_stimduration': _stimduration});
-
-            setTimeout(function(){
-                rect.remove()
-                rect = null;
-                rect1.remove();
-                rect1 = null;
-                line.remove();
-                if (remove_them) {
-                    c1.remove(); c2.remove(); c3.remove(); c4.remove();
-                    l1.remove(); l2.remove(); l3.remove(); l4.remove();
-                }
-                $('#getClick').hide();
-                $('#delete').hide()
-                $('#instruct').hide();
-                //$('#instruct').html('');
-                $('#trialCounter').hide();
-                $('.marker').remove();
-                endTrial();
-            }, 500);
- 	   };
  	}
+
 }
+
+
+function initSetup() {
+    // initial layout
+	$('#tutorial_original').hide();
+	$('#tutorial2').hide();
+	$('#tutorial3').hide();
+	$('#instruct').hide();
+    $('#endLearningPeriodScreen').hide();
+	$('#main_test').hide();
+	$('#warning').hide();
+    $('#submitResponse').hide();
+    $('#responseCanvas').hide();
+    $("#slider").hide();
+
+
+    // begintask button is enabled, but hidden at start
+    $("#begintask").click(beginExp);
+    $("#begintask").hide();
+
+    // setup variables
+    $('#_preload').html("<font color=red style=background-color:white><b>Wait: your system is being tested to check if it can run this task...</b></font>");
+    breakscreen = new Image();
+    breakscreen.src = "https://s3.amazonaws.com/task_images/break.png";
+    zoom = DetectZoom.zoom();
+    aID = dltk.getURLParameter("assignmentId");
+
+    // reject unsupported env
+    if (detectmob() || !(BrowserDetect.OS == 'Mac' || BrowserDetect.OS == 'Windows' || BrowserDetect.OS == 'Linux')) {
+        $('#_preload').hide();
+        $('#warning').show();
+        $('#warning').append(
+            "<span><font color=red style=background-color:white><b>Only Windows, Mac, and Linux are supported.<br />Thank you!</b></font></span>"
+        );
+        return false;
+    }
+
+    if (navigator.userAgent.indexOf('Trident/') >= 0 ||   // IE11+ reports as Firefox...
+            !(BrowserDetect.browser == 'Chrome' || BrowserDetect.browser == 'Firefox' || BrowserDetect.browser == 'Safari') ||  // must be either Chrome or FF
+            !defined(vertical) || !defined(horizontal)) {
+        $('#_preload').hide();
+        $('#warning').show();
+        $('#warning').append(
+            "<span><font color=red style=background-color:white><b>Your browser is not supported by this HIT.  Please only use the latest version of Chrome or Firefox for this HIT.<br />Thank you!</b></font></span>"
+        );
+        return false;
+    }
+
+    if (vertical < 590 || horizontal < 1000) {
+        $('#_preload').hide();
+        $('#warning').show();
+        $('#warning').append(
+            "<span><font color=red style=background-color:white><b>Screen smaller than 1024x600 is not supported.<br />Please try again with higher resolution. Thank you!</b></font></span>"
+        );
+        return false;
+    }
+
+    // double buffering.
+    ctx_test_on = dltk.getOnScreenContextFromCanvas('main_test');
+
+    R = Raphael("responseCanvas", IMSIZE, IMSIZE);
+
+    $('#submitResponse').click(function(e) {
+		clicked();
+	});
+
+
+    $(function() {
+        $("#slider").slider({value: 50, step: 0.5});
+        $("#slider").append('<a  id="correctBox" class="ui-slider-handle ui-state-default ui-conner-all" href="#" style="left:50%; top:14px;"></a>')
+    });
+
+    function slidefunc(event, ui){
+        var val;
+        if (ui === undefined){
+            val = $('#slider').slider("option", "value");
+        } else {
+            val = ui.value;
+        }
+        var dil = get_val(val);
+        $('.ui-slider-handle').height(13)
+        $('.ui-slider-handle').width(30)
+        $('.ui-slider-handle').html('<div align="center">' + dil.toFixed(2) + '</div>');
+        var realsize = imgData[trialNumber]['s'].toFixed(2);
+        $('#correctBox').width(35)
+        $('#correctBox').html('<div align="center" style="color:red"><b>' + realsize + '</b></div>');
+
+        mult = sizes[imgData[trialNumber]['obj']] / 100;
+        bpp = bounding_boxes[imgData[trialNumber]['obj']];
+        bsize = Math.max(bpp['h'], bpp['w']) / 2;
+        mult1 = 100 / bsize;
+
+        imgObj.attr('x', IMSIZE/2 - IMSIZE*dil/ 2);
+        imgObj.attr('y', IMSIZE/2 - IMSIZE*dil/ 2);
+        imgObj.attr('width', dil * IMSIZE);
+        imgObj.attr('height', dil * IMSIZE);
+
+    }
+
+    $('#slider').on("slide", slidefunc);
+    $('#slider').on("stop", slidefunc);
+
+    sizes = model_data["sizes"];
+    bounding_boxes = model_data["bounding_boxes"];
+
+    return true;  // successful init
+}
+
+
+
+//begin boilerplate
 
 function pushData(myval) {
 	console.log('pushData');
@@ -482,7 +488,7 @@ function endLearningPeriod(){
 
 function takeABreak() {
     dltk.drawToContext(breakscreen.src, ctx_test_on, null, false);
-    $('#test').show();
+    $('#main_test').show();
     $('#_preload').html(
         "<font color=red style=background-color:white>You have completed " +
         Math.round((trialNumber / totalTrials) * 100) +
@@ -495,153 +501,13 @@ function takeABreak() {
         var actualKey = String.fromCharCode(unicode);
         if (actualKey == 'z') {
             trialNumber++;
-            $('#test').hide();
+            $('#main_test').hide();
             $('#_preload').hide();
             runTrialOnce();
         }
     };
 }
 
-
-function initSetup() {
-    // initial layout
-	$('#tutorial_original').hide();
-	$('#tutorial2').hide();
-	$('#tutorial3').hide();
-	$('#instruct').hide();
-    $('#endLearningPeriodScreen').hide();
-	$('#test').hide();
-	$("#getClick").hide();
-	$('#warning').hide();
-	$('#delete').hide();
-    // begintask button is enabled, but hidden at start
-    $("#begintask").click(beginExp);
-    $("#begintask").hide();
-
-    // setup variables
-    $('#_preload').html("<font color=red style=background-color:white><b>Wait: your system is being tested to check if it can run this task...</b></font>");
-    breakscreen = new Image();
-    breakscreen.src = "https://s3.amazonaws.com/task_images/break.png";
-    zoom = DetectZoom.zoom();
-    aID = dltk.getURLParameter("assignmentId");
-
-    // reject unsupported env
-    if (detectmob() || !(BrowserDetect.OS == 'Mac' || BrowserDetect.OS == 'Windows' || BrowserDetect.OS == 'Linux')) {
-        $('#_preload').hide();
-        $('#warning').show();
-        $('#warning').append(
-            "<span><font color=red style=background-color:white><b>Only Windows, Mac, and Linux are supported.<br />Thank you!</b></font></span>"
-        );
-        return false;
-    }
-
-    if (navigator.userAgent.indexOf('Trident/') >= 0 ||   // IE11+ reports as Firefox...
-            !(BrowserDetect.browser == 'Chrome' || BrowserDetect.browser == 'Firefox' || BrowserDetect.browser == 'Safari') ||  // must be either Chrome or FF
-            !defined(vertical) || !defined(horizontal)) {
-        $('#_preload').hide();
-        $('#warning').show();
-        $('#warning').append(
-            "<span><font color=red style=background-color:white><b>Your browser is not supported by this HIT.  Please only use the latest version of Chrome or Firefox for this HIT.<br />Thank you!</b></font></span>"
-        );
-        return false;
-    }
-
-    if (vertical < 590 || horizontal < 1000) {
-        $('#_preload').hide();
-        $('#warning').show();
-        $('#warning').append(
-            "<span><font color=red style=background-color:white><b>Screen smaller than 1024x600 is not supported.<br />Please try again with higher resolution. Thank you!</b></font></span>"
-        );
-        return false;
-    }
-
-
-
-    // double buffering.
-    ctx_test_on = dltk.getOnScreenContextFromCanvas('main_test');
-
-    R = Raphael("getClick", 360, 360);
-    R1 = Raphael("inner_test", 360, 360);
-
-    $('#delete').click(function(e){
-        click1data = null;
-        click2data = null;
-        click3data = null;
-        if (rect !== null){
-            rect.remove();
-        }
-        rect = null;
-        if (rect1 !== null){
-            rect1.remove();
-        }
-        rect1 = null;
-        clicknum = 1;
-        if (line !== null){
-            line.remove()
-        }
-        line = null;
-        $('.marker').remove();
-    });
-
-    var pos_x, pos_y, pos;
-
-	$('#getClick').click(function(e) {
-    	var offset = $(this).offset();
-		pos = get_pos(e, offset);
-		pos_x = pos[0];
-		pos_y = pos[1];
-		console.log(pos)
-		clicked(pos_x, pos_y, e.pageX, e.pageY);
-	});
-
-    $('#getClick').mousemove(function(e){
-
-        if (clicknum === 3){
-            var offset = $(this).offset();
-            pos = get_pos(e, offset)
-            var eX = pos[0];
-            var eY = pos[1];
-            x1 = click1data['X'];
-            y1 = click1data['Y'];
-            x2 = click2data['X'];
-            y2 = click2data['Y'];
-            if (y1 > y2) {
-                x2 = click1data['X'];
-                y2 = click1data['Y'];
-                x1 = click2data['X'];
-                y1 = click2data['Y'];
-            }
-
-            var dist1 = Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
-            sdist2 = dpointline(eX, eY, x1, y1, x2, y2);
-            var dist2 = Math.abs(sdist2);
-            if (rect === null){
-                var angle = 180 * Math.acos((x2 - x1) / dist1) / Math.PI;
-                rect = R.rect(x1, y1, dist1, dist2);
-                rect.rotate(angle, x1, y1);
-                rect.attr({fill: '#dedede',
-                           alpha: 0.5})
-                rect1 = R.rect(x1, y1, dist1, dist2);
-                rect1.translate(x2 - x1, y2-y1);
-                var angle1 = angle - 180;
-                rect1.rotate(angle1, x1, y1)
-                rect1.attr({fill: '#dedede',
-                           alpha: 0.5})
-
-            } else {
-                if (sdist2 < 0) {
-                    rect.attr({'height': dist2});
-                    rect1.attr({'height': 0});
-                } else {
-                    rect.attr({'height': 0});
-                    rect1.attr({'height': dist2});
-                }
-            }
-        }
-    });
-
-    return true;  // successful init
-}
 
 function round2(num) {
     return Math.round(num * 100) / 100;
@@ -828,8 +694,8 @@ function preBeginExp() {
     $('#fps_bench').hide();
 }
 
-function beginExp() {
 
+function beginExp() {
     exp_started = true;
     $("#begintask").hide();
     $("#begintaskdiv").hide();
@@ -837,6 +703,7 @@ function beginExp() {
     primeSystemAndRunTrialOnce();
 
 }
+
 
 function testSystemAndPrepExp() {
     $('#warning').hide();
@@ -860,7 +727,6 @@ $(document).ready(main);
 
 </head>
 
-
 <body bgcolor="#7F7F7F">
 
 <div style="height:1000px; width:auto;">
@@ -868,25 +734,21 @@ $(document).ready(main);
     <div id="begintaskdiv" align="center"><button id="begintask" value="Begin!">Begin!</button></div>
     <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
     <div id="fps_bench" align="center" style="position:fixed; top:20px; left:10px;">
-        <canvas id="fps_test" width="50" height="50" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
+    <canvas id="fps_test" width="50" height="50" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
     </div>
     <div id="endLearningPeriodScreen" align="center" style="position:relative; z-index:200; height=512px; width=512px; top:75px; left:0px;font-size:100px">End of learning period!<br>Trials will commence in 5 seconds.<br>Be ready, as they will be fast!</div>
     <div align="center">
-        <div id="test" style="position:relative; top:15px; left:0px;">
-            <canvas id="main_test" width="360" height="360"></canvas>
-            <div id="inner_test" style="position: absolute; left: 0; top:0; z-index: 2; width: 100%; height: 100%;"></div>
-        </div>
-        <div id="getClick" align="center"  width="360" height="360" style="position:relative; top:15px; left:0px;"></div>
-        <div align="center"><button id="delete" style="position:relative; font-size:small;top:35px">Delete Points</button></div>
-        <div align="center" id="instruct" style="position:relative; top:35px;">Put a bounding box around the object!</div>
-        <div align="center" id="trialCounter" style="position:relative; font-size:small; top:45px"></div>
-   </div>
-
+        <canvas id="main_test" width="360" height="360" style="position:relative; top:15px; left:0px;" ></canvas>
+        <div id="instruct" style="position:relative; z-index:100; top:30px; font-size:150%;">Make the object have the correct size.</div>
+        <div id="responseCanvas"></div>
+        <div align="center" id="slider" style="position:relative; top:10px; width:700px; "></div>
+        <div align="center"><button id="submitResponse" style="position:relative; top:30px; font-size:small;" value="Submit Response">Submit Response</button></div>
+        <div id="trialCounter" style="position:relative; top:50px; font-size:small;"></div>
+    </div>
 </div>
 
 
 <div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,	width:600,position:'center',title:'Instructions'})"><u>View Instructions</u><div id="timedisp"></div></div>
-
 
 <div id="tutorial" style="position:relative; z-index:-1"></div>
 <div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: Instructions have changed, and low performance will lead to rejection: make sure to read!**</b>
@@ -900,14 +762,17 @@ $(document).ready(main);
 <ul>
 <li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
 <p>
-<li>After you see an image, you will be presented with a blank gray screen.  You must then <b>identify a <u>rotated</u> bounding box around where the object was in the original image.</b>  You will indicate your bounding box by making three clicks on the screen:  the first two clicks indicate one side of the rotated bounding box, and the third click determines the opposite side.</li>
+<li>After you see an image, you will be presented with the object again.  You must then move the slider to enlarge or shrink the object until it has  <b><u>the same size</u> that it did in the original image.</b>  For example, if you thought you saw an elephant that would fill 1 inch on the screen from trunk to tail in the original image, move the response slider until the elephant model is about 1 inch wide.</li>
 <p>
-<li>The first few examples will consist of a learning period.  During this period, the correct answer will be indicated on both the original image and the response screen, and the images will be shown for a longer period of time. You should use this period to get a feel for the task and learn how to use the interface.</li>
+<li>It does not matter what position the object took on in the original image, or what pose the object was shown in.  All that matters is whether the original size of object has been matched correctly.  Also, don't take into account the depth of the object in the scene -- make the assumption that all apparent differences in size are really due the object changing actual size -- and your job is to report what that size is.</li>
 <p>
-<li>After the learning period, the blue markers will no longer be shown and <b>the images will be shown <u>very</u> quickly.  Be ready!</b>   Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess</b></u>.  If you think you've made a mistake while placing the first two clicks, you can press the "delete points" button below the canvas.  Doing so will remove your clicks and allow you to restart with a blank screen.  After the third click, however, the trial will automatically move on and you will not have a chance to correct your answer.</li>
+<li> When you're happy with your sizing of the object, click the "Submit Response" button at the very top of the screen.  Even if you're not 100% sure of the correct answer, <b>make your best guess.</b>  Once you click submit, you will move on to the next image immediately, so <b>be ready!</b></li>
 <p>
-<li>
-Once you click, you will move on to the next image immediately, so be ready.  When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
+<li>The first few examples will consist of a learning period.  During this period, the correct size will be indicated below the slider, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the slider interface.</li>
+<p>
+<li>After the learning period, you will have to set the position of the slider yourself.  Also, <b>the images will be begin to be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  Once you click, you will move on to the next image immediately.</li>
+<p>
+<li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
 </ul>
 <center><p onclick="$('#tutorial').html($('#tutorial3').html())"><font color=blue><u>Click here to continue reading</u></font></p></center>
 </div>
@@ -916,7 +781,7 @@ Once you click, you will move on to the next image immediately, so be ready.  Wh
 <p>
 <li>Please be sure to maximize your browser window before beginning this experiment. .</li>
 <p>
-<li><b>In total, you will see 100 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
+<li><b>In total, you will see 130 images. We expect this experiment to take about 7-12 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
 <p>
 <li>When you are ready to begin, click the "Begin" button at the very top of the screen. <b>Be prepared to see the first image -- it happens very fast!</b></li>
 <p>
@@ -932,3 +797,4 @@ Once you click, you will move on to the next image immediately, so be ready.  Wh
 	</form>
 
 </body>
+</html>

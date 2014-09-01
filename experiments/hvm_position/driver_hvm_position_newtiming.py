@@ -34,7 +34,7 @@ class HvMPositionExperiment(Experiment):
         print('%d blocks' % nblocks)
         imgs = []
         imgData = []
-        for bn in range(nblocks)[3:6]:
+        for bn in range(nblocks)[:]:
             pinds = perm[BSIZE * bn: BSIZE * (bn + 1)]
             pinds = np.concatenate([pinds, pinds[: REPEATS]])
             rng.shuffle(pinds)
@@ -62,7 +62,7 @@ exp = HvMPositionExperiment(htmlsrc = 'hvm_position_newtiming.html',
                               duration = 1500,
                               description = 'Make position judgements for up to 50 cent bonus',
                               comment = "Position judgement in HvM dataset",
-                              collection_name = 'hvm_position_newtiming',
+                              collection_name = 'hvm_position',
                               max_assignments=1,
                               bucket_name='hvm_position',
                               trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD,
