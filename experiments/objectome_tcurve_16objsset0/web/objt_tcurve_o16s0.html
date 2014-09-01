@@ -24,7 +24,7 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140828-1c104b8.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140831-a3d726d.js"></script>
 
 <script type="text/javascript">
 var ExperimentData = null;
@@ -34,6 +34,8 @@ var JS_TRES_TOL = 17;            // An example tolerance value for js timing (~6
 var JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
 var FRAME_INTERVAL_TOL = 1000 / 60 + 2;   // mean frame interval should be smaller than 16.66ms + 2ms
 var FRAME_INTERVAL_VAR_TOL = 5 * 5;       // jitter shouldn't be larger than 5ms
+var FRAME_INTERVAL_QUANTFAC_TOL = 0.8;    // fail if more than 80% of timestamps are multiples of 100us (FF)
+var FRAME_INTERVAL_UNIQFAC_TOL = 3;       // fail if there are <= 3 unique intervals (Chrome)
 
 // var labels = ExperimentData.labels;    // unused here
 // var imgData = ExperimentData.imgData;  // unused here
@@ -55,6 +57,7 @@ var ctx_test_on;
 var ctx_resp0_on;
 var ctx_resp1_on;
 var benchmark;
+var benchmarks = [];
 var maxHeightInThisExp = 450;
 var extInfo = {language: navigator.language, userAgent: navigator.userAgent};
 
@@ -97,6 +100,41 @@ function detectmob() {
 }
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
+function primeSystemAndRunTrialOnce() {
+    // Prime the browser by running a single blank trial
+    var trial_specs = [];
+
+    stopClock();   // stop to minimize display burden
+
+    // blank
+    trial_specs.push({
+        urls: [IMG_BLANK],
+        contexts: [ctx_test_on],
+        duration: 50,
+        pre: preTrial   // this should be short to run
+    });
+    // another blank
+    trial_specs.push({
+        urls: [IMG_BLANK],
+        contexts: [ctx_test_on],
+        duration: 50,
+    });
+    // yet another blank
+    trial_specs.push({
+        urls: [IMG_BLANK],
+        contexts: [ctx_test_on],
+        duration: 50,
+    });
+
+    // Queue experiment
+    dltk.queueTrial(trial_specs, function() {
+        setTimeout(function() {
+            // by now, the system has been primed.  Proceed to actual experiment.
+            runTrialOnce();
+        }, 0);
+    });
+}
+
 function runTrialOnce() {
     // Run single trial by using the new framework
     var trial_specs = [];
@@ -228,7 +266,7 @@ function endTrial() {
             WindowWidth: winW,
             ScreenHeight: vertical,
             ScreenWidth: horizontal,
-            Benchmark: benchmark,
+            Benchmarks: benchmarks,
             TimingInfo: { 
                 TrialStartTimes: trialStartTimes, ExpLoadTime: expLoadTime,
                 ISI1: measuredISI1, ISI2: measuredISI2, Stimdur: measuredStimdur,
@@ -352,13 +390,15 @@ function checkSystem(benchmark_) {
     // based on the benchmark result
     var nook = false;
     var failed_permanently = false;
-    var details;
+    var details, suff = " Do you want to retry?";
+    var msg_height = 260, msg_width = 460;
 
     if (benchmark_finished) return;
 
     benchmark_finished = true;
     benchmark = benchmark_;
     benchmark.retry = retry;
+    benchmarks.push(benchmark);
     if (timer_bench !== null) {
         clearTimeout(timer_bench);
         timer_bench = null;
@@ -376,6 +416,20 @@ function checkSystem(benchmark_) {
     else if (benchmark.js_tres_variance > JS_TRES_VAR_TOL) {
         details = "Your system's clock varies too much (v=" + round2(benchmark.js_tres_variance) + ").  Close other programs/tabs please.";
         nook = true;
+    }
+    else if (BrowserDetect.browser == 'Firefox' && benchmark.refresh_interval_quantization_factor > FRAME_INTERVAL_QUANTFAC_TOL) {
+        details = "Your browser's timestamps are too inaccurate (q=" + round2(benchmark.refresh_interval_quantization_factor) + ").  Please first make sure you're using the latest version of Firefox.  If this browser has been running for a long time or the computer was suspended while running this browser, you need to restart the browser (not just closing and re-opening this tab only) to run this task.";
+        suff = " If you believe this error was just a hiccup, you can try this browser testing again. Do you want to retry?";
+        nook = true;
+        msg_height = 350;
+        msg_width = 700;
+    }
+    else if (BrowserDetect.browser == 'Chrome' && benchmark.refresh_interval_uniqueness_factor <= FRAME_INTERVAL_UNIQFAC_TOL) {
+        details = "Your browser's timestamps are too inaccurate (u=" + round2(benchmark.refresh_interval_uniqueness_factor) + ").  Please first make sure you're using the latest version of Chrome.  If this browser has been running for a long time or the computer was suspended while running this browser, restarting the browser (not just closing and re-opening this tab only) will solve this problem most of the time.  However, if that doesn't work, one of the following options should fix the problem: (1) Use the latest version of Firefox; or (2) Restart your computer.";
+        suff = " If you believe this error was just a hiccup, you can try this browser testing again. Do you want to retry?";
+        nook = true;
+        msg_height = 350;
+        msg_width = 700;
     }
     else if (benchmark.refresh_interval > FRAME_INTERVAL_TOL) {
         details = "Your browser's refresh rate is slower than 60fps (f=" + round2(1000 / benchmark.refresh_interval) + ").  Close other programs/tabs please.";
@@ -396,10 +450,10 @@ function checkSystem(benchmark_) {
         if (failed_permanently) alert(details);
         else {
             $("#systemmsg").show();
-            $("#systemmsg").html(details + " Do you want to retry?");
+            $("#systemmsg").html(details + suff);
             $("#systemmsg").dialog({
-                height: 260,
-                width: 460,
+                height: msg_height,
+                width: msg_width,
                 modal: true,
                 position: ['middle', 30],
                 title: "Warning",
@@ -453,7 +507,7 @@ function beginExp() {
     $("#begintaskdiv").hide();
     $("#_preload").hide();
     $("#notice").hide();
-    runTrialOnce();
+    primeSystemAndRunTrialOnce();
 }
 
 function showTutorial() {
