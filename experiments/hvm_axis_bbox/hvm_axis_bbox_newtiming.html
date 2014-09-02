@@ -113,7 +113,7 @@ var distances = [];
 
 function reward_scale(error){
     var maxdist = 1;
-    var randomerror = .9;  //empirically observed random error
+    var randomerror = .85;  //empirically observed random error
     console.log('error', error);
     if (error !== null){
         var _score = ((maxdist - error) / maxdist);
@@ -155,7 +155,7 @@ function primeSystemAndRunTrialOnce() {
         urls: [IMG_BLANK],
         contexts: [ctx_test_on],
         duration: 50,
-        pre: preTrial   // this should be short to run
+        pre: preTrial0   // this should be short to run
     });
     // another blank
     trial_specs.push({
@@ -704,7 +704,7 @@ function beginExp() {
     $("#begintask").hide();
     $("#begintaskdiv").hide();
     $("#_preload").hide();
-    primeSystmeAndRunTrialOnce();
+    primeSystemAndRunTrialOnce();
 }
 
 function testSystemAndPrepExp() {
@@ -781,7 +781,7 @@ $(document).ready(main);
 <p>
 <li>Please be sure to maximize your browser window before beginning this experiment.</li>
 <p>
-<li><b>In total, you will see 100 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
+<li><b>In total, you will see 130 images. We expect this experiment to take about 10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
 <p>
 <li>When you are ready to begin, click the "Begin" button at the very top of the screen. <b>Be prepared to see the first image -- it happens very fast!</b></li>
 <p>

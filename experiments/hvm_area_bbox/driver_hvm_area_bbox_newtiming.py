@@ -43,7 +43,7 @@ class HvMAreaBBoxExperiment(Experiment):
         print('%d blocks' % nblocks)
         imgs = []
         imgData = []
-        for bn in range(nblocks)[:1]:
+        for bn in range(nblocks)[:]:
             pinds = perm[BSIZE * bn: BSIZE * (bn + 1)]
             pinds = np.concatenate([pinds, pinds[: REPEATS]])
             rng.shuffle(pinds)
@@ -68,11 +68,11 @@ exp = HvMAreaBBoxExperiment(htmlsrc = 'hvm_area_bbox_newtiming.html',
                               othersrc = ['raphael.min.js', 'intersect.js', '../../lib/dltk.js'],
                               sandbox = False,
                               title = 'Minimum-area Bounding Box Judgement',
-                              reward = 0.5,
+                              reward = 0.35,
                               duration=1500,
                               description = 'Make bounding box judgements for up to 50 cent bonus',
                               comment = "Minimum Area bounding box judgement in HvM dataset",
-                              collection_name = None, #'hvm_area_bbox_newtiming',
+                              collection_name = 'hvm_area_bbox',
                               max_assignments=1,
                               bucket_name='hvm_area_bbox',
                               trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD,
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     exp.prepHTMLs()
     exp.testHTMLs()
     exp.uploadHTMLs()
-    #exp.createHIT(secure=True)
+    exp.createHIT(secure=True)
 
     #hitids = cPickle.load(open('3ARIN4O78FSZNXPJJAE45TI21DLIF1_2014-06-13_16:25:48.143902.pkl'))
     #exp.disableHIT(hitids=hitids)
