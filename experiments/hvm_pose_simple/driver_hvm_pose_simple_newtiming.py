@@ -4,20 +4,13 @@ import numpy as np
 import dldata.stimulus_sets.hvm as hvm
 from mturkutils.base import Experiment
 
-"""
-TODOs (From Judy's suggestions):
-   reduce lags between stim presentation!!! fix this
-   longer ISI?
-   surface texture doesn't come immediately
-   better instructions about angle and real size and depth
-   move submit button to near the bar?
-"""
+othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'TrackballControls.js', 'jstat.min.js', '../../lib/dltk.js']
 
-LEARNING_PERIOD = 5
+LEARNING_PERIOD = 10
 REPEATS = 5
-BSIZE = 65
+BSIZE = 50
 
-class HvMSizeExperiment(Experiment):
+class HvMPoseExperiment(Experiment):
 
     def createTrials(self):
 
@@ -30,7 +23,8 @@ class HvMSizeExperiment(Experiment):
 
         meta = dataset.meta
         query_inds = np.arange(len(meta))
-        #query_inds = ((meta['obj'] == 'cruiser') & (meta['var'] == 'V3')).nonzero()[0]
+        #query_inds = (meta['var'] == 'V0').nonzero()[0][::10]
+        #query_inds = ((meta['category'] == 'Chairs')).nonzero()[0]
 
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
@@ -59,22 +53,20 @@ class HvMSizeExperiment(Experiment):
             imgData.extend(bmeta)
         self._trials = {'imgFiles': imgs, 'imgData': imgData}
 
-othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'jstat.min.js', '../../lib/dltk.js']
-
 additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
                     'new':  str(LEARNING_PERIOD)}]
-exp = HvMSizeExperiment(htmlsrc = 'hvm_size_newtiming.html',
-                        htmldst = 'hvm_size_newtiming_n%04d.html',
+exp = HvMPoseExperiment(htmlsrc = 'hvm_pose_simple_newtiming.html',
+                        htmldst = 'hvm_pose_simple_newtiming_n%04d.html',
                         othersrc = othersrc,
                         sandbox = False,
-                        title = 'Size Judgement, New Version',
+                        title = 'Pose Judgement',
                         reward = 0.50,
-                        duration = 3500,
-                        description = 'Make object size judgements for up to 50 cent bonus',
-                        comment = "Size judgement in HvM dataset",
-                        collection_name = None, #"hvm_size",
+                        duration = 1800,
+                        description = 'Make object 3-d pose judgements for up to 50 cent bonus',
+                        comment = "Pose judgement in HvM dataset",
+                        collection_name = None, #'hvm_pose_simple_',
                         max_assignments=1,
-                        bucket_name='hvm_size_judgements',
+                        bucket_name='hvm_pose_simple',
                         trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD,
                         additionalrules=additionalrules)
 
@@ -83,8 +75,8 @@ if __name__ == '__main__':
     exp.createTrials()
     exp.prepHTMLs()
     exp.testHTMLs()
-    #exp.uploadHTMLs()
-    #exp.createHIT(hits_per_url=1)
+    exp.uploadHTMLs()
+    #exp.createHIT(secure=True)
 
     #hitids = cPickle.load(open('3ARIN4O78FSZNXPJJAE45TI21DLIF1_2014-06-13_16:25:48.143902.pkl'))
     #exp.disableHIT(hitids=hitids)

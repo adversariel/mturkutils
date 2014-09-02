@@ -24,7 +24,7 @@ class HvMPoseExperiment(Experiment):
         meta = dataset.meta
         query_inds = np.arange(len(meta))
         #query_inds = (meta['var'] == 'V0').nonzero()[0][::10]
-        #query_inds = ((meta['obj'] == 'MQUEEN_L')).nonzero()[0]
+        #query_inds = ((meta['category'] == 'Chairs')).nonzero()[0]
 
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
@@ -36,7 +36,7 @@ class HvMPoseExperiment(Experiment):
         print('%d blocks' % nblocks)
         imgs = []
         imgData = []
-        for bn in range(nblocks)[:1]:
+        for bn in range(nblocks)[1:3]:
             pinds = perm[BSIZE * bn: BSIZE * (bn + 1)]
             pinds = np.concatenate([pinds, pinds[: REPEATS]])
             rng.shuffle(pinds)
@@ -64,7 +64,7 @@ exp = HvMPoseExperiment(htmlsrc = 'hvm_pose_simple.html',
                         duration = 1800,
                         description = 'Make object 3-d pose judgements for up to 50 cent bonus',
                         comment = "Pose judgement in HvM dataset",
-                        collection_name = None, #'hvm_pose_simple_',
+                        collection_name = 'hvm_pose_simple_test', #'hvm_pose_simple_',
                         max_assignments=1,
                         bucket_name='hvm_pose_simple',
                         trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD,

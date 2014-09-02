@@ -72,7 +72,8 @@ ExperimentData = null;
 
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
-var container, camera, controls, scene, renderer, angledict, posdict, mesh, jsonLoader, objname, arot, arotinv;
+var container, camera, controls, scene, renderer, angledict, posdict, mesh, jsonLoader, objname, arot, arotinv, realRotation;
+var meshDict = {}
 
 function animate() {
     requestAnimationFrame( animate );
@@ -133,7 +134,6 @@ function get_angle(){
     }
 }
 
-var realRotation;
 function createScene( geometry, materials) {
     mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
     scene.add(mesh);
@@ -189,8 +189,6 @@ function makeScene() {
 
     }
 
-
-var meshDict = {}
 function replace_scene(){
     controls.reset();
     if (meshDict[objname] == undefined){
@@ -528,7 +526,6 @@ function clicked() {
         $('#submitResponse').hide();
         $('#instruct').hide();
         $('#trialCounter').hide();
-        $('.marker').remove();
         $('#Error').hide();
         $('#disptest').hide();
 
@@ -761,10 +758,12 @@ $(document).ready(function() {
 
 <div id="tutorial" style="position:relative; z-index:-1"></div>
 <div id="tutorial_original" style="position:absolute; z-index:-1;">
-<p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.  This task will require you to look at images on your computer screen and click to indicate a response for up to about 10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</p>
-<p><b>IMPORTANT: doing this task <u>requires</u> you to have WebGL enabled in your browser.</b>  If your web browser does not have WebGL capabilities, you <b>cannot</b> do this task.  If your browser does have WebGL capabilities, you must still <b>make sure that WebGL is enabled</b> in your browser.  To do so, go to your favorite web search engine, perform a search for "webgl + [your browser name]," and follow instructions.
-<p> Your computer also must also have a modern and fast internet connection and more than 4 GB of RAM.  Please note that most laptops do NOT have sufficient resources to do this task.  If you're unsure if your computer meets the requirements for this task, try the first few trials.  If this task is not working efficiently, please return the HIT.  It is <b> very important that you NOT have other browser windows open simultaneously</b>. These windows will not only potentially distract you from the task, but they will also take up memory resources that your computer will need to run this task properly.</p>
-<p>The base compensation for this hit is $0.85.   We will also pay a <b>performance-based bonus</b>.  The more accurate your answers are, the larger the bonus you will receive.</p>
+<p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
+<p>This task will require you to look at images on your computer screen and click to indicate a response for up to about 10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</p>
+<b>IMPORTANT: doing this task <u>requires</u> you to have WebGL enabled in your browser.</b>  If your web browser does not have WebGL capabilities, you <b>cannot</b> do this task.  If your browser does have WebGL capabilities, you must still <b>make sure that WebGL is enabled</b> in your browser.  To do so, go to your favorite web search engine, perform a search for "webgl + [your browser name]," and follow instructions.
+<p>To do this task, your computer <b>must</b> have a recent CPU and more than 4 GB of RAM. Your computer also must also have a modern and fast internet connection.  Please note that most laptops do NOT have sufficient resources to do this task.  If you're unsure if your computer meets the requirements for this task, try the first few trials.  If this task is not working efficiently, please return the HIT.</p>
+<p>While doing this task, it is <b> very important that you NOT have other browser windows open simultaneously</b>, even if you aren't looking at them.   Not only will these windows potentially distract you from the task, but they will also take up memory resources that your computer will need to run this task properly.</p>
+<p>The base compensation for this hit is $0.50.  We will also pay a <b>performance-based bonus</b> that can be as high as $0.50.  The <b>more accurate</b> your answers are, the <b>larger the bonus</b> you will receive.</p>
 <p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
 <center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
 <div id="tutorial2" style="position:absolute; z-index:-1;">
