@@ -13,9 +13,9 @@ TODOs (From Judy's suggestions):
    move submit button to near the bar?
 """
 
-LEARNING_PERIOD = 5
+LEARNING_PERIOD = 10
 REPEATS = 5
-BSIZE = 65
+BSIZE = 75
 
 class HvMSizeExperiment(Experiment):
 

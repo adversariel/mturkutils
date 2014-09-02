@@ -8,7 +8,7 @@ othersrc = ['three.min.js', 'posdict.js', 'Detector.js', 'TrackballControls.js',
 
 LEARNING_PERIOD = 10
 REPEATS = 5
-BSIZE = 50
+BSIZE = 75
 
 class HvMPoseExperiment(Experiment):
 
