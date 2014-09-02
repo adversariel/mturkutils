@@ -42,7 +42,7 @@ class HvMSizeExperiment(Experiment):
         print('%d blocks' % nblocks)
         imgs = []
         imgData = []
-        for bn in range(nblocks)[:1]:
+        for bn in range(nblocks)[:]:
             pinds = perm[BSIZE * bn: BSIZE * (bn + 1)]
             pinds = np.concatenate([pinds, pinds[: REPEATS]])
             rng.shuffle(pinds)
@@ -66,13 +66,13 @@ additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
 exp = HvMSizeExperiment(htmlsrc = 'hvm_size_simple_newtiming.html',
                         htmldst = 'hvm_size_simple_newtiming_n%04d.html',
                         othersrc = othersrc,
-                        sandbox = True,
+                        sandbox = False,
                         title = 'Size Judgement, Simpler Version',
-                        reward = 0.75,
+                        reward = 0.35,
                         duration = 1500,
                         description = 'Make object size judgements for up to 50 cent bonus',
                         comment = "Size judgement in HvM dataset (simple version)",
-                        collection_name = None, #"hvm_size_simple_newtiming",
+                        collection_name = "hvm_size_simple",
                         max_assignments=1,
                         bucket_name='hvm_size_judgements_simple',
                         trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD,
@@ -84,7 +84,7 @@ if __name__ == '__main__':
     exp.prepHTMLs()
     exp.testHTMLs()
     exp.uploadHTMLs()
-    #exp.createHIT(secure=True)
+    exp.createHIT(secure=True)
 
     #hitids = cPickle.load(open('3ARIN4O78FSZNXPJJAE45TI21DLIF1_2014-06-13_16:25:48.143902.pkl'))
     #exp.disableHIT(hitids=hitids)

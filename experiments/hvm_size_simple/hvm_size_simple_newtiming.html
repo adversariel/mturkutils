@@ -116,7 +116,7 @@ var vals = new Array();
 
 function reward_scale(error){
      if (error !== null){
-         var random_error = .9;
+         var random_error = .8;
          var bonus = Math.max((random_error - error) / random_error, 0);
      } else{
          bonus = 0.0
@@ -190,7 +190,8 @@ function runTrialOnce() {
     trial_specs.push({
         urls: [IMG_BLANK],
         contexts: [ctx_test_on],
-        duration: ISI
+        duration: ISI,
+        pre: preTrial2
     });
 
     // Queue experiment
@@ -221,11 +222,12 @@ function preTrial(hist) {
     $('#main_test').show();
 }
 
-
-function showResponse() {
-
+function preTrial2(hist){
     var fpath = "https://s3.amazonaws.com/dicarlocox-datasets/hvm_var0_masked_images/" + imgData[trialNumber]['obj'] + ".png"
     imgObj = R.image(fpath, 0, 0, 360, 360);
+}
+
+function showResponse() {
 
     $('#main_test').hide();
 
@@ -781,7 +783,7 @@ $(document).ready(main);
 <p>
 <li>Please be sure to maximize your browser window before beginning this experiment. .</li>
 <p>
-<li><b>In total, you will see 130 images. We expect this experiment to take about 7-12 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
+<li><b>In total, you will see 130 images. We expect this experiment to take about 10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
 <p>
 <li>When you are ready to begin, click the "Begin" button at the very top of the screen. <b>Be prepared to see the first image -- it happens very fast!</b></li>
 <p>
