@@ -1,7 +1,7 @@
 """Command line interface stuffs"""
 import os
 import cPickle as pk
-from . import base
+from . import utils as ut
 
 
 def make_backup(full_argv):
@@ -42,7 +42,7 @@ Options:
         hitids = pk.load(open(hitids[0]))
     print '* Total %d hits' % len(hitids)
 
-    _, n_hits, n_assgns = base.download_results(hitids, dstprefix=outp,
+    _, n_hits, n_assgns = ut.download_results(hitids, dstprefix=outp,
             sandbox=sandbox, verbose=True, full=True)
 
     print '* Done: %d assignments in %d hits saved.' % (n_assgns, n_hits)

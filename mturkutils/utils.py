@@ -2,24 +2,47 @@
 import os
 import json
 import shutil as sh
-from yamutils.mongo import SONify
+import cPickle as pk
+from boto import __version__ as boto_version
+from . import base
+
+# -- example rules for prep_web_simple()
+PREP_RULE_SIMPLE_RSVP_SANDBOX = [
+        {
+            'old': 'imgFiles = [];',
+            'new': 'imgFiles = ${CHUNK};',
+            'n': 1
+        },
+        {
+            'old': 'https://www.mturk.com/mturk/externalSubmit',
+            'new': 'https://workersandbox.mturk.com/mturk/externalSubmit',
+            'n': 1
+        },
+    ]
+
+PREP_RULE_SIMPLE_RSVP_PRODUCTION = [
+        {
+            'old': 'imgFiles = [];',
+            'new': 'imgFiles = ${CHUNK};',
+            'n': 1
+        },
+        {
+            # Do not remove this part: although this doesn't really replace
+            # `old` with `new`, this makes sure that there is one `old`.
+            # Also, this part is required to check the existance of `new`
+            # with the use of validate_html_files().
+            'old': 'https://www.mturk.com/mturk/externalSubmit',
+            'new': 'https://www.mturk.com/mturk/externalSubmit',
+            'n': 1
+        },
+    ]
+
+BACKUP_ALGO_VER = 1
 
 
-def chunker(seq, size):
-    return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
-
-
-def dictchunker(seqdict, size):
-    L = len(seqdict[seqdict.keys()[0]])
-    return ({k: seqdict[k][pos:pos + size] for k in seqdict.keys()}
-            for pos in xrange(0, L, size))
-
-
-def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
-        auxfns=None,
-        n_per_file=100, verbose=False,
-        chunkerfunc=chunker,
-        prefix=None):
+def prep_web_simple(trials, src, dstdir, dstpatt='output_n%04d.html',
+        rules=PREP_RULE_SIMPLE_RSVP_SANDBOX, auxfns=None,
+        n_per_file=100, verbose=False):
     """Prepare web files for publishing.
 
     This function does the following things:
@@ -50,14 +73,10 @@ def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
     html_src = open(src, 'rt').read()   # entire file content
     for rule in rules:
         if 'n' not in rule:
-            # skips the following safety mechanism.
             continue
-        if html_src.count(rule['old']) != rule['n']:
-            raise ValueError('Mismatch in replace rule "%s": ' +
-                    '# expected = %d, # actual = %d' %
-                    (rule['old'], rule['n'], html_src.count(rule['old'])))
+        assert html_src.count(rule['old']) == rule['n']
 
-    for i_chunk, chunk in enumerate(chunkerfunc(trials, n_per_file)):
+    for i_chunk, chunk in enumerate(chunker(trials, n_per_file)):
         if verbose and i_chunk % n_per_file == 0:
             print '    At:', i_chunk
 
@@ -66,13 +85,10 @@ def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
             sold = rule['old']
             snew = rule['new']
             if '${CHUNK}' in snew:
-                snew = snew.replace('${CHUNK}', json.dumps(SONify(chunk)))
+                snew = snew.replace('${CHUNK}', json.dumps(chunk))
             html_dst = html_dst.replace(sold, snew)
 
-        if prefix is None:
-            dst_fn = dstpatt % i_chunk
-        else:
-            dst_fn = dstpatt % (prefix, i_chunk)
+        dst_fn = dstpatt % i_chunk
         dst_fn = os.path.join(dstdir, dst_fn)
         open(dst_fn, 'wt').write(html_dst)
         dst_fns.append(dst_fn)
@@ -85,7 +101,7 @@ def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
     return dst_fns
 
 
-def validate_html_files(filenames, ruledict,
+def validate_html_files(filenames, rules=PREP_RULE_SIMPLE_RSVP_SANDBOX,
         trials_org=None):
     """Validates `filenames` by running simple tests
 
@@ -98,23 +114,21 @@ def validate_html_files(filenames, ruledict,
       compared against `trials_org` (if given).
     * trials_org: the original entire trials.
     """
-    trials = {}
+    trials = []
     sep_begin = None
     sep_end = None
     n_occ = 0
 
-    for rules in ruledict.values():
-        for rule in rules:
-            if '${CHUNK}' not in rule['new']:
-                continue
-            seps = rule['new'].split('${CHUNK}')
-            sep_begin, sep_end = seps[0], seps[1]
-            n_occ = rule['n']
-            break
+    for rule in rules:
+        if '${CHUNK}' not in rule['new']:
+            continue
+        seps = rule['new'].split('${CHUNK}')
+        sep_begin, sep_end = seps[0], seps[1]
+        n_occ = rule['n']
+        break
 
     for fn in filenames:
         # pass 1
-        rules = ruledict[fn]
         html = open(fn).read()
         for rule in rules:
             if 'n' not in rule or '${CHUNK}' in rule['new']:
@@ -130,22 +144,61 @@ def validate_html_files(filenames, ruledict,
         html = html[0]
         trials0 = html.split(sep_begin)[-1].split(sep_end)[0]
         trials0 = json.loads(trials0)
-        for _k in trials0:
-            if _k in trials:
-                trials[_k].extend(trials0[_k])
-            else:
-                trials[_k] = trials0[_k]
+        trials.extend(trials0)
 
     if trials_org is not None:
-        assert trials_org.keys() == trials.keys()
-        for ind in trials_org:
-            assert len(trials[ind]) % len(trials_org[ind]) == 0
-            mult = len(trials[ind]) / len(trials_org[ind])
-            assert mult * trials_org[ind] == trials[ind], \
-                    (ind, len(trials_org[ind]), len(trials[ind]))
+        assert trials_org == trials
+
+
+def download_results(hitids, dstprefix=None, sandbox=True,
+        replstr='${HIT_ID}', verbose=False, full=False):
+    """Download all assignment results in `hittids` and save one pickle file
+    per HIT with `dstprefix` if it is not `None`.  If `dstprefix` is `None`,
+    the downloaded info will be returned without saving files."""
+    exp = base.Experiment(sandbox=sandbox,
+        max_assignments=base.MTURK_PAGE_SIZE_LIMIT,
+        reward=0.,
+        collection_name=None,   # disables db connection
+        meta=None,
+        )
+
+    res = []
+    n_total = len(hitids)
+    n_hits = 0
+    n_assgns = 0
+    meta = {'boto_version': boto_version,
+            'backup_algo_version': BACKUP_ALGO_VER}
+
+    for hitid in hitids:
+        if verbose:
+            print 'At (%d/%d):' % (n_hits + 1, n_total), hitid
+
+        assignments, HITdata = exp.getHITdataraw(hitid)
+        n_hits += 1
+        n_assgns += len(assignments)
+
+        if dstprefix is None:
+            res.append((assignments, HITdata))
+            continue
+
+        # save files otherwise
+        if replstr in dstprefix:
+            dst = dstprefix.replace(replstr, str(hitid))
+        else:
+            dst = dstprefix + str(hitid) + '.pkl'
+        pk.dump((assignments, HITdata, meta), open(dst, 'wb'))
+
+    if full:
+        return res, n_hits, n_assgns
+    if dstprefix is None:
+        return res
 
 
 def mkdirs(pth):
     """Make the directory recursively"""
     if not os.path.exists(pth):
         os.makedirs(pth)
+
+
+def chunker(seq, size):
+    return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
