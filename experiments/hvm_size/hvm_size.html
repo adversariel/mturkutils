@@ -1,0 +1,763 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="https://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Size Estimation</title>
+
+<style>
+body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana }
+div,pre { margin:0; padding:0 }
+h2 { margin: 20px 0 5px 0; padding: 0 }
+p.intro { margin: 0; padding: 15px; background: #eee; font-size: small; }
+.thumbs { position: absolute; width: 100px; height: 100px;}
+div.thumb { position:absolute; float:left; padding: 1px; width: 64px; height: 64px;}
+div.thumb img { border: 2px solid white; width:64px; height:64px; }
+
+div#tutorial {
+	position:relative;
+	background-color: white;
+	padding: 10px;
+}
+
+img {
+    /*filter: url(http://s3.amazonaws.com/imagenet_psychophysics/filters.svg#grayscale); *//* Firefox 3.5+ */
+    /*filter: gray; *//* IE6-9 */
+    /*-webkit-filter: grayscale(1); *//* Google Chrome & Safari 6+ */
+}
+
+.shrinkwidth {
+	width:512px;
+	height:auto;
+}
+
+.shrinkheight {
+	width:auto;
+	height:512px;
+}
+
+
+#responseCanvas {
+    font-family:Monospace;
+    font-size:13px;
+    text-align:center;
+    font-weight: bold;
+    margin: 0px;
+    overflow: hidden;
+    position: relative;
+    background-color: "#7F7F7F"
+}
+
+</style>
+
+
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.10.2.js"></script>
+
+<script src="http://code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+<script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+<link rel="stylesheet" href="http://jqueryui.com/resources/demos/style.css">
+
+<script type="text/javascript" src="three.min.js"></script>
+<script type="text/javascript" src="Detector.js"></script>
+<script type="text/javascript" src="posdict.js"></script>
+<script type="text/javascript" src="jstat.min.js"></script>
+
+<script type="text/javascript">
+
+ExperimentData = null;
+
+if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+var container, camera, scene, renderer, mesh, jsonLoader, objname, posdict, sizes, hvm_equivalents, arot, arotinv, bounding_boxes, _FLAG;
+
+function animate() {
+    requestAnimationFrame( animate );
+    render_scene();
+}
+
+
+function getRotationAroundWorldAxis(rotX, rotY, rotZ){
+    /*gets quaternion
+    usage:
+        q = getRotationAroundWorldAxis(a, b, c);                //get the rotation
+        obj.quaternion.multiplyQuaternions(q, obj.quaternion);  //apply it to object "obj"
+    */
+
+    var q1 = new THREE.Quaternion();
+    var axis = new THREE.Vector3(1, 0, 0);
+    axis.normalize();
+    q1.setFromAxisAngle( axis, rotX ); // axis must be normalized, angle in radians
+
+    q2 = new THREE.Quaternion();
+    axis = new THREE.Vector3(0, 1, 0);
+    axis.normalize();
+    q2.setFromAxisAngle( axis, rotY ); // axis must be normalized, angle in radians
+
+    q3 = new THREE.Quaternion();
+    axis = new THREE.Vector3(0, 0, 1);
+    axis.normalize();
+    q3.setFromAxisAngle( axis, rotZ ); // axis must be normalized, angle in radians
+
+    q2.multiplyQuaternions(q2, q1);
+    q3.multiplyQuaternions(q3, q2);
+    return q3
+
+}
+
+
+function getQuaternion(rotX, rotY, rotZ, order){
+    var eu = new THREE.Euler(rotX, rotY, rotZ, order)
+    var q = new THREE.Quaternion().setFromEuler(eu);
+    return q
+    }
+
+function rotateAroundWorldAxis(obj, rotX, rotY, rotZ){
+    var q = getQuaternion(rotX, rotY, rotZ);
+    obj.quaternion.multiplyQuaternions(q, obj.quaternion);
+    return q
+    }
+
+var mult, mult1, bpp, bsize;
+var meshDict = {};
+
+function makeScene(){
+
+    size0x = mesh.scale.x;
+    size0y = mesh.scale.y;
+    size0z = mesh.scale.z;
+
+    sizer0x = mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius;
+    sizer0y = mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius;
+    sizer0z = mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius;
+    animate();    
+    
+    scene.add( mesh );
+
+    $('#slider').slider("option", "value", 50);
+    $('#slider').trigger('slide')
+
+    var realsize = imgData[trialNumber]['s'].toFixed(2);
+    var pct = get_val_inverse(realsize);
+    $('#correctBox').css('left', pct + '%');
+
+    $('#submitResponse').show();
+    $('#slider').show();
+    //$('#sliderReport').show();
+    $('#responseCanvas').show();
+    $('#trialCounter').show();
+    $('#instruct').show();
+
+    trialStartTime = new Date();
+
+    if (trialNumber+1 == totalTrials)
+    {
+        }
+    else {
+        var thisStim = imgFiles_new[trialNumber+1];
+        $('#main_test').attr('src',thisStim);
+    };
+
+}
+
+function createScene( geometry, materials) {
+    mesh = new THREE.Mesh( geometry, new THREE.MeshFaceMaterial( materials ) );
+    
+    rotateAroundWorldAxis(mesh, 0, 0, -posdict[objname]['z']);
+    rotateAroundWorldAxis(mesh, 0, -posdict[objname]['y'], 0);
+    rotateAroundWorldAxis(mesh, -posdict[objname]['x'], 0, 0)
+
+    mult = sizes[imgData[trialNumber]['obj']] / 100;
+    bpp = bounding_boxes[imgData[trialNumber]['obj']];
+    bsize = Math.max(bpp['h'], bpp['w']) / 2;
+    mult1 = 100 / bsize;
+
+    mesh.scale.set(mult1 * mult * mesh.scale.x / mesh.geometry.boundingSphere.radius,
+                   mult1 * mult * mesh.scale.y / mesh.geometry.boundingSphere.radius,
+                   mult1 * mult * mesh.scale.z / mesh.geometry.boundingSphere.radius);
+
+    mesh.translateX(-mult1 * mult * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
+    mesh.translateY(-mult1 * mult * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
+    mesh.translateZ(-mult1 * mult * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+    //meshDict[objname] = mesh;
+    makeScene(mesh);
+}
+
+function replace_scene(){
+    if (meshDict[objname] == undefined){
+        jsonLoader.loadAjaxJSON( jsonLoader, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/" + objname + ".js",
+                  createScene, "http://s3.amazonaws.com/dicarlocox-datasets/hvm_js/" + objname + "/",
+            function( progress, result ) {
+            });
+    } else {
+        mesh = meshDict[objname]
+        makeScene();
+    }
+}
+
+function init_scene() {
+
+    camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
+    camera.position.z = 4;
+
+
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2( 0xcccccc, 0.0002 );
+
+    jsonLoader = new THREE.JSONLoader();
+    jsonLoader.crossOrigin = "anonymous";
+
+    // lights
+    light = new THREE.DirectionalLight( 0xaaaaaa);
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa);
+    light.position.set( 1, 1, -1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( 1, -1, 1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( -1, 1, 1 );
+    scene.add( light );
+
+    light.position.set( -1, 1, -1 );
+    scene.add( light );
+
+    light = new THREE.DirectionalLight( 0xaaaaaa );
+    light.position.set( -1, -1, -1 );
+    scene.add( light );
+
+    //light = new THREE.DirectionalLight( 0x002288 );
+    //light.position.set( -1, -1, -1 );
+    //scene.add( light );
+
+    light = new THREE.AmbientLight( 0xffffff );
+    scene.add( light );
+
+
+    // renderer
+
+    renderer = new THREE.WebGLRenderer( { antialias: false , alpha: true} );
+    //renderer.setClearColor( scene.fog.color, 1 );
+    renderer.setClearColor("#7F7F7F", 1);
+    var ratio = window.innerWidth / window.innerHeight;
+    var _width = ratio * 512;
+    renderer.setSize(_width , 512);
+
+    container = $('#responseCanvas');
+    container.append( renderer.domElement );
+
+    window.addEventListener( 'resize', onWindowResize, false );
+
+}
+
+function onWindowResize() {
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    var ratio = window.innerWidth / window.innerHeight;
+    var _width = ratio * 512;
+    renderer.setSize(_width , 512);
+    render_scene();
+
+}
+
+function render_scene() {
+    renderer.render( scene, camera );
+}
+
+
+shuffle = function(o) {
+	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+	return o;
+  };
+
+
+Array.prototype.flatten = function flatten(){
+   var flat = [];
+   for (var i = 0, l = this.length; i < l; i++){
+       var type = Object.prototype.toString.call(this[i]).split(' ').pop().split(']').shift().toLowerCase();
+       if (type) { flat = flat.concat(/^(array|collection|arguments|object)$/.test(type) ? flatten.call(this[i]) : this[i]); }
+   }
+   return flat;
+};
+
+
+function getAspectRatio(im) {
+	//Defining aspect ratio as width/height
+	var width = im.naturalWidth;
+	var height = im.naturalHeight;
+	var ar = width/height;
+	//console.log(ar)
+	return ar
+}
+
+function reward_scale(error){
+     if (error !== null){
+         var random_error = 0.5;
+         var bonus = Math.max((random_error - error) / random_error, 0);
+     } else{
+         bonus = 0.0
+     }
+     return bonus.toFixed(2)
+}
+
+
+var reward;
+var error = null;
+var catdict = {'Animals': 'animal', 'Boats': 'boat', 'Cars': 'car',
+               'Chairs': 'chair', 'Faces': 'face', 'Fruits': 'fruit',
+               'Planes': 'plane', 'Tables': 'table'};
+
+
+//!!==BEGIN DYNAMIC TRIAL CODE==!!//
+
+function beginExp() {
+	console.log('beginExp');
+	begin = true;
+	notYetBegun = false;
+	$('#instruct').hide();
+	$("#begintask").hide();
+	$("#_preload").hide();
+	$('#responseCanvas').hide();
+
+	$('#submitResponse').click(function(e) {
+		clicked();
+	});
+
+	$('.fixation img').attr('src',fixationImage.src);
+	$('.fixation').show();
+	var thisStim = imgFiles_new[trialNumber];
+    window.scrollTo(0, 0);
+	tmpImage = new Image();
+	tmpImage.src = thisStim;
+	$('#main_test').attr('src',thisStim);
+	//Set proper height/width:
+	if (getAspectRatio(tmpImage) > 1) {
+		//width is longer axis
+		$('#main_test').removeClass().addClass('shrinkwidth');
+	}
+	else {
+		//height is longer axis
+		$('#main_test').removeClass().addClass('shrinkheight');
+	}
+
+	setTimeout(function() {
+						showStim();
+						},ISI);
+}
+
+var _stimduration;
+function showStim() {
+	console.log('showStim');
+	$('.test').show();
+	$('.fixation').hide();
+	_stimduration;
+	if (trialNumber < LEARNING_PERIOD) {
+	    _stimduration = 2000;
+	    $('#correctBox').show()
+	} else {
+	    $('#correctBox').hide()
+	    _stimduration = stimduration;
+	}
+	setTimeout(function() {
+						$('.test').hide();
+						setTimeout("showResponse()",ISI);
+						}, _stimduration);
+}
+
+
+function showResponse() {
+	console.log('showResponse');
+
+	$('#totalSeen').html('Total Objects Seen: 0');
+	if (trialNumber > 2){
+    	//error = (trialNumber / (trialNumber + 1)) * error + (1 / (trialNumber + 1)) * distances[trialNumber-1];
+    	if (jStat.variance(vals) > 0){
+        	error = 1 - jStat.corrcoeff(realvals, vals);
+        }
+        else {
+            error = 1;
+        }
+
+    };
+    reward = reward_scale(error);
+    console.log('reward', reward)
+    var format_error = (1 * error).toFixed(2);
+    if (trialNumber < LEARNING_PERIOD){
+        $('#trialCounter').html('<b><span style="color:red; font-size:large"><u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left</span> after this.</b>');
+    } else {
+        $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
+                     '<br/> Mean Error: '+ format_error +
+                     '<br/> Expected Bonus: $'+ reward
+                     );
+    }
+
+
+	$('#instruct').html('Slide the <b><font color=red>' + catdict[imgData[trialNumber]['category']]+'</b></font> to the correct size!');
+
+    objname = hvm_equivalents[imgData[trialNumber]['obj']];
+    replace_scene();
+
+}
+
+function get_val(val){
+    //return val * 0.02;
+    val = (val - 50.0) / 50.0;
+    return Math.pow(1.6, val)
+
+}
+
+
+function get_val_inverse(val){
+    //return val * 0.02;
+    val = Math.log(val) / Math.log(1.6);
+    return (50.0 * val) + 50.0
+
+}
+
+function clicked() {
+	console.log('clicked');
+	if (begin) {
+ 		trialEndTime = new Date();
+        var val = $('#slider').slider("option", "value");
+        val = get_val(val)
+
+        var realsize = imgData[trialNumber]['s'];
+        console.log(realsize, val)
+        distances.push(Math.abs(realsize - val));
+        realvals.push(realsize);
+        vals.push(val);
+        
+        pushData({"size": val,
+                 '_stimduration': _stimduration,
+                 'mult': mult, 
+                 'bpp': bpp, 
+                 'bsize': bsize, 
+                 'mult1': mult1});
+
+        $('#responseCanvas').hide();
+        $('#submitResponse').hide();
+        $('#instruct').hide();
+        $('#slider').hide();
+        //$('#sliderReport').hide();
+        $('#trialCounter').hide();
+        scene.remove(mesh);
+
+        render_scene();
+        endTrial();
+
+ 	}
+ else { }
+}
+
+function pushData(myval) {
+	console.log('pushData');
+StimDone.push(imgFiles_new[trialNumber]);
+response.push(myval);
+trialDurations.push(trialEndTime - trialStartTime);
+}
+
+function endTrial() {
+  $('.marker').remove();
+  if (trialNumber >= (totalTrials-1))
+  {
+	var resultsobj = [];
+	resultsobj.push({
+					Response:response,
+					ImgOrder:imgFiles_new,
+					StimShown:StimDone,
+					StimDuration:stimduration,
+					RT:trialDurations,
+					Condition:exp_type,
+					Zoom:zoom,
+					IPaddress:user_IP,
+					Browser:BrowserDetect.browser,
+					Version:BrowserDetect.version,
+					OpSys:BrowserDetect.OS,
+					WindowHeight:winH,
+					WindowWidth:winW,
+					ScreenHeight:vertical,
+					ScreenWidth:horizontal,
+                    ImgData:imgData,
+                    "Error":error,
+                    Bonus:reward,
+                    LearningPeriod: LEARNING_PERIOD
+					});
+
+	document.getElementById("assignmentId").value = aID;
+	document.getElementById("data").value = JSON.stringify(resultsobj);
+	document.getElementById("postdata").submit();
+  }
+    else if (jQuery.inArray(trialNumber,BreakTimes) > -1) {
+	  takeABreak();
+  }
+  else
+  {
+    trialNumber++;
+    if (trialNumber === LEARNING_PERIOD){
+        endLearningPeriod();
+    } else {
+        $('.fixation img').attr('src',fixationImage.src);
+        $('.fixation').show();
+        setTimeout(function() {showStim()}, ISI);
+    }
+  }
+}
+
+function endLearningPeriod(){
+    $('#endLearningPeriodScreen').show()
+    var breakperiod=5000;
+    setTimeout(function(){$('#endLearningPeriodScreen').hide();
+                          $('.fixation img').attr('src',fixationImage.src);
+                          $('.fixation').show();
+                          setTimeout(showStim, ISI);
+                    }, breakperiod);
+}
+
+
+function takeABreak() {
+	$('#main_test').attr('src',breakscreen.src);
+	$('.fixation').hide();
+	$('.test').show()
+	$('#_preload').html("<font color=red style=background-color:white>You have completed "+Math.round((trialNumber/totalTrials)*100)+"% of the experiment. Be sure to pay attention so that you know you can finish on time!");
+	$('#_preload').show();
+	document.onkeypress = function(e){
+			var evtobj = window.event? event : e;
+			var unicode = evtobj.charCode? evtobj.charCode : evtobj.keyCode;
+			var actualKey = String.fromCharCode(unicode);
+				if (actualKey=='z'){
+					trialNumber++;
+					$('.test').hide()
+					$('#_preload').hide();
+					$('.fixation').show();
+					var thisStim = imgFiles_new[trialNumber];
+					$('#main_test').attr('src',thisStim)
+					setTimeout(function() {showStim()},ISI)};
+		};
+
+}
+
+//!!==END DYNAMIC TRIAL CODE==!!//
+
+function gup( name )
+{
+  name = name.replace(/[\[]/,"\[").replace(/[\]]/,"\]");
+  var regexS = "[\?&]"+name+"=([^&#]*)";
+  var regex = new RegExp( regexS );
+  var param = regex.exec( window.location.href );
+  if( param == null )
+    return "";
+  else
+    return param[1];
+}
+
+function init_vars() {
+    clicknum = 1;
+    click1data = null;
+    zoom = DetectZoom.zoom();
+	aID = gup("assignmentId");
+	response = new Array();
+	trialDurations = new Array();
+	trialStartTime = new Date();
+	StimDone = new Array();
+	imgFiles_new = new Array();
+	fixationImage = new Image;
+	fixationImage.src = "https://s3.amazonaws.com/human_training/fixation.png";
+	breakscreen = new Image;
+	breakscreen.src = "https://s3.amazonaws.com/monkeyimgs/2way_impute/break.png";
+	stimduration = 100;
+    imgData = ExperimentData.imgData;
+	ISI = 750;
+	trialNumber = 0;
+	totalTrials = ExperimentData["imgFiles"].length;
+	BreakTimes = [];
+	begin = false;
+	startpoint = 0
+	exp_type = 'position_with_click';
+    imgData = ExperimentData.imgData;
+    reward = 0;
+    distances = new Array();
+    realvals = new Array();
+    vals = new Array();
+    notYetBegun = true;
+    LEARNING_PERIOD = LEARNINGPERIODNUMBER;
+}
+
+function preload_resources() {
+    imgFiles_new = ExperimentData.imgFiles;
+
+	stimFiles = imgFiles_new.map(function(a) {
+		return a;
+	});
+}
+
+$(document).ready(function() {
+
+	$('#tutorial_original').hide(), $('#tutorial2').hide(), $('#tutorial3').hide();
+    $('#instruct').hide();
+    $('#submitResponse').hide();
+    $('#responseCanvas').hide();
+    $("#slider").hide();
+    $("#begintask").hide();
+    $('#endLearningPeriodScreen').hide();
+    //$('#sliderReport').hide();
+    init_vars();
+	preload_resources();
+	preload(stimFiles, function() {
+							   $("#begintask").click(function(){
+															  beginExp();
+															  });
+							   });
+
+    $(function() {
+        $("#slider").slider({value: 50, step: 0.5});
+        $("#slider").append('<a  id="correctBox" class="ui-slider-handle ui-state-default ui-conner-all" href="#" style="left:50%; top:14px;"></a>')
+    });
+
+    function slidefunc(event, ui){
+        var val;
+        if (ui === undefined){
+            val = $('#slider').slider("option", "value");
+        } else {
+            val = ui.value;
+        }
+        var dil = get_val(val);
+        console.log("dil, pos", val, dil);
+        $('.ui-slider-handle').height(13)
+        $('.ui-slider-handle').width(30)
+        $('.ui-slider-handle').html('<div align="center">' + dil.toFixed(2) + '</div>');
+        var realsize = imgData[trialNumber]['s'].toFixed(2);
+        $('#correctBox').width(35)
+        $('#correctBox').html('<div align="center" style="color:red"><b>' + realsize + '</b></div>');
+
+        mesh.position.setX(0); mesh.position.setY(0); mesh.position.setZ(0);
+        mesh.scale.set(dil * size0x, dil * size0y, dil * size0z);
+        mult = sizes[imgData[trialNumber]['obj']] / 100;
+        bpp = bounding_boxes[imgData[trialNumber]['obj']];
+        bsize = Math.max(bpp['h'], bpp['w']) / 2;
+        mult1 = 100 / bsize;
+        mesh.translateX(-mult1 * mult * dil * mesh.geometry.boundingSphere.center.x / mesh.geometry.boundingSphere.radius);
+        mesh.translateY(-mult1 * mult * dil * mesh.geometry.boundingSphere.center.y / mesh.geometry.boundingSphere.radius);
+        mesh.translateZ(-mult1 * mult * dil * mesh.geometry.boundingSphere.center.z / mesh.geometry.boundingSphere.radius);
+        render_scene();
+
+    }
+
+    $('#slider').on("slide", slidefunc);
+    $('#slider').on("stop", slidefunc);
+
+    init_scene();
+    hvm_equivalents = model_data["hvm_equivalents"];
+    posdict = model_data["posdict"];
+    sizes = model_data["sizes"];
+    bounding_boxes = model_data["bounding_boxes"];
+
+	$('.test').hide();
+	$('#warning').hide();
+
+	$("#tutorial").html($("#tutorial_original").html());
+	$("#tutorial").dialog({height:'auto',
+							width:600,
+							position:"center",
+							title:"Instructions",
+    						close: function(event, ui){
+						          if (notYetBegun){
+						               $("#begintask").show();
+						          }
+						        }
+							});
+
+	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
+		$('#warning').show();
+		$('#warning').html("<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>")
+	}
+	if (BrowserDetect.browser == 'Explorer') {
+		$('#warning').show();
+		$('#warning').append("<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT. Thank you!</b></font></span>");
+	}
+
+});
+
+</script>
+
+</head>
+
+<body bgcolor="#7F7F7F">
+<div style="height:1000px; width:auto;">
+<div align="center" id="warning"></div>
+<div align="center"><button id="begintask" value="Begin!">Begin!</button></div>
+<div id="_preload" align="center" style="position:fixed; top:0px; left:10px; z-index:100"></div>
+
+<div align="center" id="markers">
+    <div class="fixation" align="center" style="position:relative; z-index:201; top:115px; left:0px;"><img id="fixation_dot" src="" /></div>
+    <div class="test" align="center" style="position:relative; z-index:200; top:20px; left:0px;"><img id="main_test" src="" /></div>
+    <div id="endLearningPeriodScreen" align="center" style="position:relative; z-index:200; height=512px; width=512px; top:75px; left:0px;font-size:100px">End of learning period!<br>Trials will commence in 5 seconds.<br>Be ready, as they will be fast!</div>
+    <div id="instruct" style="position:relative; z-index:100; top:30px; font-size:150%;">Make the object have the correct size.</div>
+    <div id="responseCanvas"></div>
+    <div align="center" id="slider" style="position:relative; top:10px; width:700px; "></div>
+    <!--<div align="center" id="sliderReport" style="position:relative; top:15px; height:15px; width:15px; font-size:200%;"></div> -->
+    <div align="center"><button id="submitResponse" style="position:relative; top:30px; font-size:small;" value="Submit Response">Submit Response</button></div>
+<div id="trialCounter" style="position:relative; top:50px; font-size:small;"></div>
+</div>
+
+
+<div id="tutorial_link" style="position:fixed; top:0px; right:10px;" onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700,	width:600,position:'center',title:'Instructions'})"><u>View Instructions</u></div>
+
+<div id="tutorial" style="position:relative; z-index:-1"></div>
+<div id="tutorial_original" style="position:absolute; z-index:-1;"><b> ***NOTE: Instructions have changed, and low performance will lead to rejection: make sure to read!**</b>
+<p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
+<p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
+<b>IMPORTANT: doing this task <u>requires</u> you to have WebGL enabled in your browser.</b>  If your web browser does not have WebGL capabilities, you <b>cannot</b> do this task.  If your browser does have WebGL capabilities, you must still <b>make sure that WebGL is enabled</b> in your browser.  To do so, go to your favorite web search engine, perform a search for "webgl + [your browser name]," and follow instructions.
+<p>
+To do this task, your computer <b>must</b> have a recent CPU and more than 4 GB of RAM. Your computer also must also have a modern and fast internet connection.  Please note that most laptops do NOT have sufficient resources to do this task.  If you're unsure if your computer meets the requirements for this task, try the first few trials.  If this task is not working efficiently, please return the HIT.</p>
+<p>While doing this task, it is <b> very important that you NOT have other browser windows open simultaneously</b>, even if you aren't looking at them.   Not only will these windows potentially distract you from the task, but they will also take up memory resources that your computer will need to run this task properly.</p>
+<p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
+<center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
+<div id="tutorial2" style="position:absolute; z-index:-1;">
+<ul>
+<li>You will see a series of images, each one presented for a very brief time. Each image will contain an object in one of eight target categories: Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
+<p>
+<li>After you see an image, you will be presented with the object again.  You must then move the slider to enlarge or shrink the object until it has  <b><u>the same size</u> that it did in the original image.</b>  For example, if you thought you saw an elephant that would fill 1 inch on the screen from trunk to tail in the original image, move the response slider until the elephant model is about 1 inch wide.</li>
+<p>
+<li>It does not matter what position the object took on in the original image, or what pose the object was shown in.  All that matters is whether the original size of object has been matched correctly.  Also, don't take into account the depth of the object in the scene -- make the assumption that all apparent differences in size are really due the object changing actual size.</li>
+<p>
+<li> When you're happy with your sizing of the object, click the "Submit Response" button at the very top of the screen.  Even if you're not 100% sure of the correct answer, <b>make your best guess.</b>  Once you click submit, you will move on to the next image immediately, so <b>be ready!</b></li>
+<p>
+<li>The first few examples will consist of a learning period.  During this period, the correct size will be indicated below the slider, and the images will be shown for a longer period of time.  You should use this period to get a feel for the task and learn how to use the slider interface.</li>
+<p>
+<li>After the learning period, you will have to set the position of the slider yourself.  Also, <b>the images will be begin to be shown <u>very</u> quickly.  Be ready!</b>  Even if you're not 100% sure of location the correct bounding box, <u><b>make your best guess.</b></u>  Once you click, you will move on to the next image immediately.</li>
+<p>
+<li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
+</ul>
+<center><p onclick="$('#tutorial').html($('#tutorial3').html())"><font color=blue><u>Click here to continue reading</u></font></p></center>
+</div>
+<div id="tutorial3" style="position:absolute; z-index:-1;">
+<ul>
+<p>
+<li>Please be sure to maximize your browser window before beginning this experiment. .</li>
+<p>
+<li><b>In total, you will see 100 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
+<p>
+<li>When you are ready to begin, click the "Begin" button at the very top of the screen. <b>Be prepared to see the first image -- it happens very fast!</b></li>
+<p>
+<li>If you have questions or concerns about this HIT, feel free to contact the requester. You can re-read these instructions at any time by clicking the link in the upper right-hand corner of the screen. Good luck!</li>
+</ul>
+<center><font color=blue><u><p onclick="$('#tutorial').dialog('close')">Click here to close the instructions</p></u></font></center>
+</div>
+
+</div>
+	<form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
+	<input type="text" name="data" id="data" value="">
+    <input type="text" name="assignmentId" id="assignmentId" value="">
+	</form>
+
+</body>
+</html>

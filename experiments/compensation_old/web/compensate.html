@@ -1,0 +1,178 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Compensation</title>
+
+<style>
+body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana; }
+div,pre { margin:0; padding:0 }
+h2 { margin: 20px 0 5px 0; padding: 0 }
+p.intro { margin: 0; padding: 15px; background: #eee; font-size: small; }
+.thumbs { position: absolute; width: 100px; height: 100px;}
+div.thumb { position:absolute; float:left; padding: 1px; width: 64px; height: 64px;}
+div.thumb img { border: 2px solid white; width:64px; height:64px; }
+div#central_cell {font-size: 150%; }
+
+div#tutorial {
+position:relative; 
+background-color: white;  
+padding: 10px;
+}
+
+</style>
+
+<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
+
+<script type="text/javascript">
+
+acceptID = [];
+
+shuffle = function(o) { 
+	for(var j, x, i = o.length; i; j = parseInt(Math.random() * i, 10), x = o[--i], o[i] = o[j], o[j] = x);
+	return o;
+};
+
+function inArrayStrSloppy(elem, arr, i) {
+	// from jquery's inArray
+	var len;
+
+	if ( arr ) {
+		len = arr.length;
+		i = i ? i < 0 ? Math.max( 0, len + i ) : i : 0;
+
+		for ( ; i < len; i++ ) {
+			// Skip accessing in sparse arrays
+			if ( i in arr && elem.indexOf(arr[ i ]) > -1 ) {
+				return i;
+			}
+		}
+	}
+
+	return -1;
+}
+
+function gup(name) {
+    name = name.replace(/[\[]/,"\\[").replace(/[\]]/,"\\]");
+    var regexS = "[\\?&]"+name+"=([^&#]*)";
+    var regex = new RegExp( regexS );
+    var results = regex.exec(window.location.href);
+    if (results === null)
+        return "";
+    else
+        return results[1];
+}
+  
+Array.prototype.flatten = function flatten(){
+   var flat = [];
+   for (var i = 0, l = this.length; i < l; i++){
+       var type = Object.prototype.toString.call(this[i]).split(' ').pop().split(']').shift().toLowerCase();
+       if (type) { flat = flat.concat(/^(array|collection|arguments|object)$/.test(type) ? flatten.call(this[i]) : this[i]); }
+   }
+   return flat;
+};
+
+String.prototype.repeat = function(times) {
+   return (new Array(times + 1)).join(this);
+};
+
+//!!==BEGIN DYNAMIC TRIAL CODE==!!//
+
+function beginExp() {
+	console.log('beginExp');
+	console.log(aID);
+	console.log(wID);
+	begin = true;
+
+	$("#begintask").hide();
+	$("#instruction").hide();
+	trialNumber=1;
+	endTrial();
+}
+
+
+function endTrial() {
+	if (trialNumber == 1) {	
+		console.log('End');
+		resultsobj = [];
+		resultsobj.push({
+					WorkerID:wID,
+					Zoom:zoom,
+					IPaddress:user_IP,
+					Browser:BrowserDetect.browser,
+					Version:BrowserDetect.version,
+					OpSys:BrowserDetect.OS,
+					WindowHeight:winH,
+					WindowWidth:winW,
+					ScreenHeight:vertical,
+					ScreenWidth:horizontal
+					});	 
+
+		document.getElementById("assignmentId").value = aID;
+		document.getElementById("data").value = JSON.stringify(resultsobj);
+		document.getElementById("postdata").submit();
+	}	
+	else {
+		console.log(trialNumber);
+		console.log('Not clicked');
+	}
+}
+
+//!!==END DYNAMIC TRIAL CODE==!!//
+
+function init_vars() {
+	zoom = DetectZoom.zoom();
+	wID = gup("workerId");
+	aID = gup("assignmentId");  
+	trialNumber = 0;
+	exp_type = 'compensate';
+}
+
+$(document).ready(function() {
+	$("#generaltext").show();
+	init_vars();
+
+	if (inArrayStrSloppy(wID, acceptID) > -1){  
+				$("#generaltext").hide();
+				$("#begintask").click(function() {
+					beginExp();
+					});	
+	}
+	else {
+		console.log('reject');
+		$("#begintask").hide();
+		$("#generaltext").show();
+		$("#instruction").hide();
+	}	
+	$('#warning').hide();
+	if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE"){
+		$('#warning').show();
+		$('#warning').html("<font color=red style=background-color:white><b>You are in PREVIEW mode. Please ACCEPT this HIT to complete the task and receive payment.</b></font>");
+	}
+});
+
+</script>
+
+</head>
+
+<body bgcolor="#7F7F7F">
+<div style="height:1000px; width:auto;">
+<div align="center" id="warning"></div>
+<div align="center"><button id="begintask" value="Get Compensation" style="height:35px; width:170px;" >Get Compensation</button></div>
+<div id="general" align="center" style="position:relative; top:100px;">
+	<p id="generaltext"><font color=#9e1316><b>This HIT is for invited workers only.</font> <br /><br /><br />If you are not invited, you will NOT be able to begin/submit this task, so please do not accept this HIT.<br /><br /><br />You are, however, welcome to accept other HITs from the same requester.</b></p>
+</div>
+<div id="instruction" align="center" style="position:relative; top:200px;">Please click on the "Get Compensation" button at the top. <br /><br /><br /> This HIT will submit itself, and you will get compensated shortly.<br /><br /><br />If you have other questions, please contact the requester.</b></div>
+	<form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
+	<input type="hidden" name="data" id="data" value="" />
+    	<input type="hidden" name="assignmentId" id="assignmentId" value="" />
+	</form>
+</body>
+</html>
+
