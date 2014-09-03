@@ -95,22 +95,27 @@ def get_exp(sandbox=True, stimdur=100,
     htmlsrcdct = {}
     descdct = {}
     htmldstdct = {}
+    tmpdirdct = {}
 
     htmlsrcdct['default'] = 'web/objt_tcurve_o16s0.html'
     descdct['default'] = "***You may complete as many HITs in this group as you want*** Complete a visual object recognition task where you report the identity of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment."  # noqa
     htmldstdct['default'] = 'objt_tcurve_o16s0_%04d_n%%05d.html' % int(stimdur)   # noqa
+    tmpdirdct['default'] = 'tmp/t%04d' % int(stimdur)
 
     htmlsrcdct['softnotice'] = 'web/objt_tcurve_o16s0_softnotice.html'
     descdct['softnotice'] = descdct['default']
     htmldstdct['softnotice'] = 'objt_tcurve_o16s0_soft_%04d_n%%05d.html' % int(stimdur)  # noqa
+    tmpdirdct['softnotice'] = 'tmp/t%04d_soft' % int(stimdur)
 
     htmlsrcdct['winonly'] = 'web/objt_tcurve_o16s0_winonly.html'
     descdct['winonly'] = "***Chrome or Firefox on Windows only*** Complete a visual object recognition task where you report the identity of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment."  # noqa
-    htmldstdct['winonly'] = 'objt_tcurve_o16s0_%04d_n%%05d.html' % int(stimdur)  # noqa
+    htmldstdct['winonly'] = htmldstdct['default']
+    tmpdirdct['winonly'] = tmpdirdct['default']
 
     htmlsrcdct['winchromeonly'] = 'web/objt_tcurve_o16s0_winchromeonly.html'
     descdct['winchromeonly'] = "***Latest Chrome on Windows only*** Complete a visual object recognition task where you report the identity of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment."  # noqa
-    htmldstdct['winchromeonly'] = 'objt_tcurve_o16s0_%04d_n%%05d.html' % int(stimdur)  # noqa
+    htmldstdct['winchromeonly'] = htmldstdct['default']
+    tmpdirdct['winchromeonly'] = tmpdirdct['default']
 
     exp = MatchToSampleFromDLDataExperiment(
             htmlsrc=htmlsrcdct[mode],
@@ -127,7 +132,7 @@ def get_exp(sandbox=True, stimdur=100,
             bucket_name='objectome_tcurve_16objsset0',
             trials_per_hit=ACTUAL_TRIALS_PER_HIT + 24,  # 150 + 6x4 repeats
             html_data=html_data,
-            tmpdir='tmp/t%04d' % int(stimdur),
+            tmpdir=tmpdirdct[mode],
             frame_height_pix=1200,
             additionalrules=[{
                 'old': 'stimduration = 100;',
