@@ -30,12 +30,6 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 var ExperimentData = null;
 var IMG_FIXATION = 'https://s3.amazonaws.com/task_images/fixation_360x360.png';
 var IMG_BLANK = 'https://s3.amazonaws.com/task_images/blank_360x360.png';
-var JS_TRES_TOL = 17;            // An example tolerance value for js timing (~60Hz frame rate)
-var JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
-var FRAME_INTERVAL_TOL = 1000 / 60 + 2;   // mean frame interval should be smaller than 16.66ms + 2ms
-var FRAME_INTERVAL_VAR_TOL = 5 * 5;       // jitter shouldn't be larger than 5ms
-var FRAME_INTERVAL_QUANTFAC_TOL = 0.8;    // fail if more than 80% of timestamps are multiples of 100us (FF)
-var FRAME_INTERVAL_UNIQFAC_TOL = 3;       // fail if there are <= 3 unique intervals (Chrome)
 
 // var labels = ExperimentData.labels;    // unused here
 // var imgData = ExperimentData.imgData;  // unused here
@@ -51,13 +45,12 @@ var ISI = 500;
 var num_correct = 0, reward = 0, acc;
 reward related: var reward_scale = ExperimentData.reward_scale; */
 
-var zoom;
+var exp = null;
+var zoom = DetectZoom.zoom();
 var aID;
 var ctx_test_on;
 var ctx_resp0_on;
 var ctx_resp1_on;
-var benchmark;
-var benchmarks = [];
 var maxHeightInThisExp = 450;
 var extInfo = {language: navigator.language, userAgent: navigator.userAgent};
 
@@ -70,34 +63,8 @@ var measuredISI2 = [];
 var measuredStimdur = [];
 var StimDone = [];
 
-var breakscreen;
-var exp_started = false;
-var benchmark_finished = false;
-var benchmark_passed = false;
-var timer_bench = null;
-var timer_disp = null;
-var retry = 0;
-
 var l_full_history = [], l_full_history_delta = [];
 var _hist, _hist_delta;
-
-function round2(num) {
-    return Math.round(num * 100) / 100;
-}
-
-function defined(obj) {
-    return typeof(obj) != 'undefined';
-}
-
-function detectmob() { 
-    // from: http://stackoverflow.com/questions/11381673/javascript-solution-to-detect-mobile-browser
-    if (navigator.userAgent.match(/Android/i) || navigator.userAgent.match(/webOS/i) ||
-            navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i) ||
-            navigator.userAgent.match(/iPod/i) || navigator.userAgent.match(/BlackBerry/i) ||
-            navigator.userAgent.match(/Windows Phone/i))
-        return true;
-    return false;
-}
 
 //!!==BEGIN DYNAMIC TRIAL CODE==!!//
 function primeSystemAndRunTrialOnce() {
@@ -288,7 +255,8 @@ function endTrial() {
 }
 
 function takeABreak() {
-    dltk.drawToContext(breakscreen.src, ctx_test_on, null, false);
+    var BREAKSCREEN = "https://s3.amazonaws.com/task_images/break.png";
+    dltk.drawToContext(BREAKSCREEN, ctx_test_on, null, false);
     $('.test').show();
     $('#_preload').html(
         "<font color=red style=background-color:white>You have completed " +
@@ -312,167 +280,25 @@ function takeABreak() {
 
 
 function initSetup() {
-    // initial layout
-    $("#tutorial").hide();
-    $("#systemmsg").hide();
-    $("#notice").hide();
-    $("#tutorial_link").hide();
-    $('#tutorial_original').hide();
-    $('#tutorial2').hide();
-    $('#tutorial3').hide();
-    $('.test').hide();
-    $('#group_container').hide();
-    // begintask button is enabled, but hidden at start
-    $("#begintask").click(beginExp);
-    $("#begintask").hide();
-    $('#warning').hide();
-    recomputeOffset();
+    var optdct = {postAfterPassBenchmark: afterPassBenchmark};
+    exp = new dltk.Experiment(imgFiles, $, BrowserDetect, primeSystemAndRunTrialOnce, optdct);
+    // abort if initialization fails
+    if (!exp.init()) return false;
 
-    // setup variables
-    breakscreen = new Image();
-    breakscreen.src = "https://s3.amazonaws.com/task_images/break.png";
-    zoom = DetectZoom.zoom();
-    aID = dltk.getURLParameter("assignmentId");
+    aID = exp.aID;
+    recomputeOffset();
 
     // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
     ctx_test_on = dltk.getOnScreenContextFromCanvas('main_test');
     ctx_resp0_on = dltk.getOnScreenContextFromCanvas('img4');
     ctx_resp1_on = dltk.getOnScreenContextFromCanvas('img5');
 
-    // reject unsupported env
-    if (detectmob() || !(BrowserDetect.OS == 'Mac' || BrowserDetect.OS == 'Windows' || BrowserDetect.OS == 'Linux')) {
-        $('#warning').show();
-        $('#warning').append(
-            "<span><font color=red style=background-color:white><b>Only Windows, Mac, and Linux are supported.<br />Thank you!</b></font></span>"
-        );
-        return false;
-    }
-    if (navigator.userAgent.indexOf('Trident/') >= 0 ||   // IE11+ reports as Firefox...
-            !(BrowserDetect.browser == 'Chrome' || BrowserDetect.browser == 'Firefox') ||  // must be either Chrome or FF
-            !defined(vertical) || !defined(horizontal)) {
-        $('#warning').show();
-        $('#warning').append(
-            "<span><font color=red style=background-color:white><b>Please only use the latest version of Chrome or Firefox for this HIT.<br />Thank you!</b></font></span>"
-        );
-        return false;
-    }
-    if (vertical < 590 || horizontal < 1000) {
-        $('#warning').show();
-        $('#warning').append(
-            "<span><font color=red style=background-color:white><b>Screen smaller than 1024x600 is not supported.<br />Please try again with higher resolution. Thank you!</b></font></span>"
-        );
-        return false;
-    }
-
-    return true;  // successful init
+    return true;
 }
 
 function afterPassBenchmark() {
-    benchmark_passed = true;
     recomputeOffset();
-
-    if (aID == "ASSIGNMENT_ID_NOT_AVAILABLE") {
-        $('#warning').show();
-        $('#warning').html(
-            "<font color=red style=background-color:white><b>You are in PREVIEW mode.<br />Please ACCEPT this HIT to complete the task and receive payment.</b></font>"
-        );
-    }
-    $("#tutorial_link").show();
-    $('#fps_bench').hide();
-    $("#notice").show();
-    startClock();
-    showTutorial();
     preloadResources();
-}
-
-function checkSystem(benchmark_) {
-    // determine if this system is capable of running this task
-    // based on the benchmark result
-    var nook = false;
-    var failed_permanently = false;
-    var details, suff = " Do you want to retry?";
-    var msg_height = 260, msg_width = 460;
-
-    if (benchmark_finished) return;
-
-    benchmark_finished = true;
-    benchmark = benchmark_;
-    benchmark.retry = retry;
-    benchmarks.push(benchmark);
-    if (timer_bench !== null) {
-        clearTimeout(timer_bench);
-        timer_bench = null;
-    }
-
-    if (!benchmark.api_support) {
-        details = "Your browser seems to be outdated to run this task.  Please try with the newest Chrome or Firefox please.";
-        nook = true;
-        failed_permanently = true;
-    }
-    else if (benchmark.js_tres > JS_TRES_TOL) {
-        details = "Your system is too slow to complete this task (t=" + round2(benchmark.js_tres) + ").  Close other programs/tabs please.";
-        nook = true;
-    }
-    else if (benchmark.js_tres_variance > JS_TRES_VAR_TOL) {
-        details = "Your system's clock varies too much (v=" + round2(benchmark.js_tres_variance) + ").  Close other programs/tabs please.";
-        nook = true;
-    }
-    else if (BrowserDetect.browser == 'Firefox' && benchmark.refresh_interval_quantization_factor > FRAME_INTERVAL_QUANTFAC_TOL) {
-        details = "Your browser's timestamps are too inaccurate (q=" + round2(benchmark.refresh_interval_quantization_factor) + ").  Please first make sure you're using the latest version of Firefox.  If this browser has been running for a long time or the computer was suspended while running this browser, you need to restart the browser (not just closing and re-opening this tab only) to run this task.";
-        suff = " If you believe this error was just a hiccup, you can try this browser testing again. Do you want to retry?";
-        nook = true;
-        msg_height = 350;
-        msg_width = 700;
-    }
-    else if (BrowserDetect.browser == 'Chrome' && benchmark.refresh_interval_uniqueness_factor <= FRAME_INTERVAL_UNIQFAC_TOL) {
-        details = "Your browser's timestamps are too inaccurate (u=" + round2(benchmark.refresh_interval_uniqueness_factor) + ").  Please first make sure you're using the latest version of Chrome.  If this browser has been running for a long time or the computer was suspended while running this browser, restarting the browser (not just closing and re-opening this tab only) will solve this problem most of the time.  However, if that doesn't work, one of the following options should fix the problem: (1) Use the latest version of Firefox; or (2) Restart your computer.";
-        suff = " If you believe this error was just a hiccup, you can try this browser testing again. Do you want to retry?";
-        nook = true;
-        msg_height = 350;
-        msg_width = 700;
-    }
-    else if (benchmark.refresh_interval > FRAME_INTERVAL_TOL) {
-        details = "Your browser's refresh rate is slower than 60fps (f=" + round2(1000 / benchmark.refresh_interval) + ").  Close other programs/tabs please.";
-        nook = true;
-    }
-    else if (benchmark.refresh_interval_variance > FRAME_INTERVAL_VAR_TOL) {
-        details = "Your browser's refresh rate varies too much (v=" + round2(benchmark.refresh_interval_variance) + ").  Close other programs/tabs please.";
-        nook = true;
-    }
-
-    // if something's wrong, display message and quit
-    if (nook) {
-        $('#_preload').hide();
-        $('#warning').show();
-        $('#warning').html(
-            "<font color=red style=background-color:white><b>Your system CANNOT run this HIT at this point:" + details + "</b></font>"
-        );
-        if (failed_permanently) alert(details);
-        else {
-            $("#systemmsg").show();
-            $("#systemmsg").html(details + suff);
-            $("#systemmsg").dialog({
-                height: msg_height,
-                width: msg_width,
-                modal: true,
-                position: ['middle', 30],
-                title: "Warning",
-                buttons: {
-                    "Retry": function() {
-                        $(this).dialog("close");
-                        benchmark_finished = false;
-                        retry++;
-                        testSystemAndPrepExp();
-                    },
-                    Cancel: function() {
-                        $(this).dialog("close");
-                    }
-                }
-            });
-        }
-    }
-    // passed! proceed to experiment preps.
-    else afterPassBenchmark();
 }
 
 function preloadResources() {
@@ -499,15 +325,6 @@ function preBeginExp() {
     //$('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
     $('#_preload').hide();
     $("#begintaskdiv").css('visibility', 'visible');
-}
-
-function beginExp() {
-    exp_started = true;
-    $("#begintask").hide();
-    $("#begintaskdiv").hide();
-    $("#_preload").hide();
-    $("#notice").hide();
-    primeSystemAndRunTrialOnce();
 }
 
 function showTutorial() {
@@ -580,7 +397,7 @@ function recomputeOffset() {
     extInfo.offsetToTop = offsetToTop;
 
     $("#tutorial_link").css('margin-top', offsetToTop + 'px');
-    if (benchmark_passed) {
+    if (exp !== null && exp.benchmark_passed) {
         $("#warning").css('position', 'absolute');
         $("#warning").css('top', '50%');
         $("#warning").css('margin-top', offsetToTop + 'px');
