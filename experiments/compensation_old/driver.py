@@ -243,7 +243,7 @@ def publish(sandbox=True):
         print '* Extra keywords:', extkwd
         kwd += extkwd
 
-    exp = mt.Experiment(sandbox=sandbox,
+    exp = mt.Experiment(None, None, sandbox=sandbox,
         keywords=kwd,
         max_assignments=states['n_assignments'],
         title=states['title'],
@@ -263,9 +263,9 @@ def publish(sandbox=True):
     hitidslog = os.path.join(TMPDIR, 'hitidslog_' +
             ('sandbox' if sandbox else 'production') + '_' +
             s_t0 + '.pkl')
-    exp.URLs = ['https://s3.amazonaws.com/' + S3BUCKET +
+    URLlist = ['https://s3.amazonaws.com/' + S3BUCKET +
             e.split(TMPDIR)[-1] for e in fns]
-    exp.createHIT(verbose=True, hitidslog=hitidslog)
+    exp.createHIT(verbose=True, URLlist=URLlist, hitidslog=hitidslog)
 
     fns = [hitidslog]
     dfns = ['hitidslog_' + 'sandbox.pkl' if sandbox else 'production.pkl']
@@ -303,7 +303,7 @@ def bonus(sandbox=True):
     bonuses = states['bonuses']
     unbonused = bonuses.keys()
 
-    exp = mt.Experiment(sandbox=sandbox,
+    exp = mt.Experiment(None, None, sandbox=sandbox,
         max_assignments=MAX_PAGE_SIZE,
         reward=0.,
         collection_name=None,   # disables db connection

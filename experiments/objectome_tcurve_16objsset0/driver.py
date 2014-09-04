@@ -20,6 +20,11 @@ SELECTED_BASIC_OBJS = set(models_testing8_b1 + models_testing8_b2)
 REPEATS_PER_QE_IMG = 4
 ACTUAL_TRIALS_PER_HIT = 150
 STIMDURS = [1000. / 60, 1000 / 30., 50, 1000 / 60. * 4, 100, 150, 200, 500]
+MODES = {1000. / 60: 'winchromeonly',
+        1000. / 30: 'winchromeonly',
+        50: 'winonly',
+        1000 / 60. * 4: 'winonly',
+        100: 'default', 150: 'default', 200: 'default', 500: 'default'}
 
 
 def get_meta(selected_basic_objs=SELECTED_BASIC_OBJS):
@@ -66,7 +71,7 @@ def get_url_labeled_resp_img(obj):
 
 
 def get_exp(sandbox=True, stimdur=100,
-        selected_basic_objs=SELECTED_BASIC_OBJS, debug=False):
+        selected_basic_objs=SELECTED_BASIC_OBJS, debug=False, mode='default'):
     meta = get_meta()
     combs = [e for e in itertools.combinations(selected_basic_objs, 2)]
     urls = [get_url(e['obj'], e['id']) for e in meta]
@@ -86,22 +91,48 @@ def get_exp(sandbox=True, stimdur=100,
             'shuffle_test': True,
     }
 
+    # few different options
+    htmlsrcdct = {}
+    descdct = {}
+    htmldstdct = {}
+    tmpdirdct = {}
+
+    htmlsrcdct['default'] = 'web/objt_tcurve_o16s0.html'
+    descdct['default'] = "***You may complete as many HITs in this group as you want*** Complete a visual object recognition task where you report the identity of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment."  # noqa
+    htmldstdct['default'] = 'objt_tcurve_o16s0_%04d_n%%05d.html' % int(stimdur)   # noqa
+    tmpdirdct['default'] = 'tmp/t%04d' % int(stimdur)
+
+    htmlsrcdct['softnotice'] = 'web/objt_tcurve_o16s0_softnotice.html'
+    descdct['softnotice'] = descdct['default']
+    htmldstdct['softnotice'] = 'objt_tcurve_o16s0_soft_%04d_n%%05d.html' % int(stimdur)  # noqa
+    tmpdirdct['softnotice'] = 'tmp/t%04d_soft' % int(stimdur)
+
+    htmlsrcdct['winonly'] = 'web/objt_tcurve_o16s0_winonly.html'
+    descdct['winonly'] = "***Chrome or Firefox on Windows only*** Complete a visual object recognition task where you report the identity of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment."  # noqa
+    htmldstdct['winonly'] = htmldstdct['default']
+    tmpdirdct['winonly'] = tmpdirdct['default']
+
+    htmlsrcdct['winchromeonly'] = 'web/objt_tcurve_o16s0_winchromeonly.html'
+    descdct['winchromeonly'] = "***Latest Chrome on Windows only*** Complete a visual object recognition task where you report the identity of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment."  # noqa
+    htmldstdct['winchromeonly'] = htmldstdct['default']
+    tmpdirdct['winchromeonly'] = tmpdirdct['default']
+
     exp = MatchToSampleFromDLDataExperiment(
-            htmlsrc='web/objt_tcurve_o16s0.html',
-            htmldst='objt_tcurve_o16s0_%04d_n%%05d.html' % int(stimdur),
+            htmlsrc=htmlsrcdct[mode],
+            htmldst=htmldstdct[mode],
             sandbox=sandbox,
             title='Object recognition --- report what you see',
             reward=0.25,
             duration=1600,
             keywords=['neuroscience', 'psychology', 'experiment', 'object recognition'],  # noqa
-            description="***You may complete as many HITs in this group as you want*** Complete a visual object recognition task where you report the identity of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment.",  # noqa
+            description=descdct[mode],
             comment="objectome_time_curve_%dms.  0-th set of 16 objects" % int(stimdur),  # noqa
             collection_name='objectome_tcurve_16objsset0',
             max_assignments=1,
             bucket_name='objectome_tcurve_16objsset0',
             trials_per_hit=ACTUAL_TRIALS_PER_HIT + 24,  # 150 + 6x4 repeats
             html_data=html_data,
-            tmpdir='tmp/t%04d' % int(stimdur),
+            tmpdir=tmpdirdct[mode],
             frame_height_pix=1200,
             additionalrules=[{
                 'old': 'stimduration = 100;',
@@ -190,7 +221,7 @@ def main(argv=[], partial=False, debug=False, stimdurs=STIMDURS):
         print '** Sandbox mode'
         print '** Enter "driver.py production" to publish production HITs.'
 
-    exps = [get_exp(sandbox=sandbox, debug=debug, stimdur=t)[0]
+    exps = [get_exp(sandbox=sandbox, debug=debug, stimdur=t, mode=MODES[t])[0]
             for t in stimdurs]
     for exp in exps:
         exp.prepHTMLs()
