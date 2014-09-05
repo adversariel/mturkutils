@@ -24,7 +24,7 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="dltk.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140904-cfe5906.js"></script>
 
 <script type="text/javascript">
 var ExperimentData = null;
@@ -281,6 +281,7 @@ function takeABreak() {
 
 function initSetup() {
     var spec = {
+        elemFallback: '#fallback',
         elemTutorial: '#tutorial',
         elemSystemmsg: '#systemmsg',
         elemNotice: '#notice',
@@ -293,23 +294,27 @@ function initSetup() {
         elemPreload: '#_preload',
         elemFPSBench: '#fps_bench',
         elemTimer: '#timedisp',
-        elemCanvasTestFPS: 'fps_test',
-        onAfterPassBenchmark: afterPassBenchmark,
-        onBeginExp: primeSystemAndRunTrialOnce,
+        elemFPSBenchCanvasID: 'fps_test',  // do not prepend #
+        FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
         tutorialContents: $("#tutorial_original").html(),
         expLoadTime: expLoadTime,
+        maxHeightInThisExp: maxHeightInThisExp,
+        useRecomputeOffset: true,          // recenters the experiment elements
+        onAfterPassBenchmark: preloadResources,
+        onBeginExp: primeSystemAndRunTrialOnce,
+        onRecomputeOffset:
+            function (winW_, winH_, horizontal_, vertical_, offsetToTop) { 
+                winW = winW_; winH = winH_;
+                horizontal = horizontal_; vertical = vertical_;
+                extInfo.offsetToTop = offsetToTop;
+            },
     };
-
-    $('#tutorial_original').hide();
-    $('#tutorial2').hide();
-    $('#tutorial3').hide();
 
     exp = new dltk.Experiment($, BrowserDetect, spec);
     // abort if initialization fails
     if (!exp.init()) return false;
 
     aID = exp.aID;
-    recomputeOffset();
     zoom = DetectZoom.zoom();
 
     // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
@@ -318,11 +323,6 @@ function initSetup() {
     ctx_resp1_on = dltk.getOnScreenContextFromCanvas('img5');
 
     return true;
-}
-
-function afterPassBenchmark() {
-    recomputeOffset();
-    preloadResources();
 }
 
 function preloadResources() {
@@ -356,43 +356,11 @@ function showTutorial() {
     if (exp !== null) exp.showTutorial();
 }
 
-function recomputeOffset() {
-    // Sets the optimal top position of few stuffs.
-    // This is needed to circumvent bad rendetion of position:fixed inside iframe
-    winW = window.innerWidth;
-    winH = window.innerHeight;
-    vertical = screen.height;
-    horizontal = screen.width;
-
-    // kludge...
-    var thickness = window.outerHeight - winH;
-    if (thickness < 10) thickness = 100;
-    else if (thickness > 250) thickness = 250;
-    thickness += 80;
-
-    var offsetToTop = -parseInt(Math.min(Math.max((vertical - thickness) / 2, maxHeightInThisExp / 2), winH / 2), 10);
-    extInfo.offsetToTop = offsetToTop;
-
-    $("#tutorial_link").css('margin-top', offsetToTop + 'px');
-    if (exp !== null && exp.benchmark_passed) {
-        $("#warning").css('position', 'absolute');
-        $("#warning").css('top', '50%');
-        $("#warning").css('margin-top', offsetToTop + 'px');
-
-        $("#_preload").css('position', 'absolute');
-        $("#_preload").css('top', '50%');
-        $("#_preload").css('margin-top', offsetToTop + 'px');
-    }
-
-    console.log('Resized event detected:' + offsetToTop);
-}
-
 function main() {
     if (!initSetup()) return;   // abort if initSetup() fails
     exp.testSystemAndPrepExp();
 }
 
-window.onresize = recomputeOffset;
 $(document).ready(main);
 </script>
 
@@ -400,18 +368,19 @@ $(document).ready(main);
 
 <body bgcolor="#7F7F7F">
 <div style="height:100%; width:100%; position:absolute;">
-<div id="warning" align="center" style="position:fixed; align-content:center; width:100%; top:0px;"></div>
+<div id="fallback" align="center"><span><font color=red style=background-color:white><b>It seems that your browser does not support JavaScript or there was a network error.<br />Please enable JavaScript or reload this page to run this HIT.  Thank you!</b></font></span></div>
+<div id="warning" align="center" style="position:fixed; align-content:center; width:100%; top:0px; display: none;"></div>
 <div id="begintaskdiv" style="position:absolute; top:50%; left:50%; display: none; margin-top:220px; margin-left:-35px;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
-<div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
-<div id="fps_bench" align="center" style="position:fixed; top:50px; left:10px;">
+<div id="_preload" align="center" style="position:fixed; top:0px; left:10px; display: none;"></div>
+<div id="fps_bench" align="center" style="position:fixed; top:50px; left:10px; display: none;">
 <canvas id="fps_test" width="50" height="50" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
 </div>
 <!-- try to aim 8 deg -->
-<div class="test" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-180px;">
+<div class="test" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-180px; display: none;">
 <canvas id="main_test" width="360" height="360" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
 </div>
-<div id="notice" align="center" style="position:absolute; z-index:200; top:50%; left:50%; height:366px; margin-top:-183px; margin-left:-180px;"><img src="https://s3.amazonaws.com/task_images/notice.png" height="360" width="360"/></div>
-<div id="group_container"  style="position:relative; width:100%; top:50%; height:200px; margin-top:-100px;" align="center">
+<div id="notice" align="center" style="position:absolute; z-index:200; top:50%; left:50%; height:366px; margin-top:-183px; margin-left:-180px; display: none;"><img src="https://s3.amazonaws.com/task_images/notice.png" height="360" width="360"/></div>
+<div id="group_container"  style="position:relative; width:100%; top:50%; height:200px; margin-top:-100px; display: none;" align="center">
 <table width="900" cellpadding="0" cellspacing="0" border="0" align="center" style="visibility:visible" id="responsetable">
   <tr>
     <td align="center">
@@ -443,17 +412,17 @@ $(document).ready(main);
 </table>
 </div>
 
-<div id="tutorial_link" align="right" style="position:absolute; top:50%; right:10px; margin-top:-250px"><div onclick="showTutorial()"><u>View Instructions</u></div><div id="timedisp"></div></div>
+<div id="tutorial_link" align="right" style="position:absolute; top:50%; right:10px; margin-top:-250px; display: none;"><div onclick="showTutorial()"><u>View Instructions</u></div><div id="timedisp"></div></div>
 
-<div id="systemmsg" style="position:relative; z-index:-1"></div>
-<div id="tutorial" style="position:relative; z-index:-1"></div>
-<div id="tutorial_original" style="position:absolute; z-index:-1;"><p><b>NOTE: Please close all other programs/taps while running this task to get the optimal system performance.  Users on a suboptimal system can experience glitches that will lead to rejection.  Also, low scores on this task will lead to rejection: make sure to read this instruction!</b></p>
+<div id="systemmsg" style="position:relative; z-index:-1; display: none;"></div>
+<div id="tutorial" style="position:relative; z-index:-1; display: none;"></div>
+<div id="tutorial_original" style="position:absolute; z-index:-1; display: none;"><p><b>NOTE: Please close all other programs/taps while running this task to get the optimal system performance.  Users on a suboptimal system can experience glitches that will lead to rejection.  Also, low scores on this task will lead to rejection: make sure to read this instruction!</b></p>
 <p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
 <p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 15 minutes, although we expect this to take about 5-10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
 <p><font color=red><b>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</b></font></p>
 <p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
 <center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
-<div id="tutorial2" style="position:absolute; z-index:-1;">
+<div id="tutorial2" style="position:absolute; z-index:-1; display: none;">
 <ul>
 <li>You will see a series of images, each one presented for a very brief time. Each image will feature a single object from 60 possibilities. The objects are common things you might see around your house, on TV, in books, or on the Internet.
 <p>
@@ -467,7 +436,7 @@ $(document).ready(main);
 </ul>
 <center><p onclick="$('#tutorial').html($('#tutorial3').html())"><font color=blue><u>Click here to continue reading</u></font></p></center>
 </div>
-<div id="tutorial3" style="position:absolute; z-index:-1;">
+<div id="tutorial3" style="position:absolute; z-index:-1; display: none;">
 <ul>
 <p>
 <li>Please be sure to maximize your browser window before beginning this experiment.</li>
@@ -480,9 +449,8 @@ $(document).ready(main);
 </ul>
 <center><font color=blue><u><p onclick="$('#tutorial').dialog('close')">Click here to close the instructions</p></u></font></center>
 </div>
-
 </div>
-<form style="visibility:hidden" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
+<form style="display: none;" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
   <input type="text" name="data" id="data" value="">
   <input type="text" name="assignmentId" id="assignmentId" value="">
 </form>
