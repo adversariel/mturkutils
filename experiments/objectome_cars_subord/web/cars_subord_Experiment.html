@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Object Identification</title>
+
+<style>
+body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana }
+div,pre { margin:0; padding:0 }
+h2 { margin: 20px 0 5px 0; padding: 0 }
+p.intro { margin: 0; padding: 15px; background: #eee; font-size: small; }
+.thumbs { position: absolute; width: 100px; height: 100px;}
+div.thumb { position:absolute; float:left; padding: 1px; width: 64px; height: 64px;}
+div.thumb img { border: 2px solid white; width:64px; height:64px; }
+div#tutorial { position:relative; background-color: white; padding: 10px; }
+div#systemmsg { position:relative; background-color: white; padding: 10px; }
+</style>
+
+
+<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140904-cfe5906.js"></script>
+
+<script type="text/javascript">
+var ExperimentData = null;
+var IMG_FIXATION = 'https://s3.amazonaws.com/task_images/fixation_360x360.png';
+var IMG_BLANK = 'https://s3.amazonaws.com/task_images/blank_360x360.png';
+
+// var labels = ExperimentData.labels;    // unused here
+// var imgData = ExperimentData.imgData;  // unused here
+var imgFiles = ExperimentData.imgFiles;
+var totalTrials = imgFiles.length;
+var BreakTimes = [];
+var exp_type = 'two_way';
+
+var trialNumber = 0;
+var stimduration = 100;
+var ISI = 500;
+/* reward related:
+var num_correct = 0, reward = 0, acc;
+reward related: var reward_scale = ExperimentData.reward_scale; */
+
+var exp = null;
+var zoom;
+var aID;
+var ctx_test_on;
+var ctx_resp0_on;
+var ctx_resp1_on;
+var maxHeightInThisExp = 450;
+var extInfo = {language: navigator.language, userAgent: navigator.userAgent};
+
+var expLoadTime = new Date();
+var trialStartTime, trialEndTime, trialStartTimes = [];
+var response = [];
+var trialDurations = [];
+var measuredISI1 = [];
+var measuredISI2 = [];
+var measuredStimdur = [];
+var StimDone = [];
+
+var l_full_history = [], l_full_history_delta = [];
+var _hist, _hist_delta;
+
+//!!==BEGIN DYNAMIC TRIAL CODE==!!//
+function primeSystemAndRunTrialOnce() {
+    // Prime the browser by running a single blank trial
+    var trial_specs = [];
+
+    exp.stopClock();   // stop to minimize display burden
+
+    // blank
+    trial_specs.push({
+        urls: [IMG_BLANK],
+        contexts: [ctx_test_on],
+        duration: 50,
+        pre: preTrial   // this should be short to run
+    });
+    // another blank
+    trial_specs.push({
+        urls: [IMG_BLANK],
+        contexts: [ctx_test_on],
+        duration: 50,
+    });
+    // yet another blank
+    trial_specs.push({
+        urls: [IMG_BLANK],
+        contexts: [ctx_test_on],
+        duration: 50,
+    });
+
+    // Queue experiment
+    dltk.queueTrial(trial_specs, function() {
+        setTimeout(function() {
+            // by now, the system has been primed.  Proceed to actual experiment.
+            runTrialOnce();
+        }, 0);
+    });
+}
+
+function runTrialOnce() {
+    // Run single trial by using the new framework
+    var trial_specs = [];
+
+    exp.stopClock();   // stop to minimize display burden
+
+    // ISI 1 fixation dot
+    trial_specs.push({
+        urls: [IMG_FIXATION],
+        contexts: [ctx_test_on],
+        duration: ISI,
+        pre: preTrial   // this should be short to run
+    });
+    // sample stimulus
+    trial_specs.push({
+        urls: [imgFiles[trialNumber][0]],
+        contexts: [ctx_test_on],
+        duration: stimduration,
+    });
+    // ISI 2 blank
+    trial_specs.push({
+        urls: [IMG_BLANK],
+        contexts: [ctx_test_on],
+        duration: ISI,
+    });
+    // response images
+    trial_specs.push({
+        urls: imgFiles[trialNumber][1],
+        contexts: [ctx_resp0_on, ctx_resp1_on],
+        duration: 0,   // immediately proceed to callback after paint
+        pre: preResponse   // this should be short to run
+        });
+
+    // Queue experiment
+    dltk.queueTrial(trial_specs, function(hist, hist_delta) {
+        // now response images are up
+        trialStartTime = new Date();
+        setTimeout(function() {
+            // schedule all less time critical jobs later here
+            var t_spent = dltk.getTimeSpent(hist);
+            var t_ISI1 = dltk.round2(t_spent[1]);
+            var t_stim = dltk.round2(t_spent[2]);
+            var t_ISI2 = dltk.round2(t_spent[3]);
+
+            measuredStimdur.push(t_stim);
+            measuredISI1.push(t_ISI1);
+            measuredISI2.push(t_ISI2);
+
+            _hist = hist;
+            _hist_delta = hist_delta;
+
+            l_full_history.push(dltk.getTimingHistoryExcerpt(hist, 'diff'));
+            l_full_history_delta.push(dltk.getTimingHistoryExcerpt(hist_delta, 'diffeach'));
+            trialStartTimes.push(trialStartTime - expLoadTime);
+            exp.startClock();
+
+            console.log('ISI1, stimon, ISI2 = ', + t_ISI1 + ', ' + t_stim + ', ' + t_ISI2);
+        }, 0);
+    });
+}
+
+function preTrial() {
+    $('#group_container').hide();
+    $('.test').show();
+    // window.scrollTo(0, 0); // this causes suboptimal performance (forced sync)
+}
+
+function preResponse() {
+    /* hahong: simplify
+    $('#label1').html(labels[trialNumber][0]);
+    $('#label2').html(labels[trialNumber][1]);
+    $('#totalSeen').html('Total Objects Seen: 0');
+    */
+    /* hahong: reward related
+    acc = parseFloat(num_correct) / Math.max(1,trialNumber);
+    format_acc = (acc * 100).toPrecision(3);
+    reward = reward_scale[trialNumber][Math.floor(acc*99)].toPrecision(2); */
+
+    $('#trialCounter').html('Progress:<br /> ' + (trialNumber + 1) + ' of ' +
+        totalTrials);
+    $('#group_container').show();
+    $('.test').hide();
+}
+
+function clicked(index) {
+    if (exp === null || !exp.exp_started) return;
+    trialEndTime = new Date();
+    var myval = imgFiles[trialNumber][1][index];
+    /* hahong: reward related
+    var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
+    var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
+    console.log(index);
+    console.log(meta_correct);
+    console.log(meta_response);
+    if(meta_correct == meta_response){
+        num_correct++;
+    } */
+    pushData(myval);
+    endTrial();
+}
+
+function pushData(myval) {
+    StimDone.push(trialNumber);
+    response.push(myval);
+    trialDurations.push(trialEndTime - trialStartTime);
+}
+
+function endTrial() {
+    if (trialNumber >= (totalTrials - 1)) {
+        var resultsobj = [];
+
+        $('#_preload').show();
+        $('#_preload').html("<font color=red style=background-color:white><b>Finished! Please wait while your responses are being submitted...</b></font>");
+
+        resultsobj.push({
+            Response: response,
+            ImgOrder: imgFiles,
+            StimShown: StimDone,
+            StimDuration: stimduration,
+            RT: trialDurations,
+            Condition: exp_type,
+            Zoom: zoom,
+            IPaddress: user_IP,
+            Browser: BrowserDetect.browser,
+            Version: BrowserDetect.version,
+            OpSys: BrowserDetect.OS,
+            ExtInfo: extInfo,
+            WindowHeight: winH,
+            WindowWidth: winW,
+            ScreenHeight: vertical,
+            ScreenWidth: horizontal,
+            Benchmarks: exp.benchmarks,
+            TimingInfo: { 
+                TrialStartTimes: trialStartTimes, ExpLoadTime: expLoadTime,
+                ISI1: measuredISI1, ISI2: measuredISI2, Stimdur: measuredStimdur,
+                HistoryDiff: l_full_history, HistoryDeltaDiffEach: l_full_history_delta },
+            /* hahong: reward related
+            ImgData: imgData,
+            Performance: acc,
+            Bonus: reward */
+        });
+        document.getElementById("assignmentId").value = aID;
+        document.getElementById("data").value = JSON.stringify(resultsobj);
+        document.getElementById("postdata").submit();
+    } else if (BreakTimes.indexOf(trialNumber) > -1) {
+        takeABreak();
+    } else {
+        trialNumber++;
+        runTrialOnce();
+    }
+}
+
+function takeABreak() {
+    var BREAKSCREEN = "https://s3.amazonaws.com/task_images/break.png";
+    dltk.drawToContext(BREAKSCREEN, ctx_test_on, null, false);
+    $('.test').show();
+    $('#_preload').html(
+        "<font color=red style=background-color:white>You have completed " +
+        Math.round((trialNumber / totalTrials) * 100) +
+        "% of the experiment. Be sure to pay attention so that you know you can finish on time!"
+    );
+    $('#_preload').show();
+    document.onkeypress = function(e) {
+        var evtobj = window.event ? event : e;
+        var unicode = evtobj.charCode ? evtobj.charCode : evtobj.keyCode;
+        var actualKey = String.fromCharCode(unicode);
+        if (actualKey == 'z') {
+            trialNumber++;
+            $('.test').hide();
+            $('#_preload').hide();
+            runTrialOnce();
+        }
+    };
+}
+//!!==END DYNAMIC TRIAL CODE==!!//
+
+
+function initSetup() {
+    var spec = {
+        elemFallback: '#fallback',
+        elemTutorial: '#tutorial',
+        elemSystemmsg: '#systemmsg',
+        elemNotice: '#notice',
+        elemTutorialLink: '#tutorial_link',
+        elemTest: '.test',
+        elemRespGroup: '#group_container',
+        elemBeginTaskBtn: '#begintask',
+        elemBeginTaskGroup: '#begintaskdiv',
+        elemWarning: '#warning',
+        elemPreload: '#_preload',
+        elemFPSBench: '#fps_bench',
+        elemTimer: '#timedisp',
+        elemFPSBenchCanvasID: 'fps_test',  // do not prepend #
+        FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
+        tutorialContents: $("#tutorial_original").html(),
+        expLoadTime: expLoadTime,
+        maxHeightInThisExp: maxHeightInThisExp,
+        useRecomputeOffset: true,          // recenters the experiment elements
+        onAfterPassBenchmark: preloadResources,
+        onBeginExp: primeSystemAndRunTrialOnce,
+        onRecomputeOffset:
+            function (winW_, winH_, horizontal_, vertical_, offsetToTop) { 
+                winW = winW_; winH = winH_;
+                horizontal = horizontal_; vertical = vertical_;
+                extInfo.offsetToTop = offsetToTop;
+            },
+    };
+
+    exp = new dltk.Experiment($, BrowserDetect, spec);
+    // abort if initialization fails
+    if (!exp.init()) return false;
+
+    aID = exp.aID;
+    zoom = DetectZoom.zoom();
+
+    // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
+    ctx_test_on = dltk.getOnScreenContextFromCanvas('main_test');
+    ctx_resp0_on = dltk.getOnScreenContextFromCanvas('img4');
+    ctx_resp1_on = dltk.getOnScreenContextFromCanvas('img5');
+
+    return true;
+}
+
+function preloadResources() {
+    // load fixation dot and blank image first...
+    dltk.prepareResources([[IMG_FIXATION, []], [IMG_BLANK, []]], [ctx_test_on, []], function() {
+        // ...then load trial images
+        dltk.prepareResources(
+            imgFiles,
+            [ctx_test_on, [ctx_resp0_on, ctx_resp1_on]],
+            preBeginExp,   // call this when successful
+            function(progress, total) {
+                $('#_preload').html(
+                    "<font color=red style=background-color:white><b>Processing resources: " + 
+                    progress + "/" + total + "</b></font>"
+                );
+            }
+        );
+    });
+    // Note: no need to call zen.preload() anymore
+}
+
+function preBeginExp() {
+    // Show Begin button and make it clickable
+    //$('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
+    $('#_preload').hide();
+    $("#begintaskdiv").show();
+    $("#begintask").show();
+}
+
+function showTutorial() {
+    if (exp !== null) exp.showTutorial();
+}
+
+function main() {
+    if (!initSetup()) return;   // abort if initSetup() fails
+    exp.testSystemAndPrepExp();
+}
+
+$(document).ready(main);
+</script>
+
+</head>
+
+<body bgcolor="#7F7F7F">
+<div style="height:100%; width:100%; position:absolute;">
+<div id="fallback" align="center"><span><font color=red style=background-color:white><b>It seems that your browser does not support JavaScript or there was a network error.<br />Please enable JavaScript or reload this page to run this HIT.  Thank you!</b></font></span></div>
+<div id="warning" align="center" style="position:fixed; align-content:center; width:100%; top:0px; display: none;"></div>
+<div id="begintaskdiv" style="position:absolute; top:50%; left:50%; display: none; margin-top:220px; margin-left:-35px;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
+<div id="_preload" align="center" style="position:fixed; top:0px; left:10px; display: none;"></div>
+<div id="fps_bench" align="center" style="position:fixed; top:50px; left:10px; display: none;">
+<canvas id="fps_test" width="50" height="50" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
+</div>
+<!-- try to aim 8 deg -->
+<div class="test" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-180px; display: none;">
+<canvas id="main_test" width="360" height="360" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
+</div>
+<div id="notice" align="center" style="position:absolute; z-index:200; top:50%; left:50%; height:366px; margin-top:-183px; margin-left:-180px; display: none;"><img src="https://s3.amazonaws.com/task_images/notice.png" height="360" width="360"/></div>
+<div id="group_container"  style="position:relative; width:100%; top:50%; height:200px; margin-top:-100px; display: none;" align="center">
+<table width="900" cellpadding="0" cellspacing="0" border="0" align="center" style="visibility:visible" id="responsetable">
+  <tr>
+    <td align="center">
+    </td>
+    <td align="center">
+   </td>
+    <td align="center">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><canvas id="img4" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 onclick="clicked(0);"></canvas>
+    </td>
+    <td width="100" height="100" align="left" style="vertical-align:center;">
+    <center style="margin-top:15px; position:relative; top:-30px;">
+    <div id="trialCounter"></div>
+    </center>
+    </td>
+    <td align="center"><canvas id="img5" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 onclick="clicked(1);"></canvas>
+    </td>
+  </tr>
+  <tr height=100>
+    <td id="label1" align="center" width=200>
+    </td>
+    <td align="center">
+    </td>
+    <td id="label2" align="center" width=200>
+    </td>
+  </tr>
+</table>
+</div>
+
+<div id="tutorial_link" align="right" style="position:absolute; top:50%; right:10px; margin-top:-250px; display: none;"><div onclick="showTutorial()"><u>View Instructions</u></div><div id="timedisp"></div></div>
+
+<div id="systemmsg" style="position:relative; z-index:-1; display: none;"></div>
+<div id="tutorial" style="position:relative; z-index:-1; display: none;"></div>
+<div id="tutorial_original" style="position:absolute; z-index:-1; display: none;"><p><b>NOTE: Please close all other programs/taps while running this task to get the optimal system performance.  Users on a suboptimal system can experience glitches that will lead to rejection.  Also, low scores on this task will lead to rejection: make sure to read this instruction!</b></p>
+<p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
+<p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 15 minutes, although we expect this to take about 5-10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
+<p><font color=red><b>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</b></font></p>
+<p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
+<center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
+<div id="tutorial2" style="position:absolute; z-index:-1; display: none;">
+<ul>
+<li>You will see a series of images, each one presented for a very brief time. Each image will feature a single object from 60 possibilities. The objects are common things you might see around your house, on TV, in books, or on the Internet.
+<p>
+<li>After you see an image, <b>you must click the picture button which <u>exactly</u> matches the object you saw.</b> Once you click, you will move on to the next image immediately, so be ready.
+<p>
+<li>For example, if you think you saw a picture of a car, click the car picture to record your answer. There is <b>always</b> an exact match, and <b>SOMETIMES YOU MUST CHOOSE BETWEEN TWO OBJECTS OF THE SAME CATEGORY</b>. In other words, you might see two cars of different makes, and only one is correct.</li>
+<p>
+<li>Even if you're not 100% sure of what you saw, <u><b>make your best guess.</b></u></li>
+<p>
+<li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
+</ul>
+<center><p onclick="$('#tutorial').html($('#tutorial3').html())"><font color=blue><u>Click here to continue reading</u></font></p></center>
+</div>
+<div id="tutorial3" style="position:absolute; z-index:-1; display: none;">
+<ul>
+<p>
+<li>Please be sure to maximize your browser window before beginning this experiment.</li>
+<p>
+<li><b>In total, you will see 174 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
+<p>
+<li>When you are ready to begin, click the "Begin" button. <b>Be prepared to see the first image -- it happens very fast!</b></li>
+<p>
+<li>If you have questions or concerns about this HIT, feel free to contact the requester. You can re-read these instructions at any time by clicking the link in the upper right-hand corner of the screen. Good luck!</li>
+</ul>
+<center><font color=blue><u><p onclick="$('#tutorial').dialog('close')">Click here to close the instructions</p></u></font></center>
+</div>
+</div>
+<form style="display: none;" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
+  <input type="text" name="data" id="data" value="">
+  <input type="text" name="assignmentId" id="assignmentId" value="">
+</form>
+</body>
+</html>
