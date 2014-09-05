@@ -24,7 +24,7 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140831-a3d726d.js"></script>
+<script type="text/javascript" src="dltk.js"></script>
 
 <script type="text/javascript">
 var ExperimentData = null;
@@ -46,7 +46,7 @@ var num_correct = 0, reward = 0, acc;
 reward related: var reward_scale = ExperimentData.reward_scale; */
 
 var exp = null;
-var zoom = DetectZoom.zoom();
+var zoom;
 var aID;
 var ctx_test_on;
 var ctx_resp0_on;
@@ -71,7 +71,7 @@ function primeSystemAndRunTrialOnce() {
     // Prime the browser by running a single blank trial
     var trial_specs = [];
 
-    stopClock();   // stop to minimize display burden
+    exp.stopClock();   // stop to minimize display burden
 
     // blank
     trial_specs.push({
@@ -106,7 +106,7 @@ function runTrialOnce() {
     // Run single trial by using the new framework
     var trial_specs = [];
 
-    stopClock();   // stop to minimize display burden
+    exp.stopClock();   // stop to minimize display burden
 
     // ISI 1 fixation dot
     trial_specs.push({
@@ -142,9 +142,9 @@ function runTrialOnce() {
         setTimeout(function() {
             // schedule all less time critical jobs later here
             var t_spent = dltk.getTimeSpent(hist);
-            var t_ISI1 = round2(t_spent[1]);
-            var t_stim = round2(t_spent[2]);
-            var t_ISI2 = round2(t_spent[3]);
+            var t_ISI1 = dltk.round2(t_spent[1]);
+            var t_stim = dltk.round2(t_spent[2]);
+            var t_ISI2 = dltk.round2(t_spent[3]);
 
             measuredStimdur.push(t_stim);
             measuredISI1.push(t_ISI1);
@@ -156,7 +156,7 @@ function runTrialOnce() {
             l_full_history.push(dltk.getTimingHistoryExcerpt(hist, 'diff'));
             l_full_history_delta.push(dltk.getTimingHistoryExcerpt(hist_delta, 'diffeach'));
             trialStartTimes.push(trialStartTime - expLoadTime);
-            startClock();
+            exp.startClock();
 
             console.log('ISI1, stimon, ISI2 = ', + t_ISI1 + ', ' + t_stim + ', ' + t_ISI2);
         }, 0);
@@ -180,14 +180,14 @@ function preResponse() {
     format_acc = (acc * 100).toPrecision(3);
     reward = reward_scale[trialNumber][Math.floor(acc*99)].toPrecision(2); */
 
-    $('#trialCounter').html('Progress:<br /> ' + trialNumber + ' of ' +
+    $('#trialCounter').html('Progress:<br /> ' + (trialNumber + 1) + ' of ' +
         totalTrials);
     $('#group_container').show();
     $('.test').hide();
 }
 
 function clicked(index) {
-    if (!exp_started) return;
+    if (exp === null || !exp.exp_started) return;
     trialEndTime = new Date();
     var myval = imgFiles[trialNumber][1][index];
     /* hahong: reward related
@@ -233,7 +233,7 @@ function endTrial() {
             WindowWidth: winW,
             ScreenHeight: vertical,
             ScreenWidth: horizontal,
-            Benchmarks: benchmarks,
+            Benchmarks: exp.benchmarks,
             TimingInfo: { 
                 TrialStartTimes: trialStartTimes, ExpLoadTime: expLoadTime,
                 ISI1: measuredISI1, ISI2: measuredISI2, Stimdur: measuredStimdur,
@@ -280,13 +280,37 @@ function takeABreak() {
 
 
 function initSetup() {
-    var optdct = {postAfterPassBenchmark: afterPassBenchmark};
-    exp = new dltk.Experiment(imgFiles, $, BrowserDetect, primeSystemAndRunTrialOnce, optdct);
+    var spec = {
+        elemTutorial: '#tutorial',
+        elemSystemmsg: '#systemmsg',
+        elemNotice: '#notice',
+        elemTutorialLink: '#tutorial_link',
+        elemTest: '.test',
+        elemRespGroup: '#group_container',
+        elemBeginTaskBtn: '#begintask',
+        elemBeginTaskGroup: '#begintaskdiv',
+        elemWarning: '#warning',
+        elemPreload: '#_preload',
+        elemFPSBench: '#fps_bench',
+        elemTimer: '#timedisp',
+        elemCanvasTestFPS: 'fps_test',
+        onAfterPassBenchmark: afterPassBenchmark,
+        onBeginExp: primeSystemAndRunTrialOnce,
+        tutorialContents: $("#tutorial_original").html(),
+        expLoadTime: expLoadTime,
+    };
+
+    $('#tutorial_original').hide();
+    $('#tutorial2').hide();
+    $('#tutorial3').hide();
+
+    exp = new dltk.Experiment($, BrowserDetect, spec);
     // abort if initialization fails
     if (!exp.init()) return false;
 
     aID = exp.aID;
     recomputeOffset();
+    zoom = DetectZoom.zoom();
 
     // double buffering. from: http://blog.bob.sh/2012/12/double-buffering-with-html-5-canvas.html
     ctx_test_on = dltk.getOnScreenContextFromCanvas('main_test');
@@ -324,59 +348,12 @@ function preBeginExp() {
     // Show Begin button and make it clickable
     //$('#_preload').html("<font color=red style=background-color:white><b>Ready</b></font>");
     $('#_preload').hide();
-    $("#begintaskdiv").css('visibility', 'visible');
+    $("#begintaskdiv").show();
+    $("#begintask").show();
 }
 
 function showTutorial() {
-    $("#begintask").hide();
-    $("#tutorial").show();
-    $("#tutorial").html($("#tutorial_original").html());
-    $("#tutorial").dialog({
-        height: 560,
-        width: 900,
-        modal: true,
-        position: 'center',
-        title: "Instructions"
-    });
-    // able to start the experiment only when the tutorial window is closed.
-    $('#tutorial').bind('dialogclose', function() { 
-        if (!exp_started) $("#begintask").show();
-    });
-}
-
-function testSystemAndPrepExp() {
-    $('#warning').hide();
-    $('#_preload').show();
-    $('#_preload').html("<font color=red style=background-color:white><b>Wait: your system is being tested to check if it can run this task...</b></font>");
-
-    dltk.runBenchmark(checkSystem, {canvas_test_fps: 'fps_test'});   // run benchmark...
-    timer_bench = setTimeout(function() {           // ... or fall back to failure mode in 1 min.
-        checkSystem({api_support: false}); 
-        }, 60 * 1000);
-}
-
-function stopClock() {
-    if (timer_disp === null) return;
-    clearInterval(timer_disp);
-    timer_disp = null;
-}
-
-function startClock() {
-    var updateTimer = function updateTimer () {
-        var slop = 5;
-        var elapsed = parseInt((new Date() - expLoadTime) / 1000, 10) + slop;
-        var minutes = parseInt(elapsed / 60, 10);
-        var seconds = elapsed % 60;
-        var minutes_str = (minutes <= 9) ? '0' : '';
-        var seconds_str = (seconds <= 9) ? '0' : '';
-        minutes_str += minutes;
-        seconds_str += seconds;
-
-        $('#timedisp').html('Time Passed: ' + minutes_str + ':' + seconds_str);
-    };
-
-    timer_disp = setInterval(updateTimer, 1000);
-    updateTimer();  // update once NOW.
+    if (exp !== null) exp.showTutorial();
 }
 
 function recomputeOffset() {
@@ -412,7 +389,7 @@ function recomputeOffset() {
 
 function main() {
     if (!initSetup()) return;   // abort if initSetup() fails
-    testSystemAndPrepExp();
+    exp.testSystemAndPrepExp();
 }
 
 window.onresize = recomputeOffset;
@@ -424,7 +401,7 @@ $(document).ready(main);
 <body bgcolor="#7F7F7F">
 <div style="height:100%; width:100%; position:absolute;">
 <div id="warning" align="center" style="position:fixed; align-content:center; width:100%; top:0px;"></div>
-<div id="begintaskdiv" style="position:absolute; top:50%; left:50%; visibility: hidden; margin-top:220px; margin-left:-35px;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
+<div id="begintaskdiv" style="position:absolute; top:50%; left:50%; display: none; margin-top:220px; margin-left:-35px;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
 <div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
 <div id="fps_bench" align="center" style="position:fixed; top:50px; left:10px;">
 <canvas id="fps_test" width="50" height="50" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
