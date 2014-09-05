@@ -21,10 +21,9 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140904-cfe5906.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140905-5ca9dc1.js"></script>
 
 <script type="text/javascript">
 var ExperimentData = null;
@@ -225,9 +224,9 @@ function endTrial() {
             Condition: exp_type,
             Zoom: zoom,
             IPaddress: user_IP,
-            Browser: BrowserDetect.browser,
-            Version: BrowserDetect.version,
-            OpSys: BrowserDetect.OS,
+            Browser: dltkBrowserDetect.browser,
+            Version: dltkBrowserDetect.version,
+            OpSys: dltkBrowserDetect.OS,
             ExtInfo: extInfo,
             WindowHeight: winH,
             WindowWidth: winW,
@@ -310,7 +309,7 @@ function initSetup() {
             },
     };
 
-    exp = new dltk.Experiment($, BrowserDetect, spec);
+    exp = new dltk.Experiment($, spec);
     // abort if initialization fails
     if (!exp.init()) return false;
 
