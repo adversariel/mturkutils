@@ -14,18 +14,17 @@ class HvMPoseExperiment(Experiment):
 
     def createTrials(self):
 
-        dataset = hvm.HvMWithDiscfade()
-        preproc = None
+        dataset = hvm.HvMWithDiscfadeNopos()
+        #preproc = None
+        preproc = dataset.default_preproc
 
         dummy_upload = True
-        image_bucket_name = 'hvm_timing'
+        image_bucket_name = 'hvm_nopos_with_discfade'
         seed = 0
 
         meta = dataset.meta
         query_inds = np.arange(len(meta))
-        #query_inds = (meta['var'] == 'V0').nonzero()[0][::10]
-        #query_inds = ((meta['category'] == 'Chairs')).nonzero()[0]
-
+        
         urls = dataset.publish_images(query_inds, preproc,
                                       image_bucket_name, dummy_upload=dummy_upload)
 
@@ -56,7 +55,7 @@ class HvMPoseExperiment(Experiment):
 additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
                     'new':  str(LEARNING_PERIOD)}]
 exp = HvMPoseExperiment(htmlsrc = 'hvm_pose_simple_newtiming.html',
-                        htmldst = 'hvm_pose_simple_newtiming_n%04d.html',
+                        htmldst = 'hvmnopos_pose_simple_newtiming_n%04d.html',
                         othersrc = othersrc,
                         sandbox = False,
                         title = 'Pose Judgement',
@@ -64,9 +63,9 @@ exp = HvMPoseExperiment(htmlsrc = 'hvm_pose_simple_newtiming.html',
                         duration = 2700,
                         description = 'Make object 3-d pose judgements for up to 50 cent bonus',
                         comment = "Pose judgement in HvM dataset",
-                        collection_name = 'hvm_pose_simple',
+                        collection_name=None, #'hvmnopos_pose_simple',
                         max_assignments=1,
-                        bucket_name='hvm_pose_simple',
+                        bucket_name='hvmnopos_pose_simple',
                         trials_per_hit=BSIZE + REPEATS + LEARNING_PERIOD,
                         additionalrules=additionalrules)
 
