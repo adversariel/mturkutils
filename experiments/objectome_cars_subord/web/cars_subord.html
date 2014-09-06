@@ -22,11 +22,10 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140906-0a47b46.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140906-60458c7.js"></script>
 <script type="text/javascript">
 // -- jshint directives.  DO NOT REMOVE THE FOLLOWING COMMENTS
 /* global $, user_IP, dltk, DetectZoom, winH: true, winW: true, vertical: true, horizontal: true */
-/* exported clicked, showTutorial */
 
 // -- Experimental variables
 var ExperimentData = null;
@@ -64,13 +63,10 @@ var reward_scale = ExperimentData.reward_scale; */
 
 
 // -- Dynamic trial codes
-function clicked(index) {
-    var imgChosen;
-    if (exp === null || !exp.isStarted()) return;
-
-    trialEndTime = new Date();
-    trialNumber = exp.getCurrentTrialNumber(hRSVP);   // (hRSVP can be omitted)
-    imgChosen = exp.getCurrentTrialInfo(hRSVP).Sample[index];  // (again hRSVP can be omitted)
+function clicked(argdct) {
+    var imgChosen = argdct.imgChosen;
+    trialEndTime = argdct.trialEndTime;
+    trialNumber = argdct.trialNumber;
     /* hahong: reward related
     var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
     var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
@@ -147,7 +143,9 @@ function initSetup() {
         elemTutorial: '#tutorial',    // dialog box for the instructions
         elemSystemmsg: '#systemmsg',  // dialog box for benchmark failures
         elemNotice: '#notice',        // the red square stuff
+        elemUpperRightGroup: '#upperright',
         elemTutorialLink: '#tutorial_link',
+        elemTimer: '#timedisp',       // to where the elapsed time will be displayed
         elemSample: '#rsvpsample',    // to where the RSVP images will be drawn (previously .test)
         elemRespGroup: '#group_container',
         elemBeginTaskBtn: '#begintask',
@@ -155,7 +153,6 @@ function initSetup() {
         elemWarning: '#warning',
         elemPreload: '#_preload',
         elemFPSBench: '#fps_bench',
-        elemTimer: '#timedisp',            // to where the elapsed time will be displayed
         elemFPSBenchCanvasID: 'fps_test',  // DO NOT prepend #
         FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
         tutorialContents: $("#tutorial_original").html(),   // the (1st page) content of the instructions
@@ -171,8 +168,9 @@ function initSetup() {
             },
     };
     var spec_RSVP = {
-        elemSampleCanvasID: 'main_test',      // don't prepend #
-        elemTestCanvasIDs: ['img4', 'img5'],  // don't prepend #
+        elemSampleCanvasID: 'main_test',         // don't prepend #
+        elemTestCanvasIDs: ['img4', 'img5'],     // don't prepend #
+        elemTestClickables: ['#img4', '#img5'],  // elements that will be made clickable to receive answers
         elemTrialCounter: '#trialCounter',
         imgFiles: imgFiles,
         stimdurations: stimduration,    // automatically expanded to a list if a number is given
@@ -195,6 +193,7 @@ function initSetup() {
                 _hist_delta = argdct.hist_delta;
 
             },
+        onClickedTestBtn: clicked    // called when the turker clicks on of the test button
     };
 
     exp = new dltk.Experiment($, spec);
@@ -209,10 +208,6 @@ function initSetup() {
 
     // success!
     return true;
-}
-
-function showTutorial() {
-    if (exp !== null) exp.showTutorial();
 }
 
 function main() {
@@ -249,14 +244,14 @@ $(document).ready(main);
     </td>
   </tr>
   <tr>
-    <td align="center"><canvas id="img4" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 onclick="clicked(0);"></canvas>
+    <td align="center"><canvas id="img4" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200"></canvas>
     </td>
     <td width="100" height="100" align="left" style="vertical-align:center;">
     <center style="margin-top:15px; position:relative; top:-30px;">
     <div id="trialCounter"></div>
     </center>
     </td>
-    <td align="center"><canvas id="img5" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200 onclick="clicked(1);"></canvas>
+    <td align="center"><canvas id="img5" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200"></canvas>
     </td>
   </tr>
   <tr height=100>
@@ -270,7 +265,7 @@ $(document).ready(main);
 </table>
 </div>
 
-<div id="tutorial_link" align="right" style="position:absolute; top:50%; right:10px; margin-top:-250px; display: none;"><div onclick="showTutorial()"><u>View Instructions</u></div><div id="timedisp"></div></div>
+<div id="upperright" align="right" style="position:absolute; top:50%; right:10px; margin-top:-250px; display: none;"><div id="tutorial_link"><u>View Instructions</u></div><div id="timedisp"></div></div>
 
 <div id="systemmsg" style="position:relative; z-index:-1; display: none;"></div>
 <div id="tutorial" style="position:relative; z-index:-1; display: none;"></div>
