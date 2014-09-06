@@ -22,7 +22,7 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140905-c5ec914.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140906-0a47b46.js"></script>
 <script type="text/javascript">
 // -- jshint directives.  DO NOT REMOVE THE FOLLOWING COMMENTS
 /* global $, user_IP, dltk, DetectZoom, winH: true, winW: true, vertical: true, horizontal: true */
@@ -35,6 +35,7 @@ var totalTrials;
 var trialNumber;
 
 var exp = null;             // the main Experiment object
+var hRSVP = null;           // handle to the RSVP module
 var exp_type = 'two_way';
 var stimduration = 100;
 var ISI = 500;
@@ -64,11 +65,12 @@ var reward_scale = ExperimentData.reward_scale; */
 
 // -- Dynamic trial codes
 function clicked(index) {
+    var imgChosen;
     if (exp === null || !exp.isStarted()) return;
-    trialEndTime = new Date();
-    trialNumber = exp.getCurrentTrialNumbers()[0];   // there's only one module, so get 0-th
 
-    var imgChosen = imgFiles[trialNumber][1][index];
+    trialEndTime = new Date();
+    trialNumber = exp.getCurrentTrialNumber(hRSVP);   // (hRSVP can be omitted)
+    imgChosen = exp.getCurrentTrialInfo(hRSVP).Sample[index];  // (again hRSVP can be omitted)
     /* hahong: reward related
     var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
     var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
@@ -199,9 +201,9 @@ function initSetup() {
     // abort if initialization fails
     if (!exp.init()) return false;
     // abort if the RSVP module can't be added
-    if (exp.addModule(dltk.RSVPModule, spec_RSVP) < 0) return false;
+    if ((hRSVP = exp.addModule(dltk.RSVPModule, spec_RSVP)) < 0) return false;
 
-    totalTrials = exp.getTotalTrialNumbers()[0];   // total # of valid trials. [0] since there's only one module
+    totalTrials = exp.getTotalTrialNumber(hRSVP);   // total # of valid trials.  (hRSVP can be omitted)
     aID = exp.getAssignmentID();   // assignmentID for mturk
     zoom = DetectZoom.zoom();      // the zoom status of this browser window
 
