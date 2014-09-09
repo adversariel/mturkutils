@@ -22,14 +22,20 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140908-e99fb04.js"></script>
+<script type="text/javascript" src="osctest_type01_diag.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140909-cf982cc.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltkexpr-20140909-cf982cc.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltkrsvp-20140909-cf982cc.js"></script>
 <script type="text/javascript">
 // -- jshint directives.  DO NOT REMOVE THE FOLLOWING COMMENTS
 /* global $, user_IP, dltk, DetectZoom, winH: true, winW: true, vertical: true, horizontal: true */
 
 // -- Experimental variables
-var ExperimentData = null;
-var imgFiles = ExperimentData.imgFiles;
+var IMG_BLACK = 'color: black';
+var IMG_WHITE = 'color: white';
+var IMG_RESP1 = 'color: #222';
+var IMG_RESP2 = 'color: #444';
+var imgFiles = [[IMG_WHITE, [IMG_RESP1, IMG_RESP2]]];
 var totalTrials;
 var trialNumber;
 
@@ -54,6 +60,7 @@ var stimDone = [];
 
 var l_full_history = [], l_full_history_delta = [];
 var _hist, _hist_delta;
+var full_history, full_history_delta, full_history_delta_flush;
 
 /* reward related and other stuffs unused here:
 var labels = ExperimentData.labels;
@@ -66,7 +73,7 @@ var reward_scale = ExperimentData.reward_scale; */
 function clicked(argdct) {
     var imgChosen = argdct.imgChosen;
     trialEndTime = argdct.trialEndTime;
-    trialNumber = argdct.trialNumber;
+    trialNumber = -1;  //argdct.trialNumber;   // infinite loop
     /* hahong: reward related
     var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
     var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
@@ -132,7 +139,10 @@ function endTrial() {
             document.getElementById("postdata").submit();
         }, 4500);
     }
-    else exp.runNextTrial();   // otherwise, run the next trial
+    else {
+        exp.setCurrentTrialNumber(-1);   // repeat indefinitely
+        exp.runNextTrial();   // otherwise, run the next trial
+    }
 }
 
 
@@ -173,8 +183,11 @@ function initSetup() {
         elemTestClickables: ['#img4', '#img5'],  // elements that will be made clickable to receive answers
         elemTrialCounter: '#trialCounter',
         imgFiles: imgFiles,
+        imgFixation: IMG_BLACK,
+        imgBlank: IMG_BLACK,
         stimdurations: stimduration,    // automatically expanded to a list if a number is given
         ISIs: ISI,                      // ... same
+        optdctQueueTrial: {measureFlushTiming: true}, 
         onResponseReady:       // called whan all test images are up
             function (argdct) {
                 // the time when response images are up and ready
@@ -185,13 +198,19 @@ function initSetup() {
                 measuredISI1.push(argdct.t_ISI1);
                 measuredISI2.push(argdct.t_ISI2);
 
-                l_full_history.push(argdct.hist_extract);
-                l_full_history_delta.push(argdct.hist_delta_extract);
+                // done in osctest_type01_diag.js
+                //l_full_history.push(argdct.hist_extract);
+                //l_full_history_delta.push(argdct.hist_delta_extract);
 
                 // mainly for diagnosis/debugging:
                 _hist = argdct.hist;
                 _hist_delta = argdct.hist_delta;
 
+                full_history = argdct.hist;
+                full_history_delta = argdct.hist_delta;
+                full_history_delta_flush = argdct.hist_delta_flush;
+                
+                installKeyHandler();
             },
         onClickedTestBtn: clicked    // called when the turker clicks on of the test button
     };
@@ -218,7 +237,7 @@ function main() {
 $(document).ready(main);
 </script>
 </head>
-<body bgcolor="#7F7F7F">
+<body bgcolor="#000">
 <div style="height:100%; width:100%; position:absolute;">
 <div id="fallback" align="center"><span><font color=red style=background-color:white><b>It seems that your browser does not support JavaScript or there was a network error.<br />Please enable JavaScript or reload this page to run this HIT.  Thank you!</b></font></span></div>
 <!-- set everything below with style="display: none;" to hide: only #fallback above will be shown if js fails. -->
