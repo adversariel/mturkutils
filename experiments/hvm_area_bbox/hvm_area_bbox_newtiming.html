@@ -561,6 +561,7 @@ function initSetup() {
     ctx_test_on = dltk.getOnScreenContextFromCanvas('main_test');
 
     R = Raphael("getClick", 360, 360);
+    R.rect(0,0,360, 360,0).attr({"stroke-width": 0}) //hack solution to problem with Raphael SVG offset in FF: http://stackoverflow.com/questions/15629183/svg-offset-issue-in-firefox
     R1 = Raphael("inner_test", 360, 360);
 
     $('#delete').click(function(e){

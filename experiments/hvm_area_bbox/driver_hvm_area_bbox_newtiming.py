@@ -55,7 +55,9 @@ class HvMAreaBBoxExperiment(Experiment):
             assert (bn + 1 == nblocks) or (len(pinds) == BSIZE + REPEATS + LEARNING_PERIOD), len(pinds)
             bmeta = extended_meta[query_inds[pinds]]
             burls = [urls[_i] for _i in pinds]
-            bmeta = [{df: bm[df] for df in meta.dtype.names + additional} for bm in bmeta]
+            names = meta.dtype.names + additional
+            names = [ n for n in names if not 'semantic' in n ]
+            bmeta = [{df: bm[df] for df in names} for bm in bmeta]
             imgs.extend(burls)
             imgData.extend(bmeta)
         self._trials = {'imgFiles': imgs, 'imgData': imgData}
@@ -86,7 +88,7 @@ if __name__ == '__main__':
     exp.prepHTMLs()
     exp.testHTMLs()
     exp.uploadHTMLs()
-    exp.createHIT(secure=True)
+    #exp.createHIT(secure=True)
 
     #hitids = cPickle.load(open('3ARIN4O78FSZNXPJJAE45TI21DLIF1_2014-06-13_16:25:48.143902.pkl'))
     #exp.disableHIT(hitids=hitids)
