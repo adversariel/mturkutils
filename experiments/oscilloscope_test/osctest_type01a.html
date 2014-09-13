@@ -81,6 +81,7 @@ var retry = 0;
 
 var l_full_history = [], l_full_history_delta = [];
 var _hist, _hist_delta;
+var full_history, full_history_delta, full_history_delta_flush;
 
 function round2(num) {
     return Math.round(num * 100) / 100;
@@ -171,7 +172,7 @@ function runTrialOnce() {
         });
 
     // Queue experiment
-    dltk.queueTrial(trial_specs, function(hist, hist_delta) {
+    dltk.queueTrial(trial_specs, function(hist, hist_delta, hist_delta_flush) {
         // now response images are up
         trialStartTime = new Date();
         setTimeout(function() {
@@ -188,6 +189,10 @@ function runTrialOnce() {
 
             _hist = hist;
             _hist_delta = hist_delta;
+
+            full_history = hist;
+            full_history_delta = hist_delta;
+            full_history_delta_flush = hist_delta_flush;
 
             l_full_history.push(dltk.getTimingHistoryExcerpt(hist, 'diff'));
             l_full_history_delta.push(dltk.getTimingHistoryExcerpt(hist_delta, 'diffeach'));
