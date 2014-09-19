@@ -10,6 +10,7 @@ from mturkutils.base import MatchToSampleFromDLDataExperiment
 
 REPEATS_PER_QE_IMG = 4
 ACTUAL_TRIALS_PER_HIT = 150
+LEARNING_PERIOD = 10
 
 def get_exp(sandbox=True, dummy_upload=True):
 
@@ -48,6 +49,8 @@ def get_exp(sandbox=True, dummy_upload=True):
             'shuffle_test': True,
     }
 
+    additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
+                    'new':  str(LEARNING_PERIOD)}]
     trials_per_hit = ACTUAL_TRIALS_PER_HIT + 32
     exp = MatchToSampleFromDLDataExperiment(
             htmlsrc='hvm_basic_categorization.html',
@@ -55,7 +58,7 @@ def get_exp(sandbox=True, dummy_upload=True):
             sandbox=sandbox,
             title='Object recognition --- report what you see',
             reward=0.35,
-            duration=1600,
+            duration=1500,
             keywords=['neuroscience', 'psychology', 'experiment', 'object recognition'],  # noqa
             description="***You may complete as many HITs in this group as you want*** Complete a visual object recognition task where you report the identity of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment.",  # noqa
             comment="hvm basic categorization",  # noqa
@@ -65,6 +68,9 @@ def get_exp(sandbox=True, dummy_upload=True):
             trials_per_hit=trials_per_hit,  # 150 + 8x4 repeats
             html_data=html_data,
             frame_height_pix=1200,
+            othersrc = ['../../lib/dltk.js'],
+            additionalrules=additionalrules
+
             )
 
     # -- create trials
@@ -115,12 +121,12 @@ def get_exp(sandbox=True, dummy_upload=True):
 
 
 if __name__ == '__main__':
-    exp, _ = get_exp(sandbox=True, dummy_upload=True)
+    exp, _ = get_exp(sandbox=False, dummy_upload=True)
     exp.createTrials()
     exp.prepHTMLs()
     exp.testHTMLs()
-    #exp.uploadHTMLs()
-    #exp.createHIT(secure=True)
+    exp.uploadHTMLs()
+    exp.createHIT(secure=True)
 
     #hitids = cPickle.load(open('3ARIN4O78FSZNXPJJAE45TI21DLIF1_2014-06-13_16:25:48.143902.pkl'))
     #exp.disableHIT(hitids=hitids)
