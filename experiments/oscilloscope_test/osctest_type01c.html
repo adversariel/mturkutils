@@ -18,21 +18,31 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140920-5cc20ed.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltkexpr-20140920-5cc20ed.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltkrsvp-20140920-5cc20ed.js"></script>
+<script type="text/javascript" src="osctest_type01_diag.js"></script>
+<!-- replace the followings with the version you want to test -->
+<script type="text/javascript" src="dltk.js"></script>
+<script type="text/javascript" src="dltkexpr.js"></script>
+<script type="text/javascript" src="dltkrsvp.js"></script>
 <script type="text/javascript">
 // -- jshint directives.  DO NOT REMOVE THE FOLLOWING COMMENTS
 /* global $, user_IP, dltk, DetectZoom, winH: true, winW: true, vertical: true, horizontal: true */
 
 // -- Experimental variables
-var ExperimentData = null;
-var imgFiles = ExperimentData.imgFiles;
+var IMG_BLACK = 'color: black';
+var IMG_WHITE = 'color: white';
+var img_white = IMG_WHITE;
+var IMG_RESP1 = 'color: #222';
+var IMG_RESP2 = 'color: #444';
+var imgFiles = [];
 var trialSpecs = [];
+for (var _i = 0; _i < 100; _i++) {
+    imgFiles.push([img_white, [IMG_RESP1, IMG_RESP2]]);
+    img_white = img_white + ' ';
+}
 var totalTrials;
 var trialNumber;
 
@@ -40,7 +50,6 @@ var exp = null;             // the main Experiment object
 var exp_type = 'two_way';
 var stimduration = 100;
 var ISI = 500;
-var maskduration = 50;
 var maxHeightInThisExp = 450;
 var zoom;
 var aID;
@@ -57,6 +66,7 @@ var stimDone = [];
 
 var l_full_history = [], l_full_history_delta = [];
 var _hist, _hist_delta;
+var full_history, full_history_delta, full_history_delta_flush;
 
 /* reward related and other stuffs unused here:
 var labels = ExperimentData.labels;
@@ -69,9 +79,7 @@ var reward_scale = ExperimentData.reward_scale; */
 function clicked(argdct) {
     var imgChosen = argdct.imgChosen;
     trialEndTime = argdct.trialEndTime;
-    // Here, we explicitly use local trial numbers.  They will be the same as global numbers
-    // because there is only one module.  However, if there are multiple modules the numbers will be different.
-    trialNumber = argdct.localTrialNumber;    // vs. argdct.trialNumber (which is global trial number)
+    trialNumber = -1;  //argdct.trialNumber;   // infinite loop
     totalTrials = argdct.localTotalTrialNumber;   // vs. argdct.totalTrialNumber (again, global #)
     /* hahong: reward related
     var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
@@ -138,7 +146,10 @@ function endTrial() {
             document.getElementById("postdata").submit();
         }, 4500);
     }
-    else exp.runNextTrial();   // otherwise, run the next trial
+    else {
+        exp.setCurrentTrialNumber(-1);   // repeat indefinitely
+        exp.runNextTrial();   // otherwise, run the next trial
+    }
 }
 
 
@@ -150,42 +161,12 @@ function initSetup() {
             ISI: ISI,
             Sample: imgFiles[i][0],
             Test: imgFiles[i][1],
-            PostMask: imgFiles[i][0].replace('/360x360/', '/postmask_360x360/'),
-            PostMaskDuration: maskduration,
         };
         trialSpecs.push(s);
     }
 
-    var spec_RSVP = {
-        elemSample: '#sample_container',      // which fully contains sampling related stuffs (previously .test)
-        elemTest: '#test_container',   // which fully contains testing related stuffs (previously #group_container)
-        elemSampleCanvasID: 'main_sample',       // don't prepend #   (previously main_test)
-        elemTestCanvasIDs: ['img4', 'img5'],     // don't prepend #
-        elemTestClickables: ['#img4', '#img5'],  // elements that will be made clickable to receive answers
-        elemTrialCounter: '#trialCounter',
-        onResponseReady:       // called whan all test images are up
-            function (argdct) {
-                // the time when response images are up and ready
-                trialStartTime = argdct.trialStartTime; 
-                trialStartTimes.push(trialStartTime - expLoadTime);
-
-                measuredStimdur.push(argdct.t_stim);
-                measuredISI1.push(argdct.t_ISI1);
-                measuredISI2.push(argdct.t_ISI2);
-
-                l_full_history.push(argdct.hist_extract);
-                l_full_history_delta.push(argdct.hist_delta_extract);
-
-                // mainly for diagnosis/debugging:
-                _hist = argdct.hist;
-                _hist_delta = argdct.hist_delta;
-            },
-        onClickedTestBtn: clicked    // called when the turker clicks on of the test button
-    };
-
     var spec = {
         trialSpecs: trialSpecs,       // defines this experiment
-        modulesToAdd: [{module: dltk.RSVPWithPostMaskModule, options: spec_RSVP}],   // modules to add on init
         elemFallback: '#fallback',    // things to display when everything fails
         elemTutorial: '#tutorial',    // dialog box for the instructions
         elemSystemmsg: '#systemmsg',  // dialog box for benchmark failures
@@ -200,8 +181,6 @@ function initSetup() {
         elemFPSBench: '#fps_bench',
         elemFPSBenchCanvasID: 'fps_test',  // DO NOT prepend #
         FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
-        supportedOS: ['Windows', 'Mac', 'Linux'],
-        supportedBrowser: ['Chrome', 'Firefox'],
         tutorialContents: $("#tutorial_original").html(),   // the (1st page) content of the instructions
         expLoadTime: expLoadTime,          // override expLoadTime for better consistency with this html
         maxHeightInThisExp: maxHeightInThisExp,   // approx actual height (in pixels) used this HIT
@@ -214,10 +193,48 @@ function initSetup() {
                 extInfo.offsetToTop = argdct.offsetToTop;
             },
     };
+    var spec_RSVP = {
+        elemSample: '#sample_container',      // which fully contains sampling related stuffs (previously .test)
+        elemTest: '#test_container',   // which fully contains testing related stuffs (previously #group_container)
+        elemSampleCanvasID: 'main_sample',       // don't prepend #   (previously main_test)
+        elemTestCanvasIDs: ['img4', 'img5'],     // don't prepend #
+        elemTestClickables: ['#img4', '#img5'],  // elements that will be made clickable to receive answers
+        elemTrialCounter: '#trialCounter',
+        imgFixation: IMG_BLACK,
+        imgBlank: IMG_BLACK,
+        optdctQueueTrial: {measureFlushTiming: true}, 
+        onResponseReady:       // called whan all test images are up
+            function (argdct) {
+                // the time when response images are up and ready
+                trialStartTime = argdct.trialStartTime; 
+                trialStartTimes.push(trialStartTime - expLoadTime);
+
+                measuredStimdur.push(argdct.t_stim);
+                measuredISI1.push(argdct.t_ISI1);
+                measuredISI2.push(argdct.t_ISI2);
+
+                // done in osctest_type01_diag.js
+                //l_full_history.push(argdct.hist_extract);
+                //l_full_history_delta.push(argdct.hist_delta_extract);
+
+                // mainly for diagnosis/debugging:
+                _hist = argdct.hist;
+                _hist_delta = argdct.hist_delta;
+
+                full_history = argdct.hist;
+                full_history_delta = argdct.hist_delta;
+                full_history_delta_flush = argdct.hist_delta_flush;
+                
+                installKeyHandler();
+            },
+        onClickedTestBtn: clicked    // called when the turker clicks on of the test button
+    };
 
     exp = new dltk.Experiment($, spec);
     // abort if initialization fails
     if (!exp.init()) return false;
+    // abort if the RSVP module can't be added
+    if (exp.addModule(dltk.RSVPModule, spec_RSVP) < 0) return false;
 
     aID = exp.getAssignmentID();   // assignmentID for mturk
     zoom = DetectZoom.zoom();      // the zoom status of this browser window
@@ -234,7 +251,7 @@ function main() {
 $(document).ready(main);
 </script>
 </head>
-<body bgcolor="#7F7F7F">
+<body bgcolor="#000">
 <div style="height:100%; width:100%; position:absolute;">
 <div id="fallback" align="center"><span><font color=red style=background-color:white><b>It seems that your browser does not support JavaScript or there was a network error.<br />Please enable JavaScript or reload this page to run this HIT.  Thank you!</b></font></span></div>
 <!-- set everything below with style="display: none;" to hide: only #fallback above will be shown if js fails. -->

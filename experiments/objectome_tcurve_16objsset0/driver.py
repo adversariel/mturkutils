@@ -19,8 +19,9 @@ models_testing8_b2 = ['MB30203', 'weimaraner', 'lo_poly_animal_TRANTULA',
 SELECTED_BASIC_OBJS = set(models_testing8_b1 + models_testing8_b2)
 REPEATS_PER_QE_IMG = 4
 ACTUAL_TRIALS_PER_HIT = 150
-STIMDURS = [1000 / 30, 1000 / 30., 50, 1000 / 60. * 4, 100, 150, 200, 500]
-MODES = ['winchromeonlymask',    # 33ms + postmask
+STIMDURS = [100, 1000 / 30, 1000 / 30., 50, 1000 / 60. * 4, 100, 150, 200, 500]
+MODES = ['mask',                 # postmask
+         'winchromeonlymask',    # 33ms + postmask
          'winchromeonly',        # 33ms
          'winonly',              # 50ms
          'winonly',              # 66ms
@@ -138,11 +139,17 @@ def get_exp(sandbox=True, stimdur=100,
     descdct['winchromeonlymask'] = descdct['winchromeonly']
     htmldstdct['winchromeonlymask'] = 'objt_tcurve_o16s0_mask_%04d_n%%05d.html' % int(stimdur)  # noqa
     tmpdirdct['winchromeonlymask'] = 'tmp/t%04d_mask' % int(stimdur)
-    addirules['winchromeonly'] = [{
+    addirules['winchromeonlymask'] = [{
         'old': "supportedBrowser: ['Chrome', 'Firefox']",
         'new': "supportedBrowser: ['Chrome']",
         'n': 1,
         }] + addirules['winonly']
+
+    htmlsrcdct['mask'] = 'web/objt_tcurve_o16s0_postmask.html'
+    descdct['mask'] = descdct['default']
+    htmldstdct['mask'] = 'objt_tcurve_o16s0_mask_%04d_n%%05d.html' % int(stimdur)  # noqa
+    tmpdirdct['mask'] = 'tmp/t%04d_mask' % int(stimdur)
+    addirules['mask'] = addirules['default']
 
     exp = MatchToSampleFromDLDataExperiment(
             htmlsrc=htmlsrcdct[mode],

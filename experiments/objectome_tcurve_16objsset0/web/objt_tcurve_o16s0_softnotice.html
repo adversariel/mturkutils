@@ -22,9 +22,9 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="dltk.js"></script>
-<script type="text/javascript" src="dltkexpr.js"></script>
-<script type="text/javascript" src="dltkrsvp.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140920-5cc20ed.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltkexpr-20140920-5cc20ed.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltkrsvp-20140920-5cc20ed.js"></script>
 <script type="text/javascript">
 // -- jshint directives.  DO NOT REMOVE THE FOLLOWING COMMENTS
 /* global $, user_IP, dltk, DetectZoom, winH: true, winW: true, vertical: true, horizontal: true */
@@ -153,8 +153,36 @@ function initSetup() {
         trialSpecs.push(s);
     }
 
+    var spec_RSVP = {
+        elemSample: '#sample_container',      // which fully contains sampling related stuffs (previously .test)
+        elemTest: '#test_container',   // which fully contains testing related stuffs (previously #group_container)
+        elemSampleCanvasID: 'main_sample',       // don't prepend #   (previously main_test)
+        elemTestCanvasIDs: ['img4', 'img5'],     // don't prepend #
+        elemTestClickables: ['#img4', '#img5'],  // elements that will be made clickable to receive answers
+        elemTrialCounter: '#trialCounter',
+        onResponseReady:       // called whan all test images are up
+            function (argdct) {
+                // the time when response images are up and ready
+                trialStartTime = argdct.trialStartTime; 
+                trialStartTimes.push(trialStartTime - expLoadTime);
+
+                measuredStimdur.push(argdct.t_stim);
+                measuredISI1.push(argdct.t_ISI1);
+                measuredISI2.push(argdct.t_ISI2);
+
+                l_full_history.push(argdct.hist_extract);
+                l_full_history_delta.push(argdct.hist_delta_extract);
+
+                // mainly for diagnosis/debugging:
+                _hist = argdct.hist;
+                _hist_delta = argdct.hist_delta;
+            },
+        onClickedTestBtn: clicked    // called when the turker clicks on of the test button
+    };
+
     var spec = {
         trialSpecs: trialSpecs,       // defines this experiment
+        modulesToAdd: [{module: dltk.RSVPModule, options: spec_RSVP}],   // modules to add on init
         elemFallback: '#fallback',    // things to display when everything fails
         elemTutorial: '#tutorial',    // dialog box for the instructions
         elemSystemmsg: '#systemmsg',  // dialog box for benchmark failures
@@ -183,39 +211,10 @@ function initSetup() {
                 extInfo.offsetToTop = argdct.offsetToTop;
             },
     };
-    var spec_RSVP = {
-        elemSample: '#sample_container',      // which fully contains sampling related stuffs (previously .test)
-        elemTest: '#test_container',   // which fully contains testing related stuffs (previously #group_container)
-        elemSampleCanvasID: 'main_sample',       // don't prepend #   (previously main_test)
-        elemTestCanvasIDs: ['img4', 'img5'],     // don't prepend #
-        elemTestClickables: ['#img4', '#img5'],  // elements that will be made clickable to receive answers
-        elemTrialCounter: '#trialCounter',
-        onResponseReady:       // called whan all test images are up
-            function (argdct) {
-                // the time when response images are up and ready
-                trialStartTime = argdct.trialStartTime; 
-                trialStartTimes.push(trialStartTime - expLoadTime);
-
-                measuredStimdur.push(argdct.t_stim);
-                measuredISI1.push(argdct.t_ISI1);
-                measuredISI2.push(argdct.t_ISI2);
-
-                l_full_history.push(argdct.hist_extract);
-                l_full_history_delta.push(argdct.hist_delta_extract);
-
-                // mainly for diagnosis/debugging:
-                _hist = argdct.hist;
-                _hist_delta = argdct.hist_delta;
-
-            },
-        onClickedTestBtn: clicked    // called when the turker clicks on of the test button
-    };
 
     exp = new dltk.Experiment($, spec);
     // abort if initialization fails
     if (!exp.init()) return false;
-    // abort if the RSVP module can't be added
-    if (exp.addModule(dltk.RSVPModule, spec_RSVP) < 0) return false;
 
     aID = exp.getAssignmentID();   // assignmentID for mturk
     zoom = DetectZoom.zoom();      // the zoom status of this browser window
