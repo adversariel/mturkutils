@@ -40,6 +40,7 @@ var exp = null;             // the main Experiment object
 var exp_type = 'two_way';
 var stimduration = 100;
 var ISI = 500;
+var maskduration = 50;
 var maxHeightInThisExp = 450;
 var zoom;
 var aID;
@@ -149,6 +150,8 @@ function initSetup() {
             ISI: ISI,
             Sample: imgFiles[i][0],
             Test: imgFiles[i][1],
+            PostMask: imgFiles[i][0].replace('/360x360/', '/postmask_360x360/'),
+            PostMaskDuration: maskduration,
         };
         trialSpecs.push(s);
     }
@@ -215,7 +218,7 @@ function initSetup() {
     // abort if initialization fails
     if (!exp.init()) return false;
     // abort if the RSVP module can't be added
-    if (exp.addModule(dltk.RSVPModule, spec_RSVP) < 0) return false;
+    if (exp.addModule(dltk.RSVPWithPostMaskModule, spec_RSVP) < 0) return false;
 
     aID = exp.getAssignmentID();   // assignmentID for mturk
     zoom = DetectZoom.zoom();      // the zoom status of this browser window

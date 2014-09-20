@@ -22,9 +22,9 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140913-30aec82.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltkexpr-20140913-30aec82.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltkrsvp-20140913-30aec82.js"></script>
+<script type="text/javascript" src="dltk.js"></script>
+<script type="text/javascript" src="dltkexpr.js"></script>
+<script type="text/javascript" src="dltkrsvp.js"></script>
 <script type="text/javascript">
 // -- jshint directives.  DO NOT REMOVE THE FOLLOWING COMMENTS
 /* global $, user_IP, dltk, DetectZoom, winH: true, winW: true, vertical: true, horizontal: true */
@@ -32,11 +32,11 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 // -- Experimental variables
 var ExperimentData = null;
 var imgFiles = ExperimentData.imgFiles;
+var trialSpecs = [];
 var totalTrials;
 var trialNumber;
 
 var exp = null;             // the main Experiment object
-var hRSVP = null;           // handle to the RSVP module
 var exp_type = 'two_way';
 var stimduration = 100;
 var ISI = 500;
@@ -68,7 +68,10 @@ var reward_scale = ExperimentData.reward_scale; */
 function clicked(argdct) {
     var imgChosen = argdct.imgChosen;
     trialEndTime = argdct.trialEndTime;
-    trialNumber = argdct.trialNumber;
+    // Here, we explicitly use local trial numbers.  They will be the same as global numbers
+    // because there is only one module.  However, if there are multiple modules the numbers will be different.
+    trialNumber = argdct.localTrialNumber;    // vs. argdct.trialNumber (which is global trial number)
+    totalTrials = argdct.localTotalTrialNumber;   // vs. argdct.totalTrialNumber (again, global #)
     /* hahong: reward related
     var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
     var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
@@ -140,7 +143,18 @@ function endTrial() {
 
 // -- Setup part + other helper functions
 function initSetup() {
+    for (var i = 0; i < imgFiles.length; i++) {
+        var s = {
+            SampleDuration: stimduration,
+            ISI: ISI,
+            Sample: imgFiles[i][0],
+            Test: imgFiles[i][1],
+        };
+        trialSpecs.push(s);
+    }
+
     var spec = {
+        trialSpecs: trialSpecs,       // defines this experiment
         elemFallback: '#fallback',    // things to display when everything fails
         elemTutorial: '#tutorial',    // dialog box for the instructions
         elemSystemmsg: '#systemmsg',  // dialog box for benchmark failures
@@ -155,6 +169,8 @@ function initSetup() {
         elemFPSBench: '#fps_bench',
         elemFPSBenchCanvasID: 'fps_test',  // DO NOT prepend #
         FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
+        supportedOS: ['Windows', 'Mac', 'Linux'],
+        supportedBrowser: ['Chrome', 'Firefox'],
         tutorialContents: $("#tutorial_original").html(),   // the (1st page) content of the instructions
         expLoadTime: expLoadTime,          // override expLoadTime for better consistency with this html
         maxHeightInThisExp: maxHeightInThisExp,   // approx actual height (in pixels) used this HIT
@@ -174,9 +190,6 @@ function initSetup() {
         elemTestCanvasIDs: ['img4', 'img5'],     // don't prepend #
         elemTestClickables: ['#img4', '#img5'],  // elements that will be made clickable to receive answers
         elemTrialCounter: '#trialCounter',
-        imgFiles: imgFiles,
-        stimdurations: stimduration,    // automatically expanded to a list if a number is given
-        ISIs: ISI,                      // ... same
         onResponseReady:       // called whan all test images are up
             function (argdct) {
                 // the time when response images are up and ready
@@ -202,9 +215,8 @@ function initSetup() {
     // abort if initialization fails
     if (!exp.init()) return false;
     // abort if the RSVP module can't be added
-    if ((hRSVP = exp.addModule(dltk.RSVPModule, spec_RSVP)) < 0) return false;
+    if (exp.addModule(dltk.RSVPModule, spec_RSVP) < 0) return false;
 
-    totalTrials = exp.getTotalTrialNumber(hRSVP);   // total # of valid trials.  (hRSVP can be omitted)
     aID = exp.getAssignmentID();   // assignmentID for mturk
     zoom = DetectZoom.zoom();      // the zoom status of this browser window
 
