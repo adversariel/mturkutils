@@ -53,6 +53,8 @@ var trialDurations = [];
 var measuredISI1 = [];
 var measuredISI2 = [];
 var measuredStimdur = [];
+var measuredMaskdur = [];
+var measuredGapdur = [];
 var stimDone = [];
 
 var l_full_history = [], l_full_history_delta = [];
@@ -122,6 +124,7 @@ function endTrial() {
             TimingInfo: { 
                 TrialStartTimes: trialStartTimes, ExpLoadTime: expLoadTime,
                 ISI1: measuredISI1, ISI2: measuredISI2, Stimdur: measuredStimdur,
+                Maskdur: measuredMaskdur, Gapdur: measuredGapdur,
                 HistoryDiff: l_full_history, HistoryDeltaDiffEach: l_full_history_delta },
             /* hahong: reward related
             ImgData: imgData,
@@ -172,6 +175,8 @@ function initSetup() {
                 measuredStimdur.push(argdct.t_stim);
                 measuredISI1.push(argdct.t_ISI1);
                 measuredISI2.push(argdct.t_ISI2);
+                measuredMaskdur.push(argdct.t_mask);
+                measuredGapdur.push(argdct.t_gap);
 
                 l_full_history.push(argdct.hist_extract);
                 l_full_history_delta.push(argdct.hist_delta_extract);

@@ -19,7 +19,8 @@ models_testing8_b2 = ['MB30203', 'weimaraner', 'lo_poly_animal_TRANTULA',
 SELECTED_BASIC_OBJS = set(models_testing8_b1 + models_testing8_b2)
 REPEATS_PER_QE_IMG = 4
 ACTUAL_TRIALS_PER_HIT = 150
-STIMDURS = [100, 1000 / 30, 1000 / 30., 50, 1000 / 60. * 4, 100, 150, 200, 500]
+STIMDURS = [100, 1000 / 30., 1000 / 30., 50,
+        1000 / 60. * 4, 100, 150, 200, 500]
 MODES = ['mask',                 # postmask
          'winchromeonlymask',    # 33ms + postmask
          'winchromeonly',        # 33ms
