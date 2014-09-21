@@ -165,34 +165,6 @@ function initSetup() {
         trialSpecs.push(s);
     }
 
-    var spec = {
-        trialSpecs: trialSpecs,       // defines this experiment
-        elemFallback: '#fallback',    // things to display when everything fails
-        elemTutorial: '#tutorial',    // dialog box for the instructions
-        elemSystemmsg: '#systemmsg',  // dialog box for benchmark failures
-        elemNotice: '#notice',        // the red square stuff
-        elemUpperRightGroup: '#upperright',
-        elemTutorialLink: '#tutorial_link',
-        elemTimer: '#timedisp',       // to where the elapsed time will be displayed
-        elemBeginTaskBtn: '#begintask',
-        elemBeginTaskGroup: '#begintaskdiv',
-        elemWarning: '#warning',
-        elemPreload: '#_preload',
-        elemFPSBench: '#fps_bench',
-        elemFPSBenchCanvasID: 'fps_test',  // DO NOT prepend #
-        FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
-        tutorialContents: $("#tutorial_original").html(),   // the (1st page) content of the instructions
-        expLoadTime: expLoadTime,          // override expLoadTime for better consistency with this html
-        maxHeightInThisExp: maxHeightInThisExp,   // approx actual height (in pixels) used this HIT
-        useRecomputeOffset: true,       // recenters the experiment elements when needed
-        printDbgMessage: true,          // use true to print console logs (use false for production)
-        onRecomputeOffset:              // this is called when the browser window gets resized
-            function (argdct) { 
-                winW = argdct.winW; winH = argdct.winH;
-                horizontal = argdct.horizontal; vertical = argdct.vertical;
-                extInfo.offsetToTop = argdct.offsetToTop;
-            },
-    };
     var spec_RSVP = {
         elemSample: '#sample_container',      // which fully contains sampling related stuffs (previously .test)
         elemTest: '#test_container',   // which fully contains testing related stuffs (previously #group_container)
@@ -230,11 +202,39 @@ function initSetup() {
         onClickedTestBtn: clicked    // called when the turker clicks on of the test button
     };
 
+    var spec = {
+        trialSpecs: trialSpecs,       // defines this experiment
+        modulesToAdd: [{module: dltk.RSVPModule, options: spec_RSVP}],
+        elemFallback: '#fallback',    // things to display when everything fails
+        elemTutorial: '#tutorial',    // dialog box for the instructions
+        elemSystemmsg: '#systemmsg',  // dialog box for benchmark failures
+        elemNotice: '#notice',        // the red square stuff
+        elemUpperRightGroup: '#upperright',
+        elemTutorialLink: '#tutorial_link',
+        elemTimer: '#timedisp',       // to where the elapsed time will be displayed
+        elemBeginTaskBtn: '#begintask',
+        elemBeginTaskGroup: '#begintaskdiv',
+        elemWarning: '#warning',
+        elemPreload: '#_preload',
+        elemFPSBench: '#fps_bench',
+        elemFPSBenchCanvasID: 'fps_test',  // DO NOT prepend #
+        FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
+        tutorialContents: $("#tutorial_original").html(),   // the (1st page) content of the instructions
+        expLoadTime: expLoadTime,          // override expLoadTime for better consistency with this html
+        maxHeightInThisExp: maxHeightInThisExp,   // approx actual height (in pixels) used this HIT
+        useRecomputeOffset: true,       // recenters the experiment elements when needed
+        printDbgMessage: true,          // use true to print console logs (use false for production)
+        onRecomputeOffset:              // this is called when the browser window gets resized
+            function (argdct) { 
+                winW = argdct.winW; winH = argdct.winH;
+                horizontal = argdct.horizontal; vertical = argdct.vertical;
+                extInfo.offsetToTop = argdct.offsetToTop;
+            },
+    };
+
     exp = new dltk.Experiment($, spec);
     // abort if initialization fails
     if (!exp.init()) return false;
-    // abort if the RSVP module can't be added
-    if (exp.addModule(dltk.RSVPModule, spec_RSVP) < 0) return false;
 
     aID = exp.getAssignmentID();   // assignmentID for mturk
     zoom = DetectZoom.zoom();      // the zoom status of this browser window
