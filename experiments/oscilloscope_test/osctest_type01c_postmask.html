@@ -33,23 +33,25 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 
 // -- Experimental variables
 var IMG_BLACK = 'color: black';
+var IMG_GRAY = 'color: #7f7f7f';
 var IMG_WHITE = 'color: white';
 var img_white = IMG_WHITE;
 var IMG_RESP1 = 'color: #222';
 var IMG_RESP2 = 'color: #444';
 var imgFiles = [];
+var trialSpecs = [];
 for (var _i = 0; _i < 100; _i++) {
-    imgFiles.push([img_white, [IMG_RESP1, IMG_RESP2]]);
+    imgFiles.push([img_white, [IMG_RESP1, IMG_RESP2], IMG_BLACK]);
     img_white = img_white + ' ';
 }
 var totalTrials;
 var trialNumber;
 
 var exp = null;             // the main Experiment object
-var hRSVP = null;           // handle to the RSVP module
 var exp_type = 'two_way';
 var stimduration = 100;
 var ISI = 500;
+var maskduration = 50;
 var maxHeightInThisExp = 450;
 var zoom;
 var aID;
@@ -80,6 +82,7 @@ function clicked(argdct) {
     var imgChosen = argdct.imgChosen;
     trialEndTime = argdct.trialEndTime;
     trialNumber = -1;  //argdct.trialNumber;   // infinite loop
+    totalTrials = argdct.localTotalTrialNumber;   // vs. argdct.totalTrialNumber (again, global #)
     /* hahong: reward related
     var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
     var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
@@ -154,33 +157,18 @@ function endTrial() {
 
 // -- Setup part + other helper functions
 function initSetup() {
-    var spec = {
-        elemFallback: '#fallback',    // things to display when everything fails
-        elemTutorial: '#tutorial',    // dialog box for the instructions
-        elemSystemmsg: '#systemmsg',  // dialog box for benchmark failures
-        elemNotice: '#notice',        // the red square stuff
-        elemUpperRightGroup: '#upperright',
-        elemTutorialLink: '#tutorial_link',
-        elemTimer: '#timedisp',       // to where the elapsed time will be displayed
-        elemBeginTaskBtn: '#begintask',
-        elemBeginTaskGroup: '#begintaskdiv',
-        elemWarning: '#warning',
-        elemPreload: '#_preload',
-        elemFPSBench: '#fps_bench',
-        elemFPSBenchCanvasID: 'fps_test',  // DO NOT prepend #
-        FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
-        tutorialContents: $("#tutorial_original").html(),   // the (1st page) content of the instructions
-        expLoadTime: expLoadTime,          // override expLoadTime for better consistency with this html
-        maxHeightInThisExp: maxHeightInThisExp,   // approx actual height (in pixels) used this HIT
-        useRecomputeOffset: true,       // recenters the experiment elements when needed
-        printDbgMessage: true,          // use true to print console logs (use false for production)
-        onRecomputeOffset:              // this is called when the browser window gets resized
-            function (argdct) { 
-                winW = argdct.winW; winH = argdct.winH;
-                horizontal = argdct.horizontal; vertical = argdct.vertical;
-                extInfo.offsetToTop = argdct.offsetToTop;
-            },
-    };
+    for (var i = 0; i < imgFiles.length; i++) {
+        var s = {
+            SampleDuration: stimduration,
+            ISI: ISI,
+            Sample: imgFiles[i][0],
+            Test: imgFiles[i][1],
+            PostMask: imgFiles[i][2],
+            PostMaskDuration: maskduration,
+        };
+        trialSpecs.push(s);
+    }
+
     var spec_RSVP = {
         elemSample: '#sample_container',      // which fully contains sampling related stuffs (previously .test)
         elemTest: '#test_container',   // which fully contains testing related stuffs (previously #group_container)
@@ -188,11 +176,8 @@ function initSetup() {
         elemTestCanvasIDs: ['img4', 'img5'],     // don't prepend #
         elemTestClickables: ['#img4', '#img5'],  // elements that will be made clickable to receive answers
         elemTrialCounter: '#trialCounter',
-        imgFiles: imgFiles,
-        imgFixation: IMG_BLACK,
-        imgBlank: IMG_BLACK,
-        stimdurations: stimduration,    // automatically expanded to a list if a number is given
-        ISIs: ISI,                      // ... same
+        imgFixation: IMG_GRAY,
+        imgBlank: IMG_GRAY,
         optdctQueueTrial: {measureFlushTiming: true}, 
         onResponseReady:       // called whan all test images are up
             function (argdct) {
@@ -221,13 +206,40 @@ function initSetup() {
         onClickedTestBtn: clicked    // called when the turker clicks on of the test button
     };
 
+    var spec = {
+        trialSpecs: trialSpecs,       // defines this experiment
+        modulesToAdd: [{module: dltk.RSVPWithPostMaskModule, options: spec_RSVP}],
+        elemFallback: '#fallback',    // things to display when everything fails
+        elemTutorial: '#tutorial',    // dialog box for the instructions
+        elemSystemmsg: '#systemmsg',  // dialog box for benchmark failures
+        elemNotice: '#notice',        // the red square stuff
+        elemUpperRightGroup: '#upperright',
+        elemTutorialLink: '#tutorial_link',
+        elemTimer: '#timedisp',       // to where the elapsed time will be displayed
+        elemBeginTaskBtn: '#begintask',
+        elemBeginTaskGroup: '#begintaskdiv',
+        elemWarning: '#warning',
+        elemPreload: '#_preload',
+        elemFPSBench: '#fps_bench',
+        elemFPSBenchCanvasID: 'fps_test',  // DO NOT prepend #
+        FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
+        tutorialContents: $("#tutorial_original").html(),   // the (1st page) content of the instructions
+        expLoadTime: expLoadTime,          // override expLoadTime for better consistency with this html
+        maxHeightInThisExp: maxHeightInThisExp,   // approx actual height (in pixels) used this HIT
+        useRecomputeOffset: true,       // recenters the experiment elements when needed
+        printDbgMessage: true,          // use true to print console logs (use false for production)
+        onRecomputeOffset:              // this is called when the browser window gets resized
+            function (argdct) { 
+                winW = argdct.winW; winH = argdct.winH;
+                horizontal = argdct.horizontal; vertical = argdct.vertical;
+                extInfo.offsetToTop = argdct.offsetToTop;
+            },
+    };
+
     exp = new dltk.Experiment($, spec);
     // abort if initialization fails
     if (!exp.init()) return false;
-    // abort if the RSVP module can't be added
-    if ((hRSVP = exp.addModule(dltk.RSVPModule, spec_RSVP)) < 0) return false;
 
-    totalTrials = exp.getTotalTrialNumber(hRSVP);   // total # of valid trials.  (hRSVP can be omitted)
     aID = exp.getAssignmentID();   // assignmentID for mturk
     zoom = DetectZoom.zoom();      // the zoom status of this browser window
 
@@ -243,7 +255,7 @@ function main() {
 $(document).ready(main);
 </script>
 </head>
-<body bgcolor="#000">
+<body bgcolor="#7f7f7f">
 <div style="height:100%; width:100%; position:absolute;">
 <div id="fallback" align="center"><span><font color=red style=background-color:white><b>It seems that your browser does not support JavaScript or there was a network error.<br />Please enable JavaScript or reload this page to run this HIT.  Thank you!</b></font></span></div>
 <!-- set everything below with style="display: none;" to hide: only #fallback above will be shown if js fails. -->

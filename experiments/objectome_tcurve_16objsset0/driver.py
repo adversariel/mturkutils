@@ -19,12 +19,18 @@ models_testing8_b2 = ['MB30203', 'weimaraner', 'lo_poly_animal_TRANTULA',
 SELECTED_BASIC_OBJS = set(models_testing8_b1 + models_testing8_b2)
 REPEATS_PER_QE_IMG = 4
 ACTUAL_TRIALS_PER_HIT = 150
-STIMDURS = [1000. / 60, 1000 / 30., 50, 1000 / 60. * 4, 100, 150, 200, 500]
-MODES = {1000. / 60: 'winchromeonly',
-        1000. / 30: 'winchromeonly',
-        50: 'winonly',
-        1000 / 60. * 4: 'winonly',
-        100: 'default', 150: 'default', 200: 'default', 500: 'default'}
+STIMDURS = [100, 1000 / 30., 1000 / 30., 50,
+        1000 / 60. * 4, 100, 150, 200, 500]
+MODES = ['mask',                 # postmask
+         'winchromeonlymask',    # 33ms + postmask
+         'winchromeonly',        # 33ms
+         'winonly',              # 50ms
+         'winonly',              # 66ms
+         'default',              # 100ms
+         'default',              # 150ms
+         'default',              # 200ms
+         'default']              # 500ms
+assert len(STIMDURS) == len(MODES)
 
 
 def get_meta(selected_basic_objs=SELECTED_BASIC_OBJS):
@@ -130,6 +136,22 @@ def get_exp(sandbox=True, stimdur=100,
         'n': 1,
         }] + addirules['winonly']
 
+    htmlsrcdct['winchromeonlymask'] = 'web/objt_tcurve_o16s0_postmask.html'
+    descdct['winchromeonlymask'] = descdct['winchromeonly']
+    htmldstdct['winchromeonlymask'] = 'objt_tcurve_o16s0_mask_%04d_n%%05d.html' % int(stimdur)  # noqa
+    tmpdirdct['winchromeonlymask'] = 'tmp/t%04d_mask' % int(stimdur)
+    addirules['winchromeonlymask'] = [{
+        'old': "supportedBrowser: ['Chrome', 'Firefox']",
+        'new': "supportedBrowser: ['Chrome']",
+        'n': 1,
+        }] + addirules['winonly']
+
+    htmlsrcdct['mask'] = 'web/objt_tcurve_o16s0_postmask.html'
+    descdct['mask'] = descdct['default']
+    htmldstdct['mask'] = 'objt_tcurve_o16s0_mask_%04d_n%%05d.html' % int(stimdur)  # noqa
+    tmpdirdct['mask'] = 'tmp/t%04d_mask' % int(stimdur)
+    addirules['mask'] = addirules['default']
+
     exp = MatchToSampleFromDLDataExperiment(
             htmlsrc=htmlsrcdct[mode],
             htmldst=htmldstdct[mode],
@@ -225,7 +247,7 @@ def get_exp(sandbox=True, stimdur=100,
     return exp, html_data
 
 
-def main(argv=[], partial=False, debug=False, stimdurs=STIMDURS):
+def main(argv=[], partial=False, debug=False, stimdurs=STIMDURS, modes=MODES):
     sandbox = True
     if len(argv) > 1 and argv[1] == 'production':
         sandbox = False
@@ -234,8 +256,8 @@ def main(argv=[], partial=False, debug=False, stimdurs=STIMDURS):
         print '** Sandbox mode'
         print '** Enter "driver.py production" to publish production HITs.'
 
-    exps = [get_exp(sandbox=sandbox, debug=debug, stimdur=t, mode=MODES[t])[0]
-            for t in stimdurs]
+    exps = [get_exp(sandbox=sandbox, debug=debug, stimdur=t, mode=m)[0]
+            for t, m in zip(stimdurs, modes)]
     for exp in exps:
         exp.prepHTMLs()
     print '** Done prepping htmls.'

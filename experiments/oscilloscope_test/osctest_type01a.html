@@ -24,13 +24,16 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/dltk-20140831-a3d726d.js"></script>
+<script type="text/javascript" src="dltk.js"></script>
 <script type="text/javascript" src="osctest_type01_diag.js"></script>
 
 <script type="text/javascript">
 //var ExperimentData = null;
 var IMG_BLACK = 'color: black';
 var IMG_WHITE = 'color: white';
+var IMG_RESP1 = 'color: #222';
+var IMG_RESP2 = 'color: #444';
+var img_white = IMG_WHITE;
 var JS_TRES_TOL = 17;            // An example tolerance value for js timing (~60Hz frame rate)
 var JS_TRES_VAR_TOL = 17 * 17;   // +/- one frame deviation deemed fine
 var FRAME_INTERVAL_TOL = 1000 / 60 + 2;   // mean frame interval should be smaller than 16.66ms + 2ms
@@ -44,6 +47,10 @@ var imgFiles = []; //ExperimentData.imgFiles;
 var totalTrials = 500; //imgFiles.length;
 var BreakTimes = [];
 var exp_type = 'two_way';
+for (var _i = 0; _i < 100; _i++) {
+    imgFiles.push([img_white, [IMG_RESP1, IMG_RESP2]]);
+    img_white = img_white + ' ';
+}
 
 var trialNumber = 0;
 var stimduration = 100;
@@ -485,7 +492,8 @@ function checkSystem(benchmark_) {
 
 function preloadResources() {
     // load fixation dot and blank image first...
-    dltk.prepareResources([[IMG_BLACK, [IMG_BLACK, IMG_BLACK]], [IMG_WHITE, [IMG_WHITE, IMG_WHITE]]], [ctx_test_on, [ctx_resp0_on, ctx_resp1_on]], preBeginExp);
+    // dltk.prepareResources([[IMG_BLACK, [IMG_BLACK, IMG_BLACK]], [IMG_WHITE, [IMG_WHITE, IMG_WHITE]]], [ctx_test_on, [ctx_resp0_on, ctx_resp1_on]], preBeginExp);
+    dltk.prepareResources(imgFiles, [ctx_test_on, [ctx_resp0_on, ctx_resp1_on]], preBeginExp);
     // Note: no need to call zen.preload() anymore
 }
 
