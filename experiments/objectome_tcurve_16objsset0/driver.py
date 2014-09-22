@@ -169,6 +169,7 @@ def get_exp(sandbox=True, stimdur=100,
             html_data=html_data,
             tmpdir=tmpdirdct[mode],
             frame_height_pix=1200,
+            othersrc=['../../lib/dltk.js', '../../lib/dltkexpr.js', '../../lib/dltkrsvp.js'],   # noqa
             additionalrules=[{
                 'old': 'stimduration = 100;',
                 'new': 'stimduration = %f;' % stimdur,

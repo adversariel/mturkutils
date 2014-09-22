@@ -104,6 +104,7 @@ def get_exp(sandbox=True, selected_basic_objs=SELECTED_BASIC_OBJS):
             trials_per_hit=ACTUAL_TRIALS_PER_HIT + 24,  # 150 + 6x4 repeats
             html_data=html_data,
             frame_height_pix=1200,
+            othersrc = ['../../lib/dltk.js', '../../lib/dltkexpr.js', '../../lib/dltkrsvp.js']
             )
 
     # -- create trials
