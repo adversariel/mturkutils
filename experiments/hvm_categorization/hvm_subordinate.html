@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<title>Object Identification</title>
+<title>OBJTYPE: Identification</title>
 
 <style>
 body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana }
@@ -96,7 +96,6 @@ function postResponse(argdct){
     reward = reward_scale(error);
     console.log('reward', reward)
     var format_error = (100 * error).toPrecision(3);
-
 
     if (trialNumber < LEARNING_PERIOD){
         var correct_answer = imgData[trialNumber]["Sample"][meta_field];

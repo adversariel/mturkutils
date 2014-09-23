@@ -9,7 +9,7 @@ import dldata.stimulus_sets.hvm as hvm
 from mturkutils.base import MatchToSampleFromDLDataExperiment
 
 REPEATS_PER_QE_IMG = 4
-ACTUAL_TRIALS_PER_HIT = 150
+ACTUAL_TRIALS_PER_HIT = 144
 LEARNING_PERIOD = 16
 
 repeat_inds = {'Animals': [400, 440, 486, 523, 563, 600, 642, 680],
@@ -21,14 +21,14 @@ repeat_inds = {'Animals': [400, 440, 486, 523, 563, 600, 642, 680],
                'Planes': [401, 441, 481, 520, 561, 601, 640, 680],
                'Tables': [400, 442, 486, 521, 562, 600, 640, 680]}
 
-practice_inds = {'Animals': [0, 10, 20, 30, 40, 50, 60, 70, 80, 120, 160, 200, 240, 280, 320, 360],
-                'Boats': [0, 10, 20, 30, 40, 50, 60, 70, 80, 120, 160, 200, 240, 280, 320, 360],
-                'Cars': [0, 10, 20, 30, 40, 50, 60, 70, 80, 120, 160, 200, 240, 280, 320, 360],
-                'Chairs': [0, 10, 20, 30, 40, 50, 60, 70, 80, 120, 160, 200, 240, 280, 320, 360],
-                'Faces': [0, 10, 20, 30, 40, 50, 60, 70, 80, 120, 160, 200, 240, 280, 320, 360],
-                'Fruits': [0, 10, 20, 30, 40, 50, 60, 70, 80, 120, 160, 200, 240, 280, 320, 360],
-                'Planes': [0, 10, 20, 30, 40, 50, 60, 70, 80, 120, 160, 200, 240, 280, 320, 360],
-                'Tables': [0, 10, 20, 30, 40, 50, 60, 70, 80, 120, 160, 200, 240, 280, 320, 360]}
+practice_inds = {'Animals': [80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 420, 560, 600, 640, 680],
+                'Boats': [80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 420, 560, 600, 640, 680],
+                'Cars': [80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 420, 560, 600, 640, 680],
+                'Chairs': [80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 420, 560, 600, 640, 680],
+                'Faces': [80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 420, 560, 600, 640, 680],
+                'Fruits': [80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 420, 560, 600, 640, 680],
+                'Planes': [80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 420, 560, 600, 640, 680],
+                'Tables': [80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 420, 560, 600, 640, 680]}
 
 def get_exp(category, sandbox=True, dummy_upload=True):
 
@@ -52,14 +52,15 @@ def get_exp(category, sandbox=True, dummy_upload=True):
         'meta': [{'obj': obj, 'category': category} for obj in objs],
         'labels': objs}]
 
+    mult = 2
     html_data = {
             'response_images': response_images,
             'combs': combs,
-            'num_trials': 90 * 8,
+            'num_trials': 90 * 8 * mult,
             'meta_field': 'obj',
-            'meta': meta,
-            'urls': urls,
-            'shuffle_test': True,
+            'meta': tb.tab_rowstack([meta] * mult),
+            'urls': urls * mult,
+            'shuffle_test': False,
     }
 
     objdict = {o: category + " " + str(i) for (i, o) in enumerate(objs)}
@@ -73,7 +74,7 @@ def get_exp(category, sandbox=True, dummy_upload=True):
     exp = MatchToSampleFromDLDataExperiment(
             htmlsrc='hvm_subordinate.html',
             htmldst='hvm_subordinate_' + category + '_n%05d.html',
-            tmpdir='tmp_%s' % category,
+            tmpdir='tmp_subordinate_%s' % category,
             sandbox=sandbox,
             title='Object recognition --- report what you see',
             reward=0.35,
@@ -84,17 +85,18 @@ def get_exp(category, sandbox=True, dummy_upload=True):
             collection_name= None, #'hvm_basic_categorization',
             max_assignments=1,
             bucket_name='hvm_subordinate_identification_test',
-            trials_per_hit=trials_per_hit,  # 150 + 8x4 repeats
+            trials_per_hit=trials_per_hit,  # 144 + 8x4 repeats + 16 training
             html_data=html_data,
             frame_height_pix=1200,
             othersrc = ['objnames.js', '../../lib/dltk.js', '../../lib/dltkexpr.js', '../../lib/dltkrsvp.js'],
-            additionalrules=additionalrules
+            additionalrules=additionalrules,
+            log_prefix='subordinate_' + category + '_'
             )
 
     # -- create trials
     exp.createTrials(sampling='without-replacement', verbose=1)
     n_total_trials = len(exp._trials['imgFiles'])
-    assert n_total_trials == 90 * 8, n_total_trials
+    assert n_total_trials == 90 * 8 * mult, n_total_trials
 
     # -- in each HIT, the followings will be repeated 4 times to
     # estimate "quality" of data
@@ -130,22 +132,33 @@ def get_exp(category, sandbox=True, dummy_upload=True):
                 exp._trials[k].insert(i_trial_begin + offset, trials_qe[k][i])
         n_applied_hits += 1
 
-    for j in range(4):
+    for j in range(n_applied_hits):
         for k in trials_lrn:
             for i in range(len(ind_learn)):
-                exp._trials[k].insert((182 + 16) * j, trials_lrn[k][i])
-                if k == 'imgData':
-                    print((182 + 16) * j, trials_lrn[k][i]['Sample']['var'])
+                exp._trials[k].insert(trials_per_hit * j, trials_lrn[k][i])
 
-    print([(x['Sample']['var'], x['Sample']['obj']) for x in exp._trials['imgData'][:16]])
+    #shuffle test on a per-hit basis
+    for j in range(n_applied_hits):
+        rng = np.random.RandomState(seed=j)
+        perm = rng.permutation(8)
+        for i in range(trials_per_hit * j, min(trials_per_hit * (j+1), len(exp._trials['imgFiles']))):
+            f = copy.deepcopy(exp._trials['imgFiles'][i])
+            t = copy.deepcopy(exp._trials['imgData'][i])
+            f[1] = [f[1][_j] for _j in perm]
+            exp._trials['imgFiles'][i] = f
+            t['Test'] = [t['Test'][_j] for _j in perm]
+            exp._trials['imgData'][i] = t
+            l = copy.deepcopy(exp._trials['labels'][i])
+            exp._trials['labels'][i] = [l[_j] for _j in perm]
+
 
     print '** n_applied_hits =', n_applied_hits
     print '** len for each in _trials =', \
             {e: len(exp._trials[e]) for e in exp._trials}
 
     # -- sanity check
-    assert 4 == n_applied_hits, n_applied_hits
-    assert len(exp._trials['imgFiles']) == 720 + 4 * (32 + 16),  len(exp._trials['imgFiles'])
+    assert n_hits_floor == n_applied_hits == mult * 5, (n_hits_floor, n_applied_hits)
+    assert len(exp._trials['imgFiles']) == mult * (720 + 5 * (32 + 16)),  len(exp._trials['imgFiles'])
     """
     s_ref_labels = set([tuple(e) for e in trials_qe['labels']])
     print(s_ref_labels)
@@ -162,10 +175,13 @@ def get_exp(category, sandbox=True, dummy_upload=True):
 
 
 if __name__ == '__main__':
-    exp, _ = get_exp('Chairs', sandbox=False, dummy_upload=True)
+    category = sys.argv[1]
+    sandbox = bool(sys.argv[2])
+    dummy_upload = bool(sys.argv[3])
+    exp, _ = get_exp(category, sandbox=sandbox, dummy_upload=dummy_upload)
     exp.prepHTMLs()
     exp.testHTMLs()
-    exp.uploadHTMLs()
+    #exp.uploadHTMLs()
     #exp.createHIT(secure=True)
 
     #hitids = cPickle.load(open('3ARIN4O78FSZNXPJJAE45TI21DLIF1_2014-06-13_16:25:48.143902.pkl'))
