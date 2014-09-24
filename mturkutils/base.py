@@ -668,10 +668,28 @@ class MatchToSampleFromDLDataExperiment(Experiment):
     def createTrials(self, sampling='without-replacement', verbose=0):
         """
         - Create trials with the given ``html_data``.
+        Html data is a spec that can have the following parameters:
+        :param dummy_upload: If true, image files are assumed to have been uploaded previouls
+        :param preproc: what preproc to use on images
+            (see dldata.stimulus_sets.dataset_templates.ImageLoaderPreprocesser)
+        :param image_bucket_name: what bucket to upload files to
+        :param seed: random seed to use for shuffling
+        :param dataset: which dataset to get images from
+        :param combs: List of tuples of synsets to measure confusions for
+        :param k: Number of times to measure each confusion.
+        :param meta_query: subset the dataset according to this query, evaluated once at every meta entry
+        sampled equally
+        :param: labelfunc: callable that takes a dictionary meta entry and the dataset, and returns the label to be
+            printed
+        :param: response_images: list of
+            tuple of image_urls, imgData, and labels to use for response images. There must be one set
+             of responses per confusion to be measured. If this is not
+                set, random images from the same category are used by default.
         - Parameter ``sampling`` determines the behavior of image sampling:
           * "without-replacement" (default): no same images will be presented
             across the entire population of subjects.
           * "with-replacement": allows recycling of images.
+
         """
 
         assert sampling in ['without-replacement', 'with-replacement']
