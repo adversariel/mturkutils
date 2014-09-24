@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<title>OBJTYPE: Identification</title>
+<title>Categorization</title>
 
 <style>
 body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana }
@@ -25,7 +25,6 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="dltk.js"></script>
 <script type="text/javascript" src="dltkexpr.js"></script>
 <script type="text/javascript" src="dltkrsvp.js"></script>
-<script type="text/javascript" src="objnames.js"></script>
 <script type="text/javascript">
 // -- jshint directives.  DO NOT REMOVE THE FOLLOWING COMMENTS
 /* global $, user_IP, dltk, DetectZoom, winH: true, winW: true, vertical: true, horizontal: true */
@@ -65,7 +64,10 @@ var _stimduration;
 var reward;
 var error = 0;
 var distances = [];
-var meta_field = 'obj'
+var meta_field = 'category'
+var catdict = {'Animals': 'Animal', 'Boats': 'Boat', 'Cars': 'Car',
+               'Chairs': 'Chair', 'Faces': 'Face', 'Fruits': 'Fruit',
+               'Planes': 'Plane', 'Tables': 'Table'};
 
 
 function reward_scale(error){
@@ -100,7 +102,7 @@ function postResponse(argdct){
     if (trialNumber < LEARNING_PERIOD){
         var correct_answer = imgData[trialNumber]["Sample"][meta_field];
 
-        $('#trialCounter').html('Correct answer: ' + object_names[correct_answer] + '.<br/><b><span style="color:red; font-size:large"><u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left</span> after this.</b>');
+        $('#trialCounter').html('Correct answer: ' + catdict[correct_answer] + '.<br/><b><span style="color:red; font-size:large"><u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left</span> after this.</b>');
 
         var correct_test_index = 0;
         var found_it = false;
@@ -388,11 +390,11 @@ $(document).ready(main);
 <center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
 <div id="tutorial2" style="position:absolute; z-index:-1; display: none;">
 <ul>
-<li>You will see a series of test images, each one presented for a very brief time. Each image will contain one of eight target OBJTYPE.
+<li>You will see a series of test images, each one presented for a very brief time. Each image will contain an object in one of eight categories, including Animals, Boats, Cars, Chairs, Faces, Fruits, Planes and Tables.
 <p>
-<li>After you see the test image, you will be presented with eight response choice images also containing different OBJTYPE.  You must then click on the response choice image containing the same object as the originally presented test image.  The locations of the response choices will change randomly on each trial.</li>
+<li>After you see the test image, you will be presented with eight response choice images containing an object in one of the eight categories.  You must then click on the response choice image containing the object in the same category as the one in the originally presented test image.</li>
 <p>
-<li>The first few examples will consist of a learning period.  During this period, the correct answer will be indicated on the response screen by a blue box, and the images will be shown for a longer period of time. mYou should use this period to get a feel for the task and learn how to use the interface.</li>
+<li>The first few examples will consist of a learning period.  During this period, the correct answer will be indicated on the response screen by a blue box, and the images will be shown for a longer period of time. You should use this period to get a feel for the task and learn how to use the interface.</li>
 <p>
 <li>After the learning period, the blue boxes will not be shown and <b>the images will be shown <u>very</u> quickly.  Be ready!</b>   Even if you're not 100% sure of the correct category, <u><b>make your best guess</b></u>.</li>
 <p>
