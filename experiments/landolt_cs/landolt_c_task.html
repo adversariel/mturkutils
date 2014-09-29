@@ -25,7 +25,6 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 <script type="text/javascript" src="dltk.js"></script>
 <script type="text/javascript" src="dltkexpr.js"></script>
 <script type="text/javascript" src="dltkrsvp.js"></script>
-<script type="text/javascript" src="objnames.js"></script>
 <script type="text/javascript">
 // -- jshint directives.  DO NOT REMOVE THE FOLLOWING COMMENTS
 /* global $, user_IP, dltk, DetectZoom, winH: true, winW: true, vertical: true, horizontal: true */
@@ -35,7 +34,7 @@ var ExperimentData = null;
 var LEARNING_PERIOD = LEARNINGPERIODNUMBER;
 var exp_type = 'eight_way';
 var imgFiles = ExperimentData.imgFiles;
-var imgData = ExperimentData.imgData
+var imgData = ExperimentData.imgData;
 var trialSpecs = [];
 var totalTrials;
 var trialNumber;
@@ -65,7 +64,7 @@ var _stimduration;
 var reward;
 var error = 0;
 var distances = [];
-var meta_field = 'obj'
+var meta_field = 'rotation';
 
 
 function reward_scale(error){
@@ -100,7 +99,7 @@ function postResponse(argdct){
     if (trialNumber < LEARNING_PERIOD){
         var correct_answer = imgData[trialNumber]["Sample"][meta_field];
 
-        $('#trialCounter').html('Correct answer: ' + object_names[correct_answer] + '.<br/><b><span style="color:red; font-size:large"><u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left</span> after this.</b>');
+        $('#trialCounter').html('<span style="color:red; font-size:large"><u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left</span> after this.</b>');
 
         var correct_test_index = 0;
         var found_it = false;
@@ -306,6 +305,10 @@ function initSetup() {
                 horizontal = argdct.horizontal; vertical = argdct.vertical;
                 extInfo.offsetToTop = argdct.offsetToTop;
             },
+        //JS_TRES_TOL: 1000,
+        //JS_TRES_VAR_TOL: 1000,
+        //FRAME_INTERVAL_TOL: 1000,
+        //FRAME_INTERVAL_VAR_TOL: 1000
     };
 
     exp = new dltk.Experiment($, spec);
