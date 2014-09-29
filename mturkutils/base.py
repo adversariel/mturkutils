@@ -685,6 +685,7 @@ class MatchToSampleFromDLDataExperiment(Experiment):
             tuple of image_urls, imgData, and labels to use for response images. There must be one set
              of responses per confusion to be measured. If this is not
                 set, random images from the same category are used by default.
+        :param shuffle_test: whether to shuffle order of presentatino of test images
         - Parameter ``sampling`` determines the behavior of image sampling:
           * "without-replacement" (default): no same images will be presented
             across the entire population of subjects.
