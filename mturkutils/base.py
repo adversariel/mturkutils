@@ -127,6 +127,8 @@ class Experiment(object):
     - log_prefix: Where to save a pickle file with a list of published HIT IDs.
         You can retrieve data from any hit published in the past using these
         IDs (within the Experiment object, the IDs are also saved in 'hitids').
+    - set_destination (optional): if True, the destination database name and
+        collection name will be set during prepHTMLs()
     """
 
     def __init__(self, htmlsrc, htmldst, othersrc=None,
@@ -150,9 +152,10 @@ class Experiment(object):
             additionalrules=None,
             mongo_port=None,
             mongo_host=None,
-            mongo_dbname=None,
+            mongo_dbname=MONGO_DBNAME,
             collection_name='TEST',
-            other_quals=None):
+            other_quals=None,
+            set_destination=False):
 
         if keywords is None:
             keywords = ['']
@@ -173,6 +176,7 @@ class Experiment(object):
         self.other_quals = other_quals
         self.setQual(90)
         self.bucket_name = bucket_name
+        self.set_destination = set_destination
 
         self.tmpdir = tmpdir
         self.productionpath = productionpath
@@ -292,6 +296,7 @@ class Experiment(object):
         self.collection = None
 
         meta = self.meta
+        mongo_dbname = self.mongo_dbname
         collection_name = self.collection_name
 
         if self.mongo_port is None:
@@ -302,10 +307,6 @@ class Experiment(object):
             mongo_host = MONGO_HOST
         else:
             mongo_host = self.mongo_host
-        if self.mongo_dbname is None:
-            mongo_dbname = MONGO_DBNAME
-        else:
-            mongo_dbname = self.mongo_dbname
 
         if isinstance(meta, tabarray):
             print('Converting tabarray to dictionary for speed. '
@@ -357,6 +358,24 @@ class Experiment(object):
 
         sandbox_rules = copy.deepcopy(PREP_RULE_SIMPLE_RSVP_SANDBOX)
         production_rules = copy.deepcopy(PREP_RULE_SIMPLE_RSVP_PRODUCTION)
+
+        if self.set_destination:
+            mongo_dbname = self.mongo_dbname
+            collection_name = self.collection_name
+            dst_rules = [
+                {
+                    'old': 'var dstDB = null;',
+                    'new': 'var dstDB = "%s";' % mongo_dbname,
+                    'n': 1
+                },
+                {
+                    'old': 'var dstCollection = null;',
+                    'new': 'var dstCollection = "%s";' % collection_name,
+                    'n': 1
+                },
+            ]
+            sandbox_rules.extend(dst_rules)
+            production_rules.extend(dst_rules)
 
         if auxfns is not None:
             for auxfn in auxfns:
