@@ -31,6 +31,8 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 
 // -- Experimental variables
 var ExperimentData = null;
+var dstDB = null;
+var dstCollection = null;
 var imgFiles = ExperimentData.imgFiles;
 var trialSpecs = [];
 var totalTrials;
@@ -107,6 +109,7 @@ function endTrial() {
             StimDuration: stimduration,
             RT: trialDurations,
             Condition: exp_type,
+            Destination: {DB: dstDB, collection: dstCollection},
             Zoom: zoom,
             IPaddress: user_IP,
             Browser: dltk.BrowserDetect.browser,
@@ -197,6 +200,8 @@ function initSetup() {
         elemFPSBench: '#fps_bench',
         elemFPSBenchCanvasID: 'fps_test',  // DO NOT prepend #
         FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
+        supportedOS: ['Windows', 'Mac', 'Linux'],
+        supportedBrowser: ['Chrome', 'Firefox'],
         tutorialContents: $("#tutorial_original").html(),   // the (1st page) content of the instructions
         expLoadTime: expLoadTime,          // override expLoadTime for better consistency with this html
         maxHeightInThisExp: maxHeightInThisExp,   // approx actual height (in pixels) used this HIT
@@ -305,7 +310,7 @@ $(document).ready(main);
 <p>
 <li>Please be sure to maximize your browser window before beginning this experiment.</li>
 <p>
-<li><b>In total, you will see 174 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
+<li><b>In total, you will see 116 images. We expect this experiment to take about 5 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
 <p>
 <li>When you are ready to begin, click the "Begin" button. <b>Be prepared to see the first image -- it happens very fast!</b></li>
 <p>
