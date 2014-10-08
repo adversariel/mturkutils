@@ -84,7 +84,7 @@ def get_exp(sandbox=True, debug=False):
             collection_name='objectome_64objs_v2a',
             max_assignments=1,
             bucket_name='objectome_64objs_v2a',
-            trials_per_hit=ACTUAL_TRIALS_PER_HIT + 16,  # 150 + 4x4 repeats
+            trials_per_hit=ACTUAL_TRIALS_PER_HIT + 16,  # 100 + 4x4 repeats
             tmpdir='tmp',
             frame_height_pix=1200,
             othersrc=['../../lib/dltk.js', '../../lib/dltkexpr.js', '../../lib/dltkrsvp.js'],   # noqa
