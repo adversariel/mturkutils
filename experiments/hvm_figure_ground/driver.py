@@ -20,10 +20,10 @@ def get_exp(sandbox=True, dummy_upload=True):
     fields = dataset.meta.dtype.names
     meta = dataset.meta
     names = ['RedPixelOnCanonical', 'RedPixelOffCanonical']
-    response_images = {'urls': [base_url + name + '.png' for name in names],
+    response_images = [{'urls': [base_url + name + '.png' for name in names],
                        'meta': [{field: meta[i][field] for field in fields} for i in [4020, 5060]],
                        'labels': ['The red pixel was on the object',
-                                 'The red pixel was not on the object']}
+                                 'The red pixel was not on the object']}]
     preproc = {'crop': None,
                'crop_rand': None,
                'dtype': 'float32',
@@ -32,6 +32,7 @@ def get_exp(sandbox=True, dummy_upload=True):
                'normalize': False,
                'resize_to': (256, 256),
                'seed': 0}
+    cat_dict = "{true: 'Dot is on the object', false:'Dot is not on the object'}"
 
     with open(path.join(path.dirname(__file__), 'tutorial_html'), 'r') as tutorial_html_file:
         tutorial_html = tutorial_html_file.read()
@@ -41,7 +42,12 @@ def get_exp(sandbox=True, dummy_upload=True):
                        {'old': 'OBJTYPE',
                         'new': 'Figure/ground task'},
                        {'old': 'TUTORIAL_HTML',
-                        'new': tutorial_html}]
+                        'new': tutorial_html},
+                       {'old': 'CATDICT',
+                        'new': cat_dict},
+                       {'old': 'METAFIELD',
+                        'new': "'dot_on'"}]
+
     variation_level = 'V6'
     disallowed_images = [meta[i]['filename'] for i in [4020, 5060]]
     query = lambda x: x['var'] == variation_level and (x['filename'] not in disallowed_images)
@@ -65,8 +71,8 @@ def get_exp(sandbox=True, dummy_upload=True):
             description="***You may complete as many HITs in this group as you want*** Complete a visual object recognition task where you report dots are on an object or not. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment.",  # noqa
             comment="hvm_figure_ground",  # noqa
             collection_name= 'hvm_figure_ground_2',
-            max_assignments=30,
-            bucket_name='landolt_c',
+            max_assignments=1,
+            bucket_name='hvm_figure_ground_2',
             trials_per_hit=170,  # 150 + 8x4 repeats
             html_data=html_data,
             frame_height_pix=1200,

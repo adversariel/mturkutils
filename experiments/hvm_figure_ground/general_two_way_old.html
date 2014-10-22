@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<title>Categorization</title>
+<title>Object Identification</title>
 
 <style>
 body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana }
@@ -18,7 +18,7 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
@@ -31,16 +31,13 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 
 // -- Experimental variables
 var ExperimentData = null;
-var LEARNING_PERIOD = LEARNINGPERIODNUMBER;
-var exp_type = 'two_way';
 var imgFiles = ExperimentData.imgFiles;
-var imgData = ExperimentData.imgData;
 var trialSpecs = [];
 var totalTrials;
 var trialNumber;
 
 var exp = null;             // the main Experiment object
-
+var exp_type = 'two_way';
 var stimduration = 100;
 var ISI = 500;
 var maxHeightInThisExp = 450;
@@ -60,72 +57,12 @@ var stimDone = [];
 var l_full_history = [], l_full_history_delta = [];
 var _hist, _hist_delta;
 
-var _stimduration;
-var reward;
-var error = 0;
-var distances = [];
-var meta_field = METAFIELD;
+/* reward related and other stuffs unused here:
+var labels = ExperimentData.labels;
+var imgData = ExperimentData.imgData;
+var num_correct = 0, reward = 0, acc;
+var reward_scale = ExperimentData.reward_scale; */
 
-var catdict = CATDICT;
-
-
-function reward_scale(error){
-    var maxdist = 1;
-    var randomerror = .875;  //empirically observed random error??
-    console.log('error', error);
-    if (error !== null){
-        var _score = ((maxdist - error) / maxdist);
-        var _randscore = ((maxdist - randomerror) / maxdist);
-        var _scorediff = (_score - _randscore) / (1 - _randscore);
-        _score = Math.max(0.5 * _scorediff, 0).toFixed(2);
-        return _score
-     } else{
-        return 0;
-     }
-};
-
-
-function postResponse(argdct){
-    trialInfo = argdct['trialInfo'];
-    trialNumber = trialInfo.trialNumber;
-    totalTrials = trialInfo.totalTrialNumber;
-
-    $('#totalSeen').html('Total Objects Seen: 0');
-    if (trialNumber > 0){
-        error = (trialNumber / (trialNumber + 1)) * error + (1 / (trialNumber + 1)) * distances[trialNumber-1];
-    };
-    reward = reward_scale(error);
-    console.log('reward', reward)
-    var format_error = (100 * error).toPrecision(3);
-
-    if (trialNumber < LEARNING_PERIOD){
-        var correct_answer = imgData[trialNumber]["Sample"][meta_field];
-        console.log(correct_answer)
-        $('#trialCounter').html('Correct answer: ' + catdict[correct_answer] + '.<br/><b><span style="color:red; font-size:large"><u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left</span> after this.</b>');
-
-        var correct_test_index = 0;
-        var found_it = false;
-        while (!found_it) {
-            if (imgData[trialNumber]["Test"][correct_test_index][meta_field] == correct_answer){
-                found_it = true;
-            } else {
-                correct_test_index++;
-            }
-        }
-
-        $('#img' + (correct_test_index + 4)).css("border-width",  "5px");
-        $('#img' + (correct_test_index + 4)).css("border-color",  "blue");
-        $('#img' + (correct_test_index + 4)).css("border-style",  "solid");
-
-
-    } else {
-        $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
-                     '<br/> Mean Error: '+ format_error +
-                     '<br/> Expected Bonus: $'+ reward
-                     );
-    }
-
-}
 
 // -- Dynamic trial codes
 function clicked(argdct) {
@@ -135,29 +72,23 @@ function clicked(argdct) {
     // because there is only one module.  However, if there are multiple modules the numbers will be different.
     trialNumber = argdct.localTrialNumber;    // vs. argdct.trialNumber (which is global trial number)
     totalTrials = argdct.localTotalTrialNumber;   // vs. argdct.totalTrialNumber (again, global #)
-    var index = argdct.index;
-    var category_chosen = imgData[trialNumber]["Test"][index][meta_field];
-    var correct_answer = imgData[trialNumber]["Sample"][meta_field];
-    if (correct_answer == category_chosen){
-        distances.push(0);
-    } else {
-        distances.push(1);
-    }
+    /* hahong: reward related
+    var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
+    var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
+    console.log(index);
+    console.log(meta_correct);
+    console.log(meta_response);
+    if(meta_correct == meta_response){
+        num_correct++;
+    } */
 
     // push all trial data
     stimDone.push(trialNumber);
-    var resp = {'imgChosen': imgChosen,
-                'dataChosen': imgData[trialNumber]["Test"][index],
-                'indexChosen': index};
-    response.push(resp);
+    response.push(imgChosen);
     trialDurations.push(trialEndTime - trialStartTime);
 
-    $('.clickon').css("border-style", "solid");
-    $('.clickon').css("border-color", "#000000");
-    $('.clickon').css("border-width", "1px");
     endTrial();
 }
-
 
 
 function endTrial() {
@@ -172,7 +103,6 @@ function endTrial() {
         resultsobj.push({
             Response: response,
             ImgOrder: imgFiles,
-            ImgData: imgData,
             StimShown: stimDone,
             StimDuration: stimduration,
             RT: trialDurations,
@@ -188,14 +118,14 @@ function endTrial() {
             ScreenHeight: vertical,
             ScreenWidth: horizontal,
             Benchmarks: exp.getBenchmarkResults(),
-            TimingInfo: {
+            TimingInfo: { 
                 TrialStartTimes: trialStartTimes, ExpLoadTime: expLoadTime,
                 ISI1: measuredISI1, ISI2: measuredISI2, Stimdur: measuredStimdur,
                 HistoryDiff: l_full_history, HistoryDeltaDiffEach: l_full_history_delta },
+            /* hahong: reward related
             ImgData: imgData,
-            "Error": error,
-            Distances: distances,
-            Bonus: reward
+            Performance: acc,
+            Bonus: reward */
         });
         resultstr = JSON.stringify(resultsobj);
 
@@ -206,46 +136,19 @@ function endTrial() {
             document.getElementById("data").value = resultstr;
             document.getElementById("postdata").submit();
         }, 4500);
-   }
-  else
-  {
-    if (trialNumber + 1 === LEARNING_PERIOD){
-        endLearningPeriod();
-    } else {
-        exp.runNextTrial();
     }
-  }
+    else exp.runNextTrial();   // otherwise, run the next trial
 }
 
-function endLearningPeriod(){
-    $('#test_container').hide();
-    $('#endLearningPeriodScreen').show();
-    var breakperiod=5000;
-    setTimeout(function(){$('#endLearningPeriodScreen').hide();
-                          exp.runNextTrial();
-                    }, breakperiod);
-}
 
 // -- Setup part + other helper functions
-
-
-
 function initSetup() {
-    $('#endLearningPeriodScreen').hide();
-
     for (var i = 0; i < imgFiles.length; i++) {
-        if (i < LEARNING_PERIOD){
-            _stimduration = 2000;
-            active_modules = [0];
-        } else {
-            _stimduration = stimduration;
-        }
-
         var s = {
-            SampleDuration: _stimduration,
+            SampleDuration: stimduration,
             ISI: ISI,
             Sample: imgFiles[i][0],
-            Test: imgFiles[i][1]
+            Test: imgFiles[i][1],
         };
         trialSpecs.push(s);
     }
@@ -257,11 +160,10 @@ function initSetup() {
         elemTestCanvasIDs: ['img4', 'img5'],     // don't prepend #
         elemTestClickables: ['#img4', '#img5'],  // elements that will be made clickable to receive answers
         elemTrialCounter: '#trialCounter',
-        onPostDrawResponse: postResponse,
         onResponseReady:       // called whan all test images are up
             function (argdct) {
                 // the time when response images are up and ready
-                trialStartTime = argdct.trialStartTime;
+                trialStartTime = argdct.trialStartTime; 
                 trialStartTimes.push(trialStartTime - expLoadTime);
 
                 measuredStimdur.push(argdct.t_stim);
@@ -295,18 +197,19 @@ function initSetup() {
         elemFPSBench: '#fps_bench',
         elemFPSBenchCanvasID: 'fps_test',  // DO NOT prepend #
         FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
-        tutorialDialogHeight: 'auto',
+        supportedOS: ['Windows', 'Mac', 'Linux'],
+        supportedBrowser: ['Chrome', 'Firefox'],
         tutorialContents: $("#tutorial_original").html(),   // the (1st page) content of the instructions
         expLoadTime: expLoadTime,          // override expLoadTime for better consistency with this html
         maxHeightInThisExp: maxHeightInThisExp,   // approx actual height (in pixels) used this HIT
         useRecomputeOffset: true,       // recenters the experiment elements when needed
         printDbgMessage: true,          // use true to print console logs (use false for production)
         onRecomputeOffset:              // this is called when the browser window gets resized
-            function (argdct) {
+            function (argdct) { 
                 winW = argdct.winW; winH = argdct.winH;
                 horizontal = argdct.horizontal; vertical = argdct.vertical;
                 extInfo.offsetToTop = argdct.offsetToTop;
-            }
+            },
     };
 
     exp = new dltk.Experiment($, spec);
@@ -339,8 +242,7 @@ $(document).ready(main);
 <canvas id="fps_test" width="50" height="50" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
 </div>
 <!-- try to aim 8 deg -->
-    <div id="endLearningPeriodScreen" align="center" style="position:relative; z-index:200; height=512px; width=512px; top:75px; left:0px;font-size:100px">End of learning period!<br>Trials will commence in 5 seconds.<br>Be ready, as they will be fast!</div>
-<div id="sample_container" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-240px; display: none;">
+<div id="sample_container" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-180px; display: none;">
 <canvas id="main_sample" width="360" height="360" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
 </div>
 <div id="notice" align="center" style="position:absolute; z-index:200; top:50%; left:50%; height:366px; margin-top:-183px; margin-left:-180px; display: none;"><img src="https://s3.amazonaws.com/task_images/notice.png" height="360" width="360"/></div>
@@ -355,14 +257,14 @@ $(document).ready(main);
     </td>
   </tr>
   <tr>
-    <td align="center"><canvas id="img4" class='clickon' style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200"></canvas>
+    <td align="center"><canvas id="img4" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200"></canvas>
     </td>
     <td width="100" height="100" align="left" style="vertical-align:center;">
     <center style="margin-top:15px; position:relative; top:-30px;">
     <div id="trialCounter"></div>
     </center>
     </td>
-    <td align="center"><canvas id="img5" class='clickon' style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200"></canvas>
+    <td align="center"><canvas id="img5" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200"></canvas>
     </td>
   </tr>
   <tr height=100>
@@ -380,7 +282,7 @@ $(document).ready(main);
 
 <div id="systemmsg" style="position:relative; z-index:-1; display: none;"></div>
 <div id="tutorial" style="position:relative; z-index:-1; display: none;"></div>
-    TUTORIAL_HTML
+TUTORIAL_HTML
 </div>
 <form style="display: none;" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
   <input type="text" name="data" id="data" value="">
