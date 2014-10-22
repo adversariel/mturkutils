@@ -41,7 +41,7 @@ def get_exp(sandbox=True, dummy_upload=True):
             'num_trials': 184,
             'meta_field': 'rotation',
             'meta': meta,
-            'urls': img_urls,
+            'urls': img_urls
     }
     exp = MatchToSampleFromDLDataExperiment(
             htmlsrc='landolt_c_task.html',
@@ -107,7 +107,6 @@ def get_exp(sandbox=True, dummy_upload=True):
     #     np.array(exp._trials['labels'][ib:ie])[offsets2]]) == s_ref_labels
     #     for ib, ie in ibie[:-1]])
     # print '** Finished creating trials.'
-
     return exp, html_data
 
 
