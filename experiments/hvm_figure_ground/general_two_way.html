@@ -146,9 +146,7 @@ function clicked(argdct) {
 
     // push all trial data
     stimDone.push(trialNumber);
-    var resp = {'imgChosen': imgChosen,
-                'dataChosen': imgData[trialNumber]["Test"][index],
-                'indexChosen': index};
+    var resp = index;
     response.push(resp);
     trialDurations.push(trialEndTime - trialStartTime);
 
