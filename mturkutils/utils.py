@@ -130,7 +130,7 @@ def validate_html_files(filenames, ruledict,
         assert len(html) == n_occ
         html = html[0]
         trials0 = html.split(sep_begin)[-1].split(sep_end)[0]
-        trials0 = json.loads(trials0)
+        trials0 = json.loads(trials0, object_hook=json_util.object_hook))
         for _k in trials0:
             if _k in trials:
                 trials[_k].extend(trials0[_k])
