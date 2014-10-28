@@ -142,8 +142,13 @@ def validate_html_files(filenames, ruledict,
         for ind in trials_org:
             assert len(trials[ind]) % len(trials_org[ind]) == 0
             mult = len(trials[ind]) / len(trials_org[ind])
-            assert mult * trials_org[ind] == trials[ind], \
-                    (ind, len(trials_org[ind]), len(trials[ind]))
+            if mult * trials_org[ind] == trials[ind]:
+                assert len(trials_org[ind]) ==  len(trials[ind]), (len(trials_org[ind]), len(trials[ind]))
+
+                badinds = [_i for _i in range(len(trials_org)) if trials_org[_i] != trials[_i]]
+                assert len(badinds) > 0
+                badind0 = badinds[0]
+                print(badind0, trials[badind0], trials_org[badind0])
 
 
 def mkdirs(pth):
