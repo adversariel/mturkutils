@@ -145,10 +145,10 @@ def validate_html_files(filenames, ruledict,
             if mult * trials_org[ind] != trials[ind]:
                 assert mult * len(trials_org[ind]) == len(trials[ind]), (len(trials_org[ind]), len(trials[ind]))
 
-                badinds = [_i for _i in range(len(trials_org)) if trials_org[_i] != trials[_i]]
+                badinds = [_i for _i in range(len(trials_org)) if trials_org[ind][_i] != trials[ind][_i]]
                 assert len(badinds) > 0
                 badind0 = badinds[0]
-                print(badind0, trials[badind0], trials_org[badind0])
+                print(badind0, trials[ind][badind0], trials_org[ind][badind0])
                 raise Exception
 
 
