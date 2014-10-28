@@ -1,6 +1,7 @@
 """Various utilities for manipulating psychophysics experiments"""
 import os
 import json
+from bson import json_util
 import shutil as sh
 from yamutils.mongo import SONify
 
@@ -66,7 +67,7 @@ def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
             sold = rule['old']
             snew = rule['new']
             if '${CHUNK}' in snew:
-                snew = snew.replace('${CHUNK}', json.dumps(SONify(chunk)))
+                snew = snew.replace('${CHUNK}', json.dumps(SONify(chunk), default=json_util.default)))
             html_dst = html_dst.replace(sold, snew)
 
         if prefix is None:
