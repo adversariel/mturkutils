@@ -1014,9 +1014,10 @@ def parse_human_data_from_HITdata(assignments, HITdata=None, comment='',
                     len(ansdat)             # only this format is supported
             ansdat = ansdat[0]
             if 'Response' in ansdat:
-                for _r in ansdat['Response']:
-                    if '_id' in _r and '$oid' in _r['_id']:
-                        _r['_id'] = _r['_id']['$oid']
+                if hasattr(ansdat['Response'][0], '__iter__'):
+                    for _r in ansdat['Response']:
+                        if '_id' in _r and '$oid' in _r['_id']:
+                            _r['_id'] = _r['_id']['$oid']
             ansdat['AssignmentID'] = a.AssignmentId
             ansdat['WorkerID'] = a.WorkerId
             ansdat['Timestamp'] = a.SubmitTime
