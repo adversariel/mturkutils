@@ -1,6 +1,7 @@
 """Various utilities for manipulating psychophysics experiments"""
 import os
 import json
+from bson import json_util
 import shutil as sh
 from yamutils.mongo import SONify
 
@@ -66,7 +67,7 @@ def prep_web_simple(trials, src, dstdir, rules, dstpatt='output_n%04d.html',
             sold = rule['old']
             snew = rule['new']
             if '${CHUNK}' in snew:
-                snew = snew.replace('${CHUNK}', json.dumps(SONify(chunk)))
+                snew = snew.replace('${CHUNK}', json.dumps(SONify(chunk), default=json_util.default))
             html_dst = html_dst.replace(sold, snew)
 
         if prefix is None:
@@ -129,7 +130,7 @@ def validate_html_files(filenames, ruledict,
         assert len(html) == n_occ
         html = html[0]
         trials0 = html.split(sep_begin)[-1].split(sep_end)[0]
-        trials0 = json.loads(trials0)
+        trials0 = json.loads(trials0, object_hook=json_util.object_hook)
         for _k in trials0:
             if _k in trials:
                 trials[_k].extend(trials0[_k])
@@ -141,8 +142,14 @@ def validate_html_files(filenames, ruledict,
         for ind in trials_org:
             assert len(trials[ind]) % len(trials_org[ind]) == 0
             mult = len(trials[ind]) / len(trials_org[ind])
-            assert mult * trials_org[ind] == trials[ind], \
-                    (ind, len(trials_org[ind]), len(trials[ind]))
+            if mult * trials_org[ind] != trials[ind]:
+                assert mult * len(trials_org[ind]) == len(trials[ind]), (len(trials_org[ind]), len(trials[ind]))
+
+                badinds = [_i for _i in range(len(trials_org)) if trials_org[ind][_i] != trials[ind][_i]]
+                assert len(badinds) > 0
+                badind0 = badinds[0]
+                print(badind0, trials[ind][badind0], trials_org[ind][badind0])
+                raise Exception
 
 
 def mkdirs(pth):
