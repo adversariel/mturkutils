@@ -9,61 +9,59 @@ import dldata.stimulus_set.hvm as hvm
 from mturkutils.base import MatchToSampleFromDLDataExperiment
 
 REPEATS_PER_QE_IMG = 4
-ACTUAL_TRIALS_PER_HIT = 150
+ACTUAL_TRIALS_PER_HIT = 140
 
 
-def get_meta():
-    meta_basic = pk.load(open('meta_objt_full_64objs.pkl'))
-    assert len(meta_basic) == 64 * 1000
+# def get_meta():
+#     meta_basic = pk.load(open('meta_objt_full_64objs.pkl'))
+#     assert len(meta_basic) == 64 * 1000
+#
+#     cnames = list(meta_basic.dtype.names)
+#     cnames.remove('internal_canonical')
+#     cnames.remove('texture')        # contains None
+#     cnames.remove('texture_mode')   # contains None
+#
+#     meta = tb.tabarray(columns=[meta_basic[e] for e in cnames],
+#                        names=cnames)
+#     assert len(meta) == 64 * 1000
+#     assert len(np.unique(meta['obj'])) == 64
+#     return meta
 
-    cnames = list(meta_basic.dtype.names)
-    cnames.remove('internal_canonical')
-    cnames.remove('texture')        # contains None
-    cnames.remove('texture_mode')   # contains None
 
-    meta = tb.tabarray(columns=[meta_basic[e] for e in cnames],
-                       names=cnames)
-    assert len(meta) == 64 * 1000
-    assert len(np.unique(meta['obj'])) == 64
-    return meta
-
-
-def get_urlbase(obj):
-    return 'https://s3.amazonaws.com/objectome32_final/'
+# def get_urlbase():
+#     return
     # return 'https://s3.amazonaws.com/dicarlocox-rendered-imagesets/' \
     #        'objectome_cars_subord/'
 
-
-def get_url(obj, idstr, resized=True):
-    if resized:
-        return get_urlbase(obj) + '360x360/' + idstr + '.png'
-    return get_urlbase(obj) + idstr + '.png'
-
-
-def get_url_labeled_resp_img(obj):
-    return get_urlbase(obj) + 'label_imgs/' + obj + '_label.png'
+#
+# def get_url(obj, idstr, resized=True):
+#     if resized:
+#         return get_urlbase(obj) + idstr + '.png'
+#     return get_urlbase(obj) + idstr + '.png'
 
 
-def get_subordinate_exp(sandbox=True, debug=False):
+def get_url_labeled_resp_img(obj, meta):
+    id = meta[meta['obj'] == obj]['id'][0]
+    url_base = 'https://s3.amazonaws.com/hvm_timing/'
+    return url_base + id + '.png'
+
+
+def get_subordinate_exp(sandbox=True, debug=False, dummy_upload=True):
     meta = hvm.meta
     combs = []
     for category in np.unique(meta['category']):
         objs = np.unique(meta[meta['category']==category]['obj'])
         obj_combs= [e for e in itertools.combinations(objs, 2)]
-        base_url = 'https://s3.amazonaws.com/hvm_timing/'
-        obj_resp_ids = [meta[meta['obj'] == o]['id'][0] for o in objs]
-        response_images = [{
-        'urls': [base_url + obj_id + '.png' for obj_id in obj_resp_ids],
-        'meta': [{'obj': obj, 'category': category} for obj in objs],
-        'labels': objs}]
         response_images.extend([{
-        'urls': [get_url_labeled_resp_img(o1), get_url_labeled_resp_img(o2)],
-        'meta': [{'obj': o} for o in [o1, o2]],
+        'urls': [get_url_labeled_resp_img(o1, meta), get_url_labeled_resp_img(o2, meta)],
+        'meta': [{'obj': o, 'category': category} for o in [o1, o2]],
         'labels': [o1, o2]
-        } for o1, o2 in obj_combs]
-    urls = [get_url(e['obj'], e['id']) for e in meta]
+        } for o1, o2 in obj_combs])
+        combs.extend(obj_combs)
+    #urls = [get_url(e['obj'], e['id']) for e in meta]
 
-
+    urls = dataset.publish_images(range(len(dataset.meta)), None, 'hvm_timing',
+                                      dummy_upload=dummy_upload)
     html_data = {
         'combs': combs,
         'response_images': response_images,
@@ -75,19 +73,19 @@ def get_subordinate_exp(sandbox=True, debug=False):
     }
 
     exp = MatchToSampleFromDLDataExperiment(
-            htmlsrc='web/objectome_64objs_v2.html',
-            htmldst='objectome_64objs_v2_n%05d.html',
+            htmlsrc='web/general_2way.html',
+            htmldst='hvm_subordinate_2wat_n%05d.html',
             sandbox=sandbox,
             title='Object recognition --- report what you see',
             reward=0.25,
             duration=1600,
             keywords=['neuroscience', 'psychology', 'experiment', 'object recognition'],  # noqa
             description="***You may complete as many HITs in this group as you want*** Complete a visual object recognition task where you report the identity of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment.",  # noqa
-            comment='objectome_64objs_v2',
-            collection_name='objectome_64objs_v2',
+            comment='hvm_subordinate_2ways',
+            collection_name='hvm_subordinate_2ways',
             max_assignments=1,
             bucket_name='objectome_64objs_v2',
-            trials_per_hit=ACTUAL_TRIALS_PER_HIT + 24,  # 150 + 6x4 repeats
+            trials_per_hit=ACTUAL_TRIALS_PER_HIT + 24,  # 140 + 6x4 repeats
             html_data=html_data,
             tmpdir='tmp',
             frame_height_pix=1200,
@@ -97,7 +95,7 @@ def get_subordinate_exp(sandbox=True, debug=False):
     # -- create trials
     exp.createTrials(sampling='with-replacement', verbose=1)
     n_total_trials = len(exp._trials['imgFiles'])
-    assert n_total_trials == (64 * 63 / 2) * 250
+    assert n_total_trials == (8 * 7 / 2) * 250
     if debug:
         return exp, html_data
 
@@ -146,11 +144,11 @@ def get_subordinate_exp(sandbox=True, debug=False):
         {e: len(exp._trials[e]) for e in exp._trials}
 
     # -- sanity check
-    assert 3360 == n_applied_hits, n_applied_hits
-    assert len(exp._trials['imgFiles']) == 3360 * 174
+    assert 50 == n_applied_hits, n_applied_hits
+    assert len(exp._trials['imgFiles']) == 50 * 164
     s_ref_labels = [tuple(e) for e in trials_qe['labels']]
     offsets2 = np.arange(24)[::-1] + offsets
-    ibie = zip(range(0, 3360 * 174, 174), range(174, 3361 * 174, 174))
+    ibie = zip(range(0, 50 * 164, 164), range(164, 50 * 164, 164))
     assert all(
         [[(e1, e2) for e1, e2 in
          np.array(exp._trials['labels'][ib:ie])[offsets2]] == s_ref_labels
