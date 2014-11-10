@@ -628,10 +628,10 @@ class Experiment(object):
         self.all_data = all_data
         return all_data
 
-    def updateDBwithHITs(self, hitids=None, **kwargs):
+    def updateDBwithHITs(self, hitids, **kwargs):
         """
         - Takes a list of HIT IDs, gets data from MTurk, attaches metadata (if
-          necessary) and puts results in dicarlo2 database.
+          necessary) and puts results in dicarlo5 database.
         - Also stores data in object variable 'all_data' for immediate use.
           This might be dangerous for MH17's memory.
         - Even if you've already gotten some HITs, this will try to get them
@@ -640,8 +640,6 @@ class Experiment(object):
           - verbose: show the progress of db update
           - overwrite: if True, the existing records will be overwritten.
         """
-        if hitids is None:
-            hitids = [h.HITId for h in self.conn.search_hits()]
         return self._updateDBcore(hitids, 'hitids', **kwargs)
 
     def updateDBwithHITslocal(self, datafiles, mode='files', **kwargs):
