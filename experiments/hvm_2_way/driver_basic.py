@@ -5,77 +5,52 @@ import tabular as tb
 import itertools
 import copy
 import sys
-import dldata.stimulus_set.hvm as hvm
+import dldata.stimulus_sets.hvm as hvm
 from mturkutils.base import MatchToSampleFromDLDataExperiment
-
+from os import path
+import json
 REPEATS_PER_QE_IMG = 4
 ACTUAL_TRIALS_PER_HIT = 140
 
 
-# def get_meta():
-#     meta_basic = pk.load(open('meta_objt_full_64objs.pkl'))
-#     assert len(meta_basic) == 64 * 1000
-#
-#     cnames = list(meta_basic.dtype.names)
-#     cnames.remove('internal_canonical')
-#     cnames.remove('texture')        # contains None
-#     cnames.remove('texture_mode')   # contains None
-#
-#     meta = tb.tabarray(columns=[meta_basic[e] for e in cnames],
-#                        names=cnames)
-#     assert len(meta) == 64 * 1000
-#     assert len(np.unique(meta['obj'])) == 64
-#     return meta
+def get_url_labeled_resp_img(cat):
+    base_url = 'https://canonical_images.s3.amazonaws.com/'
+    return base_url+ cat+ '.png'
 
 
-# def get_urlbase():
-#     return
-    # return 'https://s3.amazonaws.com/dicarlocox-rendered-imagesets/' \
-    #        'objectome_cars_subord/'
-
-#
-# def get_url(obj, idstr, resized=True):
-#     if resized:
-#         return get_urlbase(obj) + idstr + '.png'
-#     return get_urlbase(obj) + idstr + '.png'
-
-
-def get_url_labeled_resp_img(obj, meta):
-    id = meta[meta['obj'] == obj]['id'][0]
-    url_base = 'https://s3.amazonaws.com/hvm_timing/'
-    return url_base + id + '.png'
-
-
-def get_subordinate_exp(sandbox=True, debug=False, dummy_upload=True):
-    meta = hvm.meta
-    combs = []
-    for category in np.unique(meta['category']):
-        objs = np.unique(meta[meta['category']==category]['obj'])
-        obj_combs= [e for e in itertools.combinations(objs, 2)]
-        response_images.extend([{
-        'urls': [get_url_labeled_resp_img(o1, meta), get_url_labeled_resp_img(o2, meta)],
-        'meta': [{'obj': o, 'category': category} for o in [o1, o2]],
-        'labels': [o1, o2]
-        } for o1, o2 in obj_combs])
-        combs.extend(obj_combs)
-    #urls = [get_url(e['obj'], e['id']) for e in meta]
+def get_exp(sandbox=True, debug=False, dummy_upload=True):
+    dataset = hvm.HvMWithDiscfade()
+    meta = dataset.meta
+    response_images = []
+    categories = np.unique(meta['category'])
+    cat_combs= [e for e in itertools.combinations(categories, 2)]
+    response_images.extend([{
+    'urls': [get_url_labeled_resp_img(c1), get_url_labeled_resp_img(c2)],
+    'meta': [{'category': category} for category  in [c1, c2]],
+    'labels': [c1, c2]
+    } for c1, c2 in cat_combs])
+    combs = cat_combs
 
     urls = dataset.publish_images(range(len(dataset.meta)), None, 'hvm_timing',
                                       dummy_upload=dummy_upload)
 
-    with open(path.join(path.dirname(__file__), 'tutorial_html'), 'r') as tutorial_html_file:
+    with open(path.join(path.dirname(__file__), 'tutorial_html_basic'), 'r') as tutorial_html_file:
         tutorial_html = tutorial_html_file.read()
-
+    label_func = lambda x: hvm.OBJECT_NAMES[x['obj']]
     html_data = {
         'combs': combs,
         'response_images': response_images,
         'num_trials': 125 * 2,
-        'meta_field': 'obj',
+        'meta_field': 'category',
         'meta': meta,
         'urls': urls,
         'shuffle_test': True,
-        'query' : lambda x: x['var'] == 'V6'
+        'meta_query' : lambda x: x['var'] == 'V6',
+        'label_func': label_func
     }
+    cat_dict = {'Animals': 'Animal', 'Boats': 'Boat', 'Cars': 'Car',
+               'Chairs': 'Chair', 'Faces': 'Face', 'Fruits': 'Fruit',
+               'Planes': 'Plane', 'Tables': 'Table'}
 
     additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
                         'new':  str(10)},
@@ -84,21 +59,21 @@ def get_subordinate_exp(sandbox=True, debug=False, dummy_upload=True):
                        {'old': 'TUTORIAL_HTML',
                         'new': tutorial_html},
                        {'old': 'CATDICT',
-                        'new': hvm.OBJECT_NAMES},
+                        'new': json.dumps(cat_dict)},
                        {'old': 'METAFIELD',
-                        'new': "'obj'"}]
+                        'new': "'category'"}]
 
     exp = MatchToSampleFromDLDataExperiment(
             htmlsrc='web/general_two_way.html',
-            htmldst='hvm_subordinate_2wat_n%05d.html',
+            htmldst='hvm_basic_2way_n%05d.html',
             sandbox=sandbox,
-            title='Object recognition --- report what you see',
+            title='Object recognition --- report what you see. Up to 50 cent performance based bonus',
             reward=0.25,
             duration=1600,
             keywords=['neuroscience', 'psychology', 'experiment', 'object recognition'],  # noqa
             description="***You may complete as many HITs in this group as you want*** Complete a visual object recognition task where you report the identity of objects you see. We expect this HIT to take about 10 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment.",  # noqa
-            comment='hvm_subordinate_2ways',
-            collection_name='hvm_subordinate_2ways',
+            comment='hvm_basic_2ways',
+            collection_name='hvm_basic_2ways',
             max_assignments=1,
             bucket_name='hvm_2ways',
             trials_per_hit=ACTUAL_TRIALS_PER_HIT + 24,  # 140 + 6x4 repeats
@@ -112,7 +87,7 @@ def get_subordinate_exp(sandbox=True, debug=False, dummy_upload=True):
     # -- create trials
     exp.createTrials(sampling='with-replacement', verbose=1)
     n_total_trials = len(exp._trials['imgFiles'])
-    assert n_total_trials == (8 * 7 / 2) * 250 * 8
+    assert n_total_trials == (8 * 7 / 2) * 250
     if debug:
         return exp, html_data
 
@@ -162,17 +137,17 @@ def get_subordinate_exp(sandbox=True, debug=False, dummy_upload=True):
 
     # -- sanity check
     assert 50 == n_applied_hits, n_applied_hits
-    assert len(exp._trials['imgFiles']) == 50 * 164 * 8
+    assert len(exp._trials['imgFiles']) == 50 * 164
     s_ref_labels = [tuple(e) for e in trials_qe['labels']]
     offsets2 = np.arange(24)[::-1] + offsets
-    ibie = zip(range(0, 50 *8* 164, 164), range(164, 50 * 8* 164, 164))
+    ibie = zip(range(0, 50 * 164, 164), range(164, 50 * 164, 164))
     assert all(
         [[(e1, e2) for e1, e2 in
          np.array(exp._trials['labels'][ib:ie])[offsets2]] == s_ref_labels
          for ib, ie in ibie])
 
     # -- drop unneeded, potentially abusable stuffs
-    del exp._trials['imgData']
+    #del exp._trials['imgData']
     print '** Finished creating trials.'
 
     return exp, html_data

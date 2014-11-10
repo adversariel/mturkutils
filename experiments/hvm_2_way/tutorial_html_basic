@@ -6,11 +6,11 @@
 <center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
 <div id="tutorial2" style="position:absolute; z-index:-1; display: none;">
 <ul>
-<li>You will see a series of images, each one presented for a very brief time. Each image will feature a single object from 64 possibilities. The objects are common things you might see around your house, on TV, in books, or on the Internet.
+<li>You will see a series of images, each one presented for a very brief time. Each image will feature a single object from one of 8 categories. The objects are common things you might see around your house, on TV, in books, or on the Internet.
 <p>
-<li>After you see an image, <b>you must click the picture button which <u>exactly</u> matches the object you saw.</b> Once you click, you will move on to the next image immediately, so be ready.
+<li>After you see an image, <b>you must click the picture button which <u>exactly</u> matches the category you saw.</b> Once you click, you will move on to the next image immediately, so be ready.
 <p>
-<li>For example, if you think you saw a picture of a car, click the car picture to record your answer. There is <b>always</b> an exact match, and <b>SOMETIMES YOU MUST CHOOSE BETWEEN TWO OBJECTS OF THE SAME CATEGORY</b>. In other words, you might see two cars of different makes, and only one is correct.</li>
+<li>For example, if you think you saw a picture of a car, click the car picture to record your answer.
 <p>
 <li>Even if you're not 100% sure of what you saw, <u><b>make your best guess.</b></u></li>
 <p>
