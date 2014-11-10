@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<title>Object Identification</title>
+<title>Categorization</title>
 
 <style>
 body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana }
@@ -18,7 +18,7 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 
 <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
-<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 <script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
 <script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
@@ -31,13 +31,16 @@ div#systemmsg { position:relative; background-color: white; padding: 10px; }
 
 // -- Experimental variables
 var ExperimentData = null;
+var LEARNING_PERIOD = LEARNINGPERIODNUMBER;
+var exp_type = 'two_way';
 var imgFiles = ExperimentData.imgFiles;
+var imgData = ExperimentData.imgData;
 var trialSpecs = [];
 var totalTrials;
 var trialNumber;
 
 var exp = null;             // the main Experiment object
-var exp_type = 'two_way';
+
 var stimduration = 100;
 var ISI = 500;
 var maxHeightInThisExp = 450;
@@ -57,12 +60,72 @@ var stimDone = [];
 var l_full_history = [], l_full_history_delta = [];
 var _hist, _hist_delta;
 
-/* reward related and other stuffs unused here:
-var labels = ExperimentData.labels;
-var imgData = ExperimentData.imgData;
-var num_correct = 0, reward = 0, acc;
-var reward_scale = ExperimentData.reward_scale; */
+var _stimduration;
+var reward;
+var error = 0;
+var distances = [];
+var meta_field = METAFIELD;
 
+var catdict = CATDICT;
+
+
+function reward_scale(error){
+    var maxdist = 1;
+    var randomerror = .875;  //empirically observed random error??
+    console.log('error', error);
+    if (error !== null){
+        var _score = ((maxdist - error) / maxdist);
+        var _randscore = ((maxdist - randomerror) / maxdist);
+        var _scorediff = (_score - _randscore) / (1 - _randscore);
+        _score = Math.max(0.5 * _scorediff, 0).toFixed(2);
+        return _score
+     } else{
+        return 0;
+     }
+};
+
+
+function postResponse(argdct){
+    trialInfo = argdct['trialInfo'];
+    trialNumber = trialInfo.trialNumber;
+    totalTrials = trialInfo.totalTrialNumber;
+
+    $('#totalSeen').html('Total Objects Seen: 0');
+    if (trialNumber > 0){
+        error = (trialNumber / (trialNumber + 1)) * error + (1 / (trialNumber + 1)) * distances[trialNumber-1];
+    };
+    reward = reward_scale(error);
+    console.log('reward', reward)
+    var format_error = (100 * error).toPrecision(3);
+
+    if (trialNumber < LEARNING_PERIOD){
+        var correct_answer = imgData[trialNumber]["Sample"][meta_field];
+        console.log(correct_answer)
+        $('#trialCounter').html('Correct answer: ' + catdict[correct_answer] + '.<br/><b><span style="color:red; font-size:large"><u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left</span> after this.</b>');
+
+        var correct_test_index = 0;
+        var found_it = false;
+        while (!found_it) {
+            if (imgData[trialNumber]["Test"][correct_test_index][meta_field] == correct_answer){
+                found_it = true;
+            } else {
+                correct_test_index++;
+            }
+        }
+
+        $('#img' + (correct_test_index + 4)).css("border-width",  "5px");
+        $('#img' + (correct_test_index + 4)).css("border-color",  "blue");
+        $('#img' + (correct_test_index + 4)).css("border-style",  "solid");
+
+
+    } else {
+        $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
+                     '<br/> Mean Error: '+ format_error +
+                     '<br/> Expected Bonus: $'+ reward
+                     );
+    }
+
+}
 
 // -- Dynamic trial codes
 function clicked(argdct) {
@@ -72,23 +135,27 @@ function clicked(argdct) {
     // because there is only one module.  However, if there are multiple modules the numbers will be different.
     trialNumber = argdct.localTrialNumber;    // vs. argdct.trialNumber (which is global trial number)
     totalTrials = argdct.localTotalTrialNumber;   // vs. argdct.totalTrialNumber (again, global #)
-    /* hahong: reward related
-    var meta_correct = imgData[trialNumber]["Sample"][ExperimentData.meta_field[trialNumber]];
-    var meta_response = imgData[trialNumber]["Test"][index][ExperimentData.meta_field[trialNumber]];
-    console.log(index);
-    console.log(meta_correct);
-    console.log(meta_response);
-    if(meta_correct == meta_response){
-        num_correct++;
-    } */
+    var index = argdct.index;
+    var category_chosen = imgData[trialNumber]["Test"][index][meta_field];
+    var correct_answer = imgData[trialNumber]["Sample"][meta_field];
+    if (correct_answer == category_chosen){
+        distances.push(0);
+    } else {
+        distances.push(1);
+    }
 
     // push all trial data
     stimDone.push(trialNumber);
-    response.push(imgChosen);
+    var resp = index;
+    response.push(resp);
     trialDurations.push(trialEndTime - trialStartTime);
 
+    $('.clickon').css("border-style", "solid");
+    $('.clickon').css("border-color", "#000000");
+    $('.clickon').css("border-width", "1px");
     endTrial();
 }
+
 
 
 function endTrial() {
@@ -103,6 +170,7 @@ function endTrial() {
         resultsobj.push({
             Response: response,
             ImgOrder: imgFiles,
+            ImgData: imgData,
             StimShown: stimDone,
             StimDuration: stimduration,
             RT: trialDurations,
@@ -118,14 +186,14 @@ function endTrial() {
             ScreenHeight: vertical,
             ScreenWidth: horizontal,
             Benchmarks: exp.getBenchmarkResults(),
-            TimingInfo: { 
+            TimingInfo: {
                 TrialStartTimes: trialStartTimes, ExpLoadTime: expLoadTime,
                 ISI1: measuredISI1, ISI2: measuredISI2, Stimdur: measuredStimdur,
                 HistoryDiff: l_full_history, HistoryDeltaDiffEach: l_full_history_delta },
-            /* hahong: reward related
             ImgData: imgData,
-            Performance: acc,
-            Bonus: reward */
+            "Error": error,
+            Distances: distances,
+            Bonus: reward
         });
         resultstr = JSON.stringify(resultsobj);
 
@@ -136,19 +204,46 @@ function endTrial() {
             document.getElementById("data").value = resultstr;
             document.getElementById("postdata").submit();
         }, 4500);
+   }
+  else
+  {
+    if (trialNumber + 1 === LEARNING_PERIOD){
+        endLearningPeriod();
+    } else {
+        exp.runNextTrial();
     }
-    else exp.runNextTrial();   // otherwise, run the next trial
+  }
 }
 
+function endLearningPeriod(){
+    $('#test_container').hide();
+    $('#endLearningPeriodScreen').show();
+    var breakperiod=5000;
+    setTimeout(function(){$('#endLearningPeriodScreen').hide();
+                          exp.runNextTrial();
+                    }, breakperiod);
+}
 
 // -- Setup part + other helper functions
+
+
+
 function initSetup() {
+    $('#endLearningPeriodScreen').hide();
+
     for (var i = 0; i < imgFiles.length; i++) {
+        if (i < LEARNING_PERIOD){
+            _stimduration = 2000;
+            active_modules = [0];
+        } else {
+            _stimduration = stimduration;
+        }
+
         var s = {
-            SampleDuration: stimduration,
+            SampleDuration: _stimduration,
             ISI: ISI,
             Sample: imgFiles[i][0],
-            Test: imgFiles[i][1],
+            Test: imgFiles[i][1]
         };
         trialSpecs.push(s);
     }
@@ -160,10 +255,11 @@ function initSetup() {
         elemTestCanvasIDs: ['img4', 'img5'],     // don't prepend #
         elemTestClickables: ['#img4', '#img5'],  // elements that will be made clickable to receive answers
         elemTrialCounter: '#trialCounter',
+        onPostDrawResponse: postResponse,
         onResponseReady:       // called whan all test images are up
             function (argdct) {
                 // the time when response images are up and ready
-                trialStartTime = argdct.trialStartTime; 
+                trialStartTime = argdct.trialStartTime;
                 trialStartTimes.push(trialStartTime - expLoadTime);
 
                 measuredStimdur.push(argdct.t_stim);
@@ -197,15 +293,14 @@ function initSetup() {
         elemFPSBench: '#fps_bench',
         elemFPSBenchCanvasID: 'fps_test',  // DO NOT prepend #
         FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
-        supportedOS: ['Windows', 'Mac', 'Linux'],
-        supportedBrowser: ['Chrome', 'Firefox'],
+        tutorialDialogHeight: 'auto',
         tutorialContents: $("#tutorial_original").html(),   // the (1st page) content of the instructions
         expLoadTime: expLoadTime,          // override expLoadTime for better consistency with this html
         maxHeightInThisExp: maxHeightInThisExp,   // approx actual height (in pixels) used this HIT
         useRecomputeOffset: true,       // recenters the experiment elements when needed
         printDbgMessage: true,          // use true to print console logs (use false for production)
         onRecomputeOffset:              // this is called when the browser window gets resized
-            function (argdct) { 
+            function (argdct) {
                 winW = argdct.winW; winH = argdct.winH;
                 horizontal = argdct.horizontal; vertical = argdct.vertical;
                 extInfo.offsetToTop = argdct.offsetToTop;
@@ -242,7 +337,8 @@ $(document).ready(main);
 <canvas id="fps_test" width="50" height="50" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
 </div>
 <!-- try to aim 8 deg -->
-<div id="sample_container" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-180px; display: none;">
+    <div id="endLearningPeriodScreen" align="center" style="position:relative; z-index:200; height=512px; width=512px; top:75px; left:0px;font-size:100px">End of learning period!<br>Trials will commence in 5 seconds.<br>Be ready, as they will be fast!</div>
+<div id="sample_container" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-240px; display: none;">
 <canvas id="main_sample" width="360" height="360" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
 </div>
 <div id="notice" align="center" style="position:absolute; z-index:200; top:50%; left:50%; height:366px; margin-top:-183px; margin-left:-180px; display: none;"><img src="https://s3.amazonaws.com/task_images/notice.png" height="360" width="360"/></div>
@@ -257,14 +353,14 @@ $(document).ready(main);
     </td>
   </tr>
   <tr>
-    <td align="center"><canvas id="img4" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200"></canvas>
+    <td align="center"><canvas id="img4" class='clickon' style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200"></canvas>
     </td>
     <td width="100" height="100" align="left" style="vertical-align:center;">
     <center style="margin-top:15px; position:relative; top:-30px;">
     <div id="trialCounter"></div>
     </center>
     </td>
-    <td align="center"><canvas id="img5" style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200"></canvas>
+    <td align="center"><canvas id="img5" class='clickon' style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200"></canvas>
     </td>
   </tr>
   <tr height=100>
@@ -282,39 +378,7 @@ $(document).ready(main);
 
 <div id="systemmsg" style="position:relative; z-index:-1; display: none;"></div>
 <div id="tutorial" style="position:relative; z-index:-1; display: none;"></div>
-<div id="tutorial_original" style="position:absolute; z-index:-1; display: none;"><p><b>NOTE: Please close all other programs/taps while running this task to get the optimal system performance.  Users on a suboptimal system can experience glitches that will lead to rejection.  Also, low scores on this task will lead to rejection: make sure to read this instruction!</b></p>
-<p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
-<p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 15 minutes, although we expect this to take about 5-10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
-<p><font color=red><b>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</b></font></p>
-<p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
-<center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
-<div id="tutorial2" style="position:absolute; z-index:-1; display: none;">
-<ul>
-<li>You will see a series of images, each one presented for a very brief time. Each image will feature a single object from 60 possibilities. The objects are common things you might see around your house, on TV, in books, or on the Internet.
-<p>
-<li>After you see an image, <b>you must click the picture button which <u>exactly</u> matches the object you saw.</b> Once you click, you will move on to the next image immediately, so be ready.
-<p>
-<li>For example, if you think you saw a picture of a car, click the car picture to record your answer. There is <b>always</b> an exact match, and <b>SOMETIMES YOU MUST CHOOSE BETWEEN TWO OBJECTS OF THE SAME CATEGORY</b>. In other words, you might see two cars of different makes, and only one is correct.</li>
-<p>
-<li>Even if you're not 100% sure of what you saw, <u><b>make your best guess.</b></u></li>
-<p>
-<li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
-</ul>
-<center><p onclick="$('#tutorial').html($('#tutorial3').html())"><font color=blue><u>Click here to continue reading</u></font></p></center>
-</div>
-<div id="tutorial3" style="position:absolute; z-index:-1; display: none;">
-<ul>
-<p>
-<li>Please be sure to maximize your browser window before beginning this experiment.</li>
-<p>
-<li><b>In total, you will see 174 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
-<p>
-<li>When you are ready to begin, click the "Begin" button. <b>Be prepared to see the first image -- it happens very fast!</b></li>
-<p>
-<li>If you have questions or concerns about this HIT, feel free to contact the requester. You can re-read these instructions at any time by clicking the link in the upper right-hand corner of the screen. Good luck!</li>
-</ul>
-<center><font color=blue><u><p onclick="$('#tutorial').dialog('close')">Click here to close the instructions</p></u></font></center>
-</div>
+    TUTORIAL_HTML
 </div>
 <form style="display: none;" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
   <input type="text" name="data" id="data" value="">

@@ -1,0 +1,33 @@
+<div id="tutorial_original" style="position:absolute; z-index:-1; display: none;"><p><b>NOTE: Please close all other programs/taps while running this task to get the optimal system performance.  Users on a suboptimal system can experience glitches that will lead to rejection.  Also, low scores on this task will lead to rejection: make sure to read this instruction!</b></p>
+<p>Thank you for your interest! You are contributing to ongoing vision research at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
+<p><font color=red><b>This task will require you to look at images on your computer screen and click to indicate a response for up to about 15 minutes, although we expect this to take about 5-10 minutes. If you cannot meet these requirements for any reason, or if doing so could cause discomfort or injury to you, do not accept this HIT.</b></font></p>
+<p><font color=red><b>We encourage you to try a little bit of this  HIT before accepting to ensure it is compatible with your system. If you think the task is working improperly, your computer may be incompatible.</b></font></p>
+<p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes visual information.</p>
+<center><p onclick="$('#tutorial').html($('#tutorial2').html())"><font color=blue><u>Click here to continue reading</u></font></p></center></div>
+<div id="tutorial2" style="position:absolute; z-index:-1; display: none;">
+<ul>
+<li>You will see a series of images, each one presented for a very brief time. Each image will feature a single object from 60 possibilities. The objects are common things you might see around your house, on TV, in books, or on the Internet.
+<p>
+<li>After you see an image, <b>you must click the picture button which <u>exactly</u> matches the object you saw.</b> Once you click, you will move on to the next image immediately, so be ready.
+<p>
+<li>For example, if you think you saw a picture of a car, click the car picture to record your answer. There is <b>always</b> an exact match, and <b>SOMETIMES YOU MUST CHOOSE BETWEEN TWO OBJECTS OF THE SAME CATEGORY</b>. In other words, you might see two cars of different makes, and only one is correct.</li>
+<p>
+<li>Even if you're not 100% sure of what you saw, <u><b>make your best guess.</b></u></li>
+<p>
+<li>When you have worked though all the images, this HIT <b>will submit itself automatically</b>.</li>
+</ul>
+<center><p onclick="$('#tutorial').html($('#tutorial3').html())"><font color=blue><u>Click here to continue reading</u></font></p></center>
+</div>
+<div id="tutorial3" style="position:absolute; z-index:-1; display: none;">
+<ul>
+<p>
+<li>Please be sure to maximize your browser window before beginning this experiment.</li>
+<p>
+<li><b>In total, you will see 174 images. We expect this experiment to take about 5-10 minutes.</b> Note that the HIT will expire if you spend more than 25 minutes, so plan your time accordingly.</li>
+<p>
+<li>When you are ready to begin, click the "Begin" button. <b>Be prepared to see the first image -- it happens very fast!</b></li>
+<p>
+<li>If you have questions or concerns about this HIT, feel free to contact the requester. You can re-read these instructions at any time by clicking the link in the upper right-hand corner of the screen. Good luck!</li>
+</ul>
+<center><font color=blue><u><p onclick="$('#tutorial').dialog('close')">Click here to close the instructions</p></u></font></center>
+</div>

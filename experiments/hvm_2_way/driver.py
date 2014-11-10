@@ -62,6 +62,10 @@ def get_subordinate_exp(sandbox=True, debug=False, dummy_upload=True):
 
     urls = dataset.publish_images(range(len(dataset.meta)), None, 'hvm_timing',
                                       dummy_upload=dummy_upload)
+
+    with open(path.join(path.dirname(__file__), 'tutorial_html'), 'r') as tutorial_html_file:
+        tutorial_html = tutorial_html_file.read()
+
     html_data = {
         'combs': combs,
         'response_images': response_images,
@@ -70,10 +74,22 @@ def get_subordinate_exp(sandbox=True, debug=False, dummy_upload=True):
         'meta': meta,
         'urls': urls,
         'shuffle_test': True,
+        'query' : lambda x: x['var'] == 'V6'
     }
 
+    additionalrules = [{'old': 'LEARNINGPERIODNUMBER',
+                        'new':  str(10)},
+                       {'old': 'OBJTYPE',
+                        'new': 'Object Recognition'},
+                       {'old': 'TUTORIAL_HTML',
+                        'new': tutorial_html},
+                       {'old': 'CATDICT',
+                        'new': hvm.OBJECT_NAMES},
+                       {'old': 'METAFIELD',
+                        'new': "'obj'"}]
+
     exp = MatchToSampleFromDLDataExperiment(
-            htmlsrc='web/general_2way.html',
+            htmlsrc='web/general_two_way.html',
             htmldst='hvm_subordinate_2wat_n%05d.html',
             sandbox=sandbox,
             title='Object recognition --- report what you see',
@@ -84,18 +100,19 @@ def get_subordinate_exp(sandbox=True, debug=False, dummy_upload=True):
             comment='hvm_subordinate_2ways',
             collection_name='hvm_subordinate_2ways',
             max_assignments=1,
-            bucket_name='objectome_64objs_v2',
+            bucket_name='hvm_2ways',
             trials_per_hit=ACTUAL_TRIALS_PER_HIT + 24,  # 140 + 6x4 repeats
             html_data=html_data,
             tmpdir='tmp',
             frame_height_pix=1200,
-            othersrc=['../../lib/dltk.js', '../../lib/dltkexpr.js', '../../lib/dltkrsvp.js'],   # noqa
+            othersrc=['../../lib/dltk.js', '../../lib/dltkexpr.js', '../../lib/dltkrsvp.js'],
+            additionalrules=additionalrules
             )
 
     # -- create trials
     exp.createTrials(sampling='with-replacement', verbose=1)
     n_total_trials = len(exp._trials['imgFiles'])
-    assert n_total_trials == (8 * 7 / 2) * 250
+    assert n_total_trials == (8 * 7 / 2) * 250 * 8
     if debug:
         return exp, html_data
 
@@ -145,10 +162,10 @@ def get_subordinate_exp(sandbox=True, debug=False, dummy_upload=True):
 
     # -- sanity check
     assert 50 == n_applied_hits, n_applied_hits
-    assert len(exp._trials['imgFiles']) == 50 * 164
+    assert len(exp._trials['imgFiles']) == 50 * 164 * 8
     s_ref_labels = [tuple(e) for e in trials_qe['labels']]
     offsets2 = np.arange(24)[::-1] + offsets
-    ibie = zip(range(0, 50 * 164, 164), range(164, 50 * 164, 164))
+    ibie = zip(range(0, 50 *8* 164, 164), range(164, 50 * 8* 164, 164))
     assert all(
         [[(e1, e2) for e1, e2 in
          np.array(exp._trials['labels'][ib:ie])[offsets2]] == s_ref_labels
