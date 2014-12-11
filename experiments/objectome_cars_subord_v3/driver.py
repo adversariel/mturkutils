@@ -64,7 +64,7 @@ def get_url(obj, idstr, resized=True):
 
 def get_url_labeled_resp_img(obj):
     s = get_urlbase(obj) + 'label_imgs/' + obj + '_label.png'
-    return s.replace('_v3/', '')
+    return s.replace('_v3/', '/')
 
 
 def get_exp(sandbox=True, selected_basic_objs=SELECTED_BASIC_OBJS,
