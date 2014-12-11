@@ -100,7 +100,7 @@ def get_exp(sandbox=True, selected_basic_objs=SELECTED_BASIC_OBJS,
             keywords=['neuroscience', 'psychology', 'experiment', 'object recognition'],  # noqa
             description="***You may complete as many HITs in this group as you want*** Complete a visual object recognition task where you report the identity of objects you see. We expect this HIT to take about 5 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment.",  # noqa
             comment="objectome_cars_subord.  30 cars and 30 non-cars",  # noqa
-            collection_name='objectome_cars_subord',
+            collection_name='objectome_cars_subord_v0',
             max_assignments=1,
             bucket_name='objectome_cars_subord_v0',
             trials_per_hit=ACTUAL_TRIALS_PER_HIT + 16,  # 100 + 4x4 repeats
