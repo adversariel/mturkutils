@@ -1024,7 +1024,9 @@ def parse_human_data_from_HITdata(assignments, HITdata=None, comment='',
             ansdat = ansdat[0]
             if 'Response' in ansdat:
                 for _r in ansdat['Response']:
-                    if '_id' in _r and '$oid' in _r['_id']:
+                    if hasattr(_r, 'keys') and '_id' in _r and '$oid' in _r['_id']:
+                        # ^ one can use e.g. `type(_r) is dict`, but that only
+                        # detects built-in dict.
                         _r['_id'] = _r['_id']['$oid']
             ansdat['AssignmentID'] = a.AssignmentId
             ansdat['WorkerID'] = a.WorkerId
