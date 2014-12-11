@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Categorization</title>
+
+<style>
+body { margin:0; padding: 0; font-family: 'trebuchet ms', trebuchet, verdana }
+div,pre { margin:0; padding:0 }
+h2 { margin: 20px 0 5px 0; padding: 0 }
+p.intro { margin: 0; padding: 15px; background: #eee; font-size: small; }
+.thumbs { position: absolute; width: 100px; height: 100px;}
+div.thumb { position:absolute; float:left; padding: 1px; width: 64px; height: 64px;}
+div.thumb img { border: 2px solid white; width:64px; height:64px; }
+div#tutorial { position:relative; background-color: white; padding: 10px; }
+div#systemmsg { position:relative; background-color: white; padding: 10px; }
+</style>
+
+<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
+<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
+<script type="text/javascript" src="dltk.js"></script>
+<script type="text/javascript" src="dltkexpr.js"></script>
+<script type="text/javascript" src="dltkrsvp.js"></script>
+<script type="text/javascript">
+// -- jshint directives.  DO NOT REMOVE THE FOLLOWING COMMENTS
+/* global $, user_IP, dltk, DetectZoom, winH: true, winW: true, vertical: true, horizontal: true */
+
+// -- Experimental variables
+var ExperimentData = null;
+var LEARNING_PERIOD = LEARNINGPERIODNUMBER;
+var exp_type = 'two_way';
+var imgFiles = ExperimentData.imgFiles;
+var imgData = ExperimentData.imgData;
+var trialSpecs = [];
+var totalTrials;
+var trialNumber;
+
+var exp = null;             // the main Experiment object
+
+var stimduration = 100;
+var ISI = 500;
+var maxHeightInThisExp = 450;
+var zoom;
+var aID;
+var extInfo = {language: navigator.language, userAgent: navigator.userAgent};
+
+var expLoadTime = new Date();
+var trialStartTime, trialEndTime, trialStartTimes = [];
+var response = [];
+var trialDurations = [];
+var measuredISI1 = [];
+var measuredISI2 = [];
+var measuredStimdur = [];
+var stimDone = [];
+
+var l_full_history = [], l_full_history_delta = [];
+var _hist, _hist_delta;
+
+var _stimduration;
+var reward;
+var error = 0;
+var distances = [];
+var meta_field = METAFIELD;
+
+var catdict = CATDICT;
+
+
+function reward_scale(error){
+    var maxdist = 1;
+    var randomerror = .875;  //empirically observed random error??
+    console.log('error', error);
+    if (error !== null){
+        var _score = ((maxdist - error) / maxdist);
+        var _randscore = ((maxdist - randomerror) / maxdist);
+        var _scorediff = (_score - _randscore) / (1 - _randscore);
+        _score = Math.max(0.5 * _scorediff, 0).toFixed(2);
+        return _score
+     } else{
+        return 0;
+     }
+};
+
+
+function postResponse(argdct){
+    trialInfo = argdct['trialInfo'];
+    trialNumber = trialInfo.trialNumber;
+    totalTrials = trialInfo.totalTrialNumber;
+
+    $('#totalSeen').html('Total Objects Seen: 0');
+    if (trialNumber > 0){
+        error = (trialNumber / (trialNumber + 1)) * error + (1 / (trialNumber + 1)) * distances[trialNumber-1];
+    };
+    reward = reward_scale(error);
+    console.log('reward', reward)
+    var format_error = (100 * error).toPrecision(3);
+
+    if (trialNumber < LEARNING_PERIOD){
+        var correct_answer = imgData[trialNumber]["Sample"][meta_field];
+        console.log(correct_answer)
+        $('#trialCounter').html('Correct answer: ' + catdict[correct_answer] + '.<br/><b><span style="color:red; font-size:large"><u>' + (LEARNING_PERIOD - trialNumber - 1) + '</u> learning trial(s) left</span> after this.</b>');
+
+        var correct_test_index = 0;
+        var found_it = false;
+        while (!found_it) {
+            if (imgData[trialNumber]["Test"][correct_test_index][meta_field] == correct_answer){
+                found_it = true;
+            } else {
+                correct_test_index++;
+            }
+        }
+
+        $('#img' + (correct_test_index + 4)).css("border-width",  "5px");
+        $('#img' + (correct_test_index + 4)).css("border-color",  "blue");
+        $('#img' + (correct_test_index + 4)).css("border-style",  "solid");
+
+
+    } else {
+        $('#trialCounter').html('Progress: '+trialNumber+' of '+totalTrials  +
+                     '<br/> Mean Error: '+ format_error +
+                     '<br/> Expected Bonus: $'+ reward
+                     );
+    }
+
+}
+
+// -- Dynamic trial codes
+function clicked(argdct) {
+    var imgChosen = argdct.imgChosen;
+    trialEndTime = argdct.trialEndTime;
+    // Here, we explicitly use local trial numbers.  They will be the same as global numbers
+    // because there is only one module.  However, if there are multiple modules the numbers will be different.
+    trialNumber = argdct.localTrialNumber;    // vs. argdct.trialNumber (which is global trial number)
+    totalTrials = argdct.localTotalTrialNumber;   // vs. argdct.totalTrialNumber (again, global #)
+    var index = argdct.index;
+    var category_chosen = imgData[trialNumber]["Test"][index][meta_field];
+    var correct_answer = imgData[trialNumber]["Sample"][meta_field];
+    if (correct_answer == category_chosen){
+        distances.push(0);
+    } else {
+        distances.push(1);
+    }
+
+    // push all trial data
+    stimDone.push(trialNumber);
+    var resp = index;
+    response.push(resp);
+    trialDurations.push(trialEndTime - trialStartTime);
+
+    $('.clickon').css("border-style", "solid");
+    $('.clickon').css("border-color", "#000000");
+    $('.clickon').css("border-width", "1px");
+    endTrial();
+}
+
+
+
+function endTrial() {
+    if (trialNumber >= (totalTrials - 1)) {
+        // -- finished all trials
+        $('#warning').show();
+        $('#warning').html("<font color=red style=background-color:white><b>" +
+                "Finished! Please wait while your answers are being submitted.<br />And please don't press the browser's back button. Thank you.</b></font>");
+
+        // prepare data to submit
+        var resultsobj = [], resultstr;
+        resultsobj.push({
+            Response: response,
+            ImgOrder: imgFiles,
+            ImgData: imgData,
+            StimShown: stimDone,
+            StimDuration: stimduration,
+            RT: trialDurations,
+            Condition: exp_type,
+            Zoom: zoom,
+            IPaddress: user_IP,
+            Browser: dltk.BrowserDetect.browser,
+            Version: dltk.BrowserDetect.version,
+            OpSys: dltk.BrowserDetect.OS,
+            ExtInfo: extInfo,
+            WindowHeight: winH,
+            WindowWidth: winW,
+            ScreenHeight: vertical,
+            ScreenWidth: horizontal,
+            Benchmarks: exp.getBenchmarkResults(),
+            TimingInfo: {
+                TrialStartTimes: trialStartTimes, ExpLoadTime: expLoadTime,
+                ISI1: measuredISI1, ISI2: measuredISI2, Stimdur: measuredStimdur,
+                HistoryDiff: l_full_history, HistoryDeltaDiffEach: l_full_history_delta },
+            ImgData: imgData,
+            "Error": error,
+            Distances: distances,
+            Bonus: reward
+        });
+        resultstr = JSON.stringify(resultsobj);
+
+        // submit after ~4.5s delay to give the user time to read the message
+        setTimeout(function() {
+            // submit all.
+            document.getElementById("assignmentId").value = aID;
+            document.getElementById("data").value = resultstr;
+            document.getElementById("postdata").submit();
+        }, 4500);
+   }
+  else
+  {
+    if (trialNumber + 1 === LEARNING_PERIOD){
+        endLearningPeriod();
+    } else {
+        exp.runNextTrial();
+    }
+  }
+}
+
+function endLearningPeriod(){
+    $('#test_container').hide();
+    $('#endLearningPeriodScreen').show();
+    var breakperiod=5000;
+    setTimeout(function(){$('#endLearningPeriodScreen').hide();
+                          exp.runNextTrial();
+                    }, breakperiod);
+}
+
+// -- Setup part + other helper functions
+
+
+
+function initSetup() {
+    $('#endLearningPeriodScreen').hide();
+
+    for (var i = 0; i < imgFiles.length; i++) {
+        if (i < LEARNING_PERIOD){
+            _stimduration = 2000;
+            active_modules = [0];
+        } else {
+            _stimduration = stimduration;
+        }
+
+        var s = {
+            SampleDuration: _stimduration,
+            ISI: ISI,
+            Sample: imgFiles[i][0],
+            Test: imgFiles[i][1]
+        };
+        trialSpecs.push(s);
+    }
+
+    var spec_RSVP = {
+        elemSample: '#sample_container',      // which fully contains sampling related stuffs (previously .test)
+        elemTest: '#test_container',   // which fully contains testing related stuffs (previously #group_container)
+        elemSampleCanvasID: 'main_sample',       // don't prepend #   (previously main_test)
+        elemTestCanvasIDs: ['img4', 'img5'],     // don't prepend #
+        elemTestClickables: ['#img4', '#img5'],  // elements that will be made clickable to receive answers
+        elemTrialCounter: '#trialCounter',
+        onPostDrawResponse: postResponse,
+        onResponseReady:       // called whan all test images are up
+            function (argdct) {
+                // the time when response images are up and ready
+                trialStartTime = argdct.trialStartTime;
+                trialStartTimes.push(trialStartTime - expLoadTime);
+
+                measuredStimdur.push(argdct.t_stim);
+                measuredISI1.push(argdct.t_ISI1);
+                measuredISI2.push(argdct.t_ISI2);
+
+                l_full_history.push(argdct.hist_extract);
+                l_full_history_delta.push(argdct.hist_delta_extract);
+
+                // mainly for diagnosis/debugging:
+                _hist = argdct.hist;
+                _hist_delta = argdct.hist_delta;
+            },
+        onClickedTestBtn: clicked    // called when the turker clicks on of the test button
+    };
+
+    var spec = {
+        trialSpecs: trialSpecs,       // defines this experiment
+        modulesToAdd: [{module: dltk.RSVPModule, options: spec_RSVP}],   // modules to add on init
+        elemFallback: '#fallback',    // things to display when everything fails
+        elemTutorial: '#tutorial',    // dialog box for the instructions
+        elemSystemmsg: '#systemmsg',  // dialog box for benchmark failures
+        elemNotice: '#notice',        // the red square stuff
+        elemUpperRightGroup: '#upperright',
+        elemTutorialLink: '#tutorial_link',
+        elemTimer: '#timedisp',       // to where the elapsed time will be displayed
+        elemBeginTaskBtn: '#begintask',
+        elemBeginTaskGroup: '#begintaskdiv',
+        elemWarning: '#warning',
+        elemPreload: '#_preload',
+        elemFPSBench: '#fps_bench',
+        elemFPSBenchCanvasID: 'fps_test',  // DO NOT prepend #
+        FPSBenchColor: '#7f7f7f',          // usually the document bgcolor
+        tutorialDialogHeight: 'auto',
+        tutorialContents: $("#tutorial_original").html(),   // the (1st page) content of the instructions
+        expLoadTime: expLoadTime,          // override expLoadTime for better consistency with this html
+        maxHeightInThisExp: maxHeightInThisExp,   // approx actual height (in pixels) used this HIT
+        useRecomputeOffset: true,       // recenters the experiment elements when needed
+        printDbgMessage: true,          // use true to print console logs (use false for production)
+        onRecomputeOffset:              // this is called when the browser window gets resized
+            function (argdct) {
+                winW = argdct.winW; winH = argdct.winH;
+                horizontal = argdct.horizontal; vertical = argdct.vertical;
+                extInfo.offsetToTop = argdct.offsetToTop;
+            }
+    };
+
+    exp = new dltk.Experiment($, spec);
+    // abort if initialization fails
+    if (!exp.init()) return false;
+
+    aID = exp.getAssignmentID();   // assignmentID for mturk
+    zoom = DetectZoom.zoom();      // the zoom status of this browser window
+
+    // success!
+    return true;
+}
+
+function main() {
+    if (!initSetup()) return;      // abort if initSetup() fails
+    exp.testSystemAndPrepExp();    // run various benchmarks and prepare the experiment
+}
+
+$(document).ready(main);
+</script>
+</head>
+<body bgcolor="#7F7F7F">
+<div style="height:100%; width:100%; position:absolute;">
+<div id="fallback" align="center"><span><font color=red style=background-color:white><b>It seems that your browser does not support JavaScript or there was a network error.<br />Please enable JavaScript or reload this page to run this HIT.  Thank you!</b></font></span></div>
+<!-- set everything below with style="display: none;" to hide: only #fallback above will be shown if js fails. -->
+<div id="warning" align="center" style="position:fixed; align-content:center; width:100%; top:0px; display: none;"></div>
+<div id="begintaskdiv" style="position:absolute; top:50%; left:50%; display: none; margin-top:220px; margin-left:-35px;"><button id="begintask" value="Begin!" style="height:30px; width:70px;" >Begin!</button></div>
+<div id="_preload" align="center" style="position:fixed; top:0px; left:10px; display: none;"></div>
+<div id="fps_bench" align="center" style="position:fixed; top:50px; left:10px; display: none;">
+<canvas id="fps_test" width="50" height="50" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
+</div>
+<!-- try to aim 8 deg -->
+    <div id="endLearningPeriodScreen" align="center" style="position:relative; z-index:200; height=512px; width=512px; top:75px; left:0px;font-size:100px">End of learning period!<br>Trials will commence in 5 seconds.<br>Be ready, as they will be fast!</div>
+<div id="sample_container" align="center" style="position:relative; z-index:200; top:50%; height:360px; margin-top:-240px; display: none;">
+<canvas id="main_sample" width="360" height="360" style="position:relative; top:0px; left:0px; z-index:200;"></canvas>
+</div>
+<div id="notice" align="center" style="position:absolute; z-index:200; top:50%; left:50%; height:366px; margin-top:-183px; margin-left:-180px; display: none;"><img src="https://s3.amazonaws.com/task_images/notice.png" height="360" width="360"/></div>
+<div id="test_container"  style="position:relative; width:100%; top:50%; height:200px; margin-top:-100px; display: none;" align="center">
+<table width="900" cellpadding="0" cellspacing="0" border="0" align="center" style="visibility:visible" id="responsetable">
+  <tr>
+    <td align="center">
+    </td>
+    <td align="center">
+   </td>
+    <td align="center">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><canvas id="img4" class='clickon' style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200"></canvas>
+    </td>
+    <td width="100" height="100" align="left" style="vertical-align:center;">
+    <center style="margin-top:15px; position:relative; top:-30px;">
+    <div id="trialCounter"></div>
+    </center>
+    </td>
+    <td align="center"><canvas id="img5" class='clickon' style="position:relative; top:0px; border:1px solid #000000;" height=200 width=200"></canvas>
+    </td>
+  </tr>
+  <tr height=100>
+    <td id="label1" align="center" width=200>
+    </td>
+    <td align="center">
+    </td>
+    <td id="label2" align="center" width=200>
+    </td>
+  </tr>
+</table>
+</div>
+
+<div id="upperright" align="right" style="position:absolute; top:50%; right:10px; margin-top:-250px; display: none;"><div id="tutorial_link"><u>View Instructions</u></div><div id="timedisp"></div></div>
+
+<div id="systemmsg" style="position:relative; z-index:-1; display: none;"></div>
+<div id="tutorial" style="position:relative; z-index:-1; display: none;"></div>
+    TUTORIAL_HTML
+</div>
+<form style="display: none;" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
+  <input type="text" name="data" id="data" value="">
+  <input type="text" name="assignmentId" id="assignmentId" value="">
+</form>
+</body>
+</html>
