@@ -172,7 +172,8 @@ def get_exp(sandbox=True, debug=False):
             30*30*125)
     assert (len([0 for e in exp._trials['imgFiles'] if
                  'objectome32_final/' in e[0] and
-                 ('_v0/' in e[1][0] or '_v0/' in e[1][1])]) ==
+                 ('objectome_cars_subord/' in e[1][0] or
+                  'objectome_cars_subord/' in e[1][1])]) ==
             30*30*125)
 
     # -- in each HIT, the followings will be repeated 4 times to
