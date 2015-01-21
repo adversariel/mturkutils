@@ -21,6 +21,7 @@ from boto.s3.key import Key
 from boto.mturk.connection import MTurkConnection
 from boto.mturk.qualification import PercentAssignmentsApprovedRequirement
 from boto.mturk.qualification import Qualifications
+from boto.mturk.qualification import Requirement
 from boto.mturk.question import ExternalQuestion
 from boto.pyami.config import Config
 
@@ -93,10 +94,11 @@ class Experiment(object):
     def __init__(self, sandbox=True, keywords=None, lifetime=1209600,
             max_assignments=1, title='TEST', reward=0.01, duration=1500,
             approval_delay=172800, description='TEST', frame_height_pix=1000,
-            comment='TEST', collection_name='TEST', meta=None,
+            comment='TEST', collection_name='TEST', meta=None, workers=None, qualid=None,
             log_prefix=LOG_PREFIX, section_name=MTURK_CRED_SECTION):
         if keywords is None:
             keywords = ['']
+
         self.sandbox = sandbox
         self.access_key_id, self.secretkey = \
                 parse_credentials_file(section_name=section_name)
@@ -111,10 +113,11 @@ class Experiment(object):
         self.frame_height_pix = frame_height_pix
         self.log_prefix = log_prefix
         self.section_name = section_name
-        self.setQual(90)
-
+        self.workers = workers
+        self.qualid = qualid
         self.setMongoVars(collection_name, comment, meta)
         self.conn = self.connect()
+        self.setQual(90)
 
     def getBalance(self):
         """Returns the amount of available funds. If you're in Sandbox mode,
@@ -184,7 +187,10 @@ class Experiment(object):
         return conn
 
     def setQual(self, performance_thresh=90):
-        self.qual = create_qual(performance_thresh)
+        if self.workers == None:
+            self.qual = create_qual(performance_thresh)
+        else:
+            self.qual = create_requirement(self.conn, self.workers, self.qualid, performance_thresh)
 
     def createHIT(self, URLlist=None, verbose=True, hitidslog=None):
         """
@@ -250,6 +256,12 @@ class Experiment(object):
             hitids = self.hitids
         for hitid in hitids:
             self.conn.disable_hit(hitid)
+
+    def reject_assignments(self, assignmentIDs):
+        """ Reject assignments from cheaters """
+        for aid in assignmentIDs:
+            self.conn.reject_assignment(aid)
+        return
 
     def _updateDBcore(self, srcs, mode, **kwargs):
         """See the documentation of updateDBwithHITs() and
@@ -402,6 +414,25 @@ def create_qual(performance_thresh=90):
     """
     performance_thresh = int(performance_thresh)
     req = PercentAssignmentsApprovedRequirement(comparator='GreaterThan',
+            integer_value=performance_thresh)
+    qual = Qualifications()
+    qual.add(req)
+    return qual
+
+def create_requirement(conn, workers, qualid, performance_thresh):
+    """Returns an MTurk Qualification object for a list of workers which 
+    can then be passed to a HIT object. 
+    """
+    # qualification type must already exist, for now.
+    # qual_id = '28EKH1Q6SVQD54NMWRXLEOBVCK22L4' 
+    for worker in workers:
+        try:
+            conn.assign_qualification(qualid, worker, value=100, send_notification=False)
+        except Exception, e:
+            print 'Worker qualification already exists.'
+
+
+    req = Requirement(qualification_type_id=qual_id, comparator='GreaterThan',
             integer_value=performance_thresh)
     qual = Qualifications()
     qual.add(req)
@@ -594,7 +625,8 @@ def search_meta(needles, meta, lookup_field=LOOKUP_FIELD):
     if isinstance(meta, dict):
         # this should be much faster!
         for n in needles:
-            dat.append(meta[n])
+            if n in meta.keys(): # rishi edit -- need this so labels aren't searched
+                dat.append(meta[n])
     else:
         # Assuming meta is a tabarray
         for n in needles:
