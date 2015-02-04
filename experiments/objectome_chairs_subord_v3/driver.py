@@ -7,45 +7,45 @@ import copy
 import sys
 from mturkutils.base import MatchToSampleFromDLDataExperiment
 
-# 30 closets objects to the "car" basic-level object
+# 30 closets objects to the "chair" basic-level object
 SELECTED_BASIC_OBJS = set(
-    ['MB29874', 'MB30758', 'MB27585', 'MB31405',
-     'antique_furniture_item_18', 'MB29346', 'household_aid_29', 'MB27346',
-     'interior_details_033_2', 'lo_poly_animal_TRTL_B', 'MB30798', '04_piano',
-     'laptop01', 'jewelry_29', '31_african_drums', 'calc01',
-     'lo_poly_animal_DUCK', 'build51', 'foreign_cat', 'MB31188', 'MB30071',
-     'womens_Skirt_02M', 'lo_poly_animal_CHICKDEE', '22_acoustic_guitar',
-     'kitchen_equipment_knife2', 'interior_details_130_2', 'Colored_shirt_03M',
-     'MB30850', 'fast_food_23_1', 'lo_poly_animal_TRANTULA'])
+    ['antique_furniture_item_18', 'interior_details_033_2', 'laptop01',
+     'calc01', 'Tie_06', 'household_aid_29', 'MB31188', 'MB30758',
+     'MB27585', 'lo_poly_animal_ANT_RED', 'womens_Skirt_02M', '04_piano',
+     'womens_halterneck_06', 'kitchen_equipment_knife2',
+     '22_acoustic_guitar', 'womens_stockings_01M', 'bullfrog', 'build51',
+     'MB27346', 'lo_poly_animal_DUCK', 'interior_details_130_2', 'MB30850',
+     'zebra', 'foreign_cat', 'Hanger_02', 'MB30203',
+     'lo_poly_animal_TRANTULA', 'pear_obj_2', 'MB27780', 'MB28699'])
 assert len(SELECTED_BASIC_OBJS) == 30
 REPEATS_PER_QE_IMG = 4
 ACTUAL_TRIALS_PER_HIT = 100
 
 
 def get_meta(selected_basic_objs=SELECTED_BASIC_OBJS):
-    """Mix the objectome 64 basic-level set and the car subordinate
+    """Mix the objectome 64 basic-level set and the chair subordinate
     level set"""
     assert len(np.unique(selected_basic_objs)) == 30
-    meta_cars = pk.load(open('meta_objt_cars_subord.pkl'))
+    meta_chairs = pk.load(open('meta_objt_chairs_subord_v3.pkl'))
     meta_basic = pk.load(open('meta_objt_full_64objs.pkl'))
 
     si = [i for i, e in enumerate(meta_basic)
           if e['obj'] in selected_basic_objs]
     assert len(si) == 30 * 1000
 
-    cnames = list(meta_cars.dtype.names)
+    cnames = list(meta_chairs.dtype.names)
     assert list(meta_basic.dtype.names) == cnames
     cnames.remove('internal_canonical')
     cnames.remove('texture')        # contains None
     cnames.remove('texture_mode')   # contains None
 
     meta = tb.tabarray(
-        columns=[np.concatenate([meta_basic[e][si], meta_cars[e]])
+        columns=[np.concatenate([meta_basic[e][si], meta_chairs[e]])
                  for e in cnames],
         names=cnames)
     assert len(meta) == 30 * 1000 * 2
-    assert len(np.unique(meta['obj'])) == 60   # 30 non-cars + 30 cars
-    return meta, meta_basic, meta_cars
+    assert len(np.unique(meta['obj'])) == 60   # 30 non-chairs + 30 chairs
+    return meta, meta_basic, meta_chairs
 
 
 def get_urlbase(obj, selected_basic_objs=SELECTED_BASIC_OBJS):
@@ -53,7 +53,7 @@ def get_urlbase(obj, selected_basic_objs=SELECTED_BASIC_OBJS):
         return 'https://s3.amazonaws.com/objectome32_final/'
     else:
         return 'https://s3.amazonaws.com/dicarlocox-rendered-imagesets/' \
-            'objectome_cars_subord/'
+            'objectome_chairs_subord_v3/'
 
 
 def get_url(obj, idstr, resized=True):
@@ -63,15 +63,16 @@ def get_url(obj, idstr, resized=True):
 
 
 def get_url_labeled_resp_img(obj):
-    return get_urlbase(obj) + 'label_imgs/' + obj + '_label.png'
+    return get_urlbase(obj).replace('_chairs_subord_v3/', '_chairs_subord/') \
+        + 'label_imgs/' + obj + '_label.png'
 
 
 def get_exp(sandbox=True, selected_basic_objs=SELECTED_BASIC_OBJS,
             debug=False):
-    meta, _, meta_cars = get_meta()
-    cars = np.unique(meta_cars['obj'])
-    combs = [(o1, o2) for o1 in selected_basic_objs for o2 in cars] + \
-            [e for e in itertools.combinations(cars, 2)]
+    meta, _, meta_chairs = get_meta()
+    chairs = np.unique(meta_chairs['obj'])
+    combs = [(o1, o2) for o1 in selected_basic_objs for o2 in chairs] + \
+            [e for e in itertools.combinations(chairs, 2)]
     urls = [get_url(e['obj'], e['id']) for e in meta]
     response_images = [{
         'urls': [get_url_labeled_resp_img(o1), get_url_labeled_resp_img(o2)],
@@ -90,18 +91,18 @@ def get_exp(sandbox=True, selected_basic_objs=SELECTED_BASIC_OBJS,
     }
 
     exp = MatchToSampleFromDLDataExperiment(
-            htmlsrc='web/cars_subord.html',
-            htmldst='cars_subord_n%05d.html',
+            htmlsrc='web/chairs_subord.html',
+            htmldst='chairs_subord_n%05d.html',
             sandbox=sandbox,
             title='Object recognition --- report what you see',
             reward=0.15,
             duration=1600,
             keywords=['neuroscience', 'psychology', 'experiment', 'object recognition'],  # noqa
             description="***You may complete as many HITs in this group as you want*** Complete a visual object recognition task where you report the identity of objects you see. We expect this HIT to take about 5 minutes or less, though you must finish in under 25 minutes.  By completing this HIT, you understand that you are participating in an experiment for the Massachusetts Institute of Technology (MIT) Department of Brain and Cognitive Sciences. You may quit at any time, and you will remain anonymous. Contact the requester with questions or concerns about this experiment.",  # noqa
-            comment="objectome_cars_subord.  30 cars and 30 non-cars",  # noqa
-            collection_name='objectome_cars_subord',
+            comment="objectome_chairs_subord_v3.  30 chairs and 30 non-chairs",  # noqa
+            collection_name='objectome_chairs_subord_v3',
             max_assignments=1,
-            bucket_name='objectome_cars_subord',
+            bucket_name='objectome_chairs_subord_v3',
             trials_per_hit=ACTUAL_TRIALS_PER_HIT + 16,  # 100 + 4x4 repeats
             tmpdir='tmp',
             html_data=html_data,
@@ -126,12 +127,8 @@ def get_exp(sandbox=True, selected_basic_objs=SELECTED_BASIC_OBJS,
 
     # -- in each HIT, the followings will be repeated 4 times to
     # estimate "quality" of data
-    #
-    # car:      4 - car MB27534* v car MB27803
-    # car:     12 - train MB31405 v car MB27577*
-    # non-car: 21 - truck* v car MB29874
-    # non-car: 24 - book v MB28307*
-    ind_repeats = [4, 12, 21, 24] * REPEATS_PER_QE_IMG
+    # the choice of v--- this array below is arbitrary
+    ind_repeats = [1, 10, 22, 24] * REPEATS_PER_QE_IMG
     rng = np.random.RandomState(0)
     rng.shuffle(ind_repeats)
     trials_qe = {e: [copy.deepcopy(exp._trials[e][r]) for r in ind_repeats]
