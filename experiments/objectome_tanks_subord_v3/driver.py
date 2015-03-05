@@ -129,7 +129,7 @@ def get_exp(sandbox=True, selected_basic_objs=SELECTED_BASIC_OBJS,
     # -- in each HIT, the followings will be repeated 4 times to
     # estimate "quality" of data
     # the choice of v--- this array below is arbitrary
-    ind_repeats = [1, 10, 22, 24] * REPEATS_PER_QE_IMG
+    ind_repeats = [1, 9, 60, 27] * REPEATS_PER_QE_IMG
     rng = np.random.RandomState(0)
     rng.shuffle(ind_repeats)
     trials_qe = {e: [copy.deepcopy(exp._trials[e][r]) for r in ind_repeats]
