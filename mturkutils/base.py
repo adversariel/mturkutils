@@ -672,7 +672,7 @@ class Experiment(object):
                 raise e
             from time import sleep
             sleep(5)
-            assignments, HITdata = self.getHITdataraw(self, hitid, retry=retry - 1)
+            assignments, HITdata = self.getHITdataraw(hitid, retry=retry - 1)
 
         return assignments, HITdata
 
