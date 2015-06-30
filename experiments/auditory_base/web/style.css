@@ -50,7 +50,7 @@ div#tutorial {
 }
 
 .ui-tutorial {
-    -moz-border-radius: 0 0 8px 8px;
-    -webkit-border-radius: 0 0 8px 8px;
-    border-radius: 0 0 8px 8px; border-width: 0 8px 8px 8px;
+    -moz-border-radius: 8px 8px 8px 8px;
+    -webkit-border-radius: 8px 8px 8px 8px;
+    border-radius: 8px 8px 8px 8px; border-width: 8px 8px 8px 8px;
 }

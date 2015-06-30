@@ -9,94 +9,34 @@
 
 <script type="text/javascript" src="https://code.jquery.com/jquery-1.8.0.min.js"></script>
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
-<script type="text/javascript" src="https://dicarlo-lab.scripts.mit.edu/srv/ip.php"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/browserdetect-0.0.1.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/zen-0.0.2.js"></script>
-<script type="text/javascript" src="https://s3.amazonaws.com/dlcommon/js/detect-zoom-20120627.js"></script>
 <script type="text/javascript" src="word_identification.js"></script>
 </head>
 <body>
-	<div id="main" style="height:1000px; width:auto;">
+	<div id="main" style="width:auto;">
 		<div id="startbuttons" align="center" style="position:relative; top:20px;">
-			<button id="begintask" value="" style="height:30px; width:auto;">Begin Familiarization</button>
-			<p>
-				<b>OR, if you already did a HIT in this group...</b>
-			</p>
-			<button id="begintask2" value="" style="height:30px; width:auto;">Begin Experiment</button>
+			<input  class="btn" id="begintask2" type="button" value="Begin Experiment" onclick="begin_exp();">
 		</div>
-		<div style="position:absolute; top:160px; left:50%">
-			<div align="center" id="message" style="position:relative; left:-50%; width:450px;">
-				Hello MTurk workers! If you've done my object recognition HITs before, <u><span onclick="$('#tutorial').html($('#tutorial_original').html()); $('#tutorial').dialog({height:700, width:700, position:['middle', 20],title:'Instructions'})" style="cursor:pointer;">be sure to read the instructions here carefully</span></u>. This is a *new* HIT with *different* instructions. If you don't read them, you may do the task improperly and your work will be rejected.
+		<div align="center" id="buttons" name="buttons" style="position:relative; top:100px; z-index:3;">
+			<img id="playingImg" src="resources/test.png" width=200 height =200><br><br>
+			<div id="userResponse">
+				<span id="askText" >What word did you hear?</span><br><br>
+				<input id="userWord" style="text-align:center;"><br><br>
+				<input class="btn" type="button" id="relisten" onClick="listen()" value="Listen Again">
+				<input class="btn" type="button" id="nextTrial" onClick="next_trial()" value="Next Trial">
+				<br /><span id="trialCounter"></span>
 			</div>
 		</div>
-		<div id="_preload" align="center" style="position:fixed; top:0px; left:10px;"></div>
-		<div align="center" id="buttons" name="buttons" style="position:relative; top:250px; z-index:3;">
-			<span id="adj_header" style="font-size:150%; font-weight:bold;"></span>
-			<p>
-			<span id="adj_text">How _____ was the object?</span>
-			<br />
-				<table align="center" border=0>
-					<tr>
-						<td>
-							<form id="sliderspace" style="visibility:visible;" method="get">
-							<div align="center" style="padding:5px; pointer-events:none;"><input style="visibility:visible;" id="sliderValue" type="Text" size="3" name="sliderValue"></div>
-							<script language="JavaScript">
-								var A_TPL = {
-									'b_vertical' : false,
-									'b_watch': true,
-									'n_controlWidth': 500,
-									'n_controlHeight': 16,
-									'n_sliderWidth': 19,
-									'n_sliderHeight': 16,
-									'n_pathLeft' : 0,
-									'n_pathTop' : 0,
-									'n_pathLength' : 481,
-									's_imgControl': 'https://s3.amazonaws.com/dlcommon/img/control_gray_500px.gif',
-									's_imgSlider': 'https://s3.amazonaws.com/dlcommon/img/sldr1v_sl_black.gif',
-									'n_zIndex': 1 
-								};
-								var A_INIT = {
-									's_form' : 0,
-									's_name': 'sliderValue',
-									'n_minValue' : 0,
-									'n_maxValue' : 100,
-									'n_value' : 50,
-									'n_step' : 1
-								};
-								var sliderRef = new slider(A_INIT, A_TPL);
-							</script>
-							</form>
-							<div align="center" style="padding:5px;">
-								<span id="adj_text_bleft" style="font-size:100%; font-weight:bold; float:left;">Not _____</span>
-								<span id="adj_text_bright" style="font-size:100%; font-weight:bold; float:right;">Very _____</span>
-								&nbsp;
-							</div>
-							<div id="btnspace" align="center" style="padding:5px;">
-								&nbsp;<button id="nextTrial" onClick="whitescreen()" >Next Trial</button>
-							</div>
-						</td>
-					</tr>
-				</table>
-			<br /><span id="trialCounter"></span>
-		</div>
-		<div class="fixation" align="center" style="position:relative; z-index:2; top:225px; left:0px;">
-			<img id="fixation_dot" src="https://s3.amazonaws.com/human_training/fixation.png" />
-		</div>
-		<div class="test" align="center" style="position:relative; z-index:1; top:200px; left:0px;">
-			<div style="position:relative; top:0px; left:0px; z-index:1;">
-				<img id="main_test" src="" height=360 width=360  border=0 />
-				<p><span id="img_caption"> </span></p>
-			</div>
-			<div style="position:relative; top:0px; left:0px; z-index:-1;">
-			</div>
+		<div align="center" id="finished" style="position:relative; top:200px; z-index:1;">
+		No more trials. Thank you for your participation. <br>
+		Answers: <br>
+		<span id="results"></span>
 		</div>
 	</div>
-
-<input class="btn" id="tutorial_link" type="button" value="View Instructions" onclick="tutorial_click()" />
+<br>
+<input class="btn" id="tutorial_link" type="button" value="View Instructions" onclick="tutorial_click()" style="position:fixed; top:10px;""/>
 <div id="tutorial" title="Instructions" style="position:relative; z-index:-1">
-    <span class="ui-state-default">
+    <span class="ui-state-default"></span>
     <span class="ui-icon ui-icon-info" style="float:left; margin:0 7px 0 0;"></span>
-    </span>
 </div>
 <div id="tutorial_original" style="position:absolute; z-index:-1;">
 	<span class="ui-state-default">
@@ -104,7 +44,8 @@
 	<p>Thank you for your interest! You are contributing to a research project at the Massachusetts Institute of Technology McGovern Institute for Brain Research.</p>
 	<p>This task requires you to listen to audio files on your computer using headphones. If you do not have access to headphones, please do not accept this HIT.</p>
 	<p>We recommend this task for those who are interested in contributing to scientific endeavors. Your answers will help MIT researchers better understand how the brain processes auditory information.</p>
-	<input class="btn" type="button" value="Continue" onclick="continue_click('#tutorial2')" />
+	<!--<input class="btn" type="button" value="Continue" onclick="continue_click('#tutorial2')" />-->
+	<input class="btn" type="button" value="Close" onclick="tutorial_close()" />
 </div>
 <div id="tutorial2" style="position:absolute; z-index:-1;">
     <span class="ui-state-default">
@@ -141,11 +82,11 @@
 	<input class="btn" type="button" value="Close" onclick="tutorial_close()" />
 </div>
 
-<!-- This is where data gets submitted to MTurk. For some users, this causes a crash, and I'm not sure why. It isn't too common. -->
+<!--
 <form style="visibility:hidden;" id="postdata" action="https://www.mturk.com/mturk/externalSubmit" method="post">
 	<input type="text" name="data" id="data" value="">
     <input type="text" name="assignmentId" id="assignmentId" value="">
 </form>
-
+-->
 </body>
 </html>

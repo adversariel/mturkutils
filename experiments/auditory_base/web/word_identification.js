@@ -3,50 +3,106 @@ var soundFiles = ['test1.mp3','test2.mp3','test3.mp3'];
 var responses = [];
 var play_html5_audio = false;
 
-
-
 $(document).ready(function() {
 
 	$('#tutorial_original').hide(); $('#tutorial2').hide(); $('#tutorial3').hide();
-
-	$('.test').hide();
-	$('.fixation').hide();
-	init_vars();
-	preload_resources();
-	preload(stimFiles, function(){
-		$('#begintask').click(function() {
-			familiar();
-		});
-		$('#begintask2').click(function() {
-			beginExp();
-		});
-	});
-
+	$('#buttons').hide();
+	$('#begintask2').hide();
+	$('#finished').hide();
 	$("#tutorial").html($("#tutorial_original").html());
-	$("#tutorial").dialog({height:700,
+	$("#tutorial").dialog({
 		width:700,
-		position: ['middle', 20], //"center", hahong: no center to hide all buttons
-		dialogClass: 'ui-tutorial'
+		position: ['center', 'top'],
+		dialogClass: 'ui-tutorial',
+		beforeClose: function(){$('#begintask2').show();}
 	});
-
-	$('#sl0base').click(function(e) {
-		var offset = $(this).offset();
-		var pos_x = e.pageX - offset.left;
-		console.log(100*pos_x/500);
-		sliderRef.f_setValue(100*pos_x/500);
-		$('#sl0slider').show();
-	});
+	if(html5_audio()){
+		play_html5_audio = true;
+	}
+	$(function() {
+    $('#userWord').keypress(function (e) {
+        if ((e.which && e.which == 13) || (e.keyCode && e.keyCode == 13)) {
+            next_trial();
+            return false;
+        } else {
+            return true;
+        }
+    });
 });
+});
+
+function html5_audio() {
+    var a = document.createElement('audio');
+    return !!(a.canPlayType && a.canPlayType('audio/mpeg;').replace(/no/, ''));
+};
+
+function play_sound(url) {
+    var snd, sound;
+    if (play_html5_audio) {
+		snd = new Audio(url);
+		snd.load();
+		snd.onended = sound_done;
+		return snd.play();
+    } else {
+		$("#sound").remove();
+		sound = $("<embed id='sound' type='audio/mpeg' />");
+		sound.attr('src', url);
+		sound.attr('loop', false);
+		sound.attr('hidden', true);
+		sound.attr('autostart', true);
+		sound.attr('onended',sound_done());
+		return $('body').append(sound);
+	}
+};
 
 function tutorial_click() {
     $('#tutorial').html($('#tutorial_original').html());
-    $('#tutorial').dialog({height:700,width:700,position:['middle', 20],title:'Instructions'});
-}
+    $("#tutorial").dialog({height:400,
+		width:700,
+		position: ['middle', 100],
+		dialogClass: 'ui-tutorial',
+		beforeClose: function(){$('#begintask2').show();}
+	});
+};
 
 function continue_click(page) {
     $('#tutorial').html($(page).html());
-}
+};
 
 function tutorial_close() {
 	$('#tutorial').dialog('close');
+	$('#begintask2').show();
+};
+
+function begin_exp(){
+	$('#begintask2').hide();
+	$('#buttons').show();
+	listen();
+};
+
+function listen(){
+	$('#userResponse').hide();
+	$('#playingImg').show();
+	var soundFile = 'resources/'+soundFiles[currentFile]; // Temporary
+	play_sound(soundFile);
 }
+
+function sound_done(){
+	$('#userResponse').show();
+	$('#playingImg').hide();	
+	$('#userWord').focus();
+};
+
+function next_trial(){
+	responses.push($('#userWord')[0].value);
+	$('#userWord')[0].value = '';
+	if(++currentFile>=soundFiles.length){
+		console.log("Done");
+		$('#buttons').hide();
+		$('#tutorial_link').hide();
+		$('#finished').show();
+		$('#results')[0].textContent = responses.toString();
+		return;
+	}
+	listen();
+};
