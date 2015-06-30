@@ -10,9 +10,9 @@ $(document).ready(function() {
 	$('#begintask2').hide();
 	$('#finished').hide();
 	$("#tutorial").html($("#tutorial_original").html());
-	$("#tutorial").dialog({
+	$("#tutorial").dialog({height:400,
 		width:700,
-		position: ['center', 'top'],
+		position: ['middle', 100],
 		dialogClass: 'ui-tutorial',
 		beforeClose: function(){$('#begintask2').show();}
 	});
@@ -28,6 +28,10 @@ $(document).ready(function() {
             return true;
         }
     });
+	$('#userWord').autocomplete({
+		source: words,
+		position: { my : "right bottom", at: "right top" }
+	});
 });
 });
 
@@ -81,6 +85,7 @@ function begin_exp(){
 };
 
 function listen(){
+	$('#userWord').autocomplete("close");
 	$('#userResponse').hide();
 	$('#playingImg').show();
 	var soundFile = 'resources/'+soundFiles[currentFile]; // Temporary
@@ -94,7 +99,11 @@ function sound_done(){
 };
 
 function next_trial(){
-	responses.push($('#userWord')[0].value);
+	var wordResponse = $('#userWord')[0].value.toLowerCase();
+	if(words.indexOf(wordResponse)==-1){
+		return;
+	}
+	responses.push(wordResponse);
 	$('#userWord')[0].value = '';
 	if(++currentFile>=soundFiles.length){
 		console.log("Done");
