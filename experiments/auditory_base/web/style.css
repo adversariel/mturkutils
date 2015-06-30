@@ -54,3 +54,7 @@ div#tutorial {
     -webkit-border-radius: 8px 8px 8px 8px;
     border-radius: 8px 8px 8px 8px; border-width: 8px 8px 8px 8px;
 }
+
+ul.ui-autocomplete li.ui-menu-item{
+	text-align:center;
+}
