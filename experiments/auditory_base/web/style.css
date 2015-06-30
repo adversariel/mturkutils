@@ -1,0 +1,56 @@
+body {
+    margin:0;
+    padding: 0;
+    font: normal normal normal 10px/1.5 Arial, Helvetica, sans-serif;
+}
+
+div,pre { margin:0; padding:0 }
+
+h2 { margin: 20px 0 5px 0; padding: 0 }
+
+p.intro {
+    margin: 0;
+    padding: 15px;
+    background: #eee;
+    font-size: small;
+}
+
+div#tutorial {
+    position:relative;
+    background-color: white;
+    padding: 10px;
+}
+
+#preview {
+    position:absolute;
+    border:1px solid #ccc;
+    background:#333;
+    padding:5px;
+    display:none;
+    color:#fff;
+}
+.btn{
+   border: 1px solid #ddd;
+   background-color: #f0f0f0;
+   padding: 4px 12px;
+
+
+}
+
+.btn:hover {
+    background-color: #e5e5e5;
+}
+.btn:active {
+    background-color: #ccc;
+}
+.btn#tutorial_link {
+    position:fixed;
+    top:0px;
+    right:10px;
+}
+
+.ui-tutorial {
+    -moz-border-radius: 0 0 8px 8px;
+    -webkit-border-radius: 0 0 8px 8px;
+    border-radius: 0 0 8px 8px; border-width: 0 8px 8px 8px;
+}
