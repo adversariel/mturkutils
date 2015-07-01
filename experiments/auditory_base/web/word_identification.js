@@ -1,5 +1,5 @@
 var currentFile = 0;
-var soundFiles = ['test1.mp3','test2.mp3','test3.mp3'];
+var soundFiles = ['test1.mp3','test2.mp3','test3.mp3']; // need to load using S3; staged for now
 var responses = [];
 var play_html5_audio = false;
 
