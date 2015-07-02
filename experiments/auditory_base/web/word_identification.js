@@ -5,7 +5,7 @@ var play_html5_audio = false;
 
 $(document).ready(function() {
 
-	$('#tutorial_original').hide(); $('#tutorial2').hide(); $('#tutorial3').hide();
+	$('#tutorial_original').hide(); $('#tutorial_headphones').hide(); $('#tutorial_ambient').hide();
 	$('#buttons').hide();
 	$('#begintask2').hide();
 	$('#finished').hide();
