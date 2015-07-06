@@ -1,5 +1,9 @@
 var currentFile = 0;
 var soundFiles = ['test1.mp3','test2.mp3','test3.mp3']; // need to load using S3; staged for now
+var headphoneFiles = ['antiphase_HC_IOS.wav','antiphase_HC_ISO.wav','antiphase_HC_OIS.wav','antiphase_HC_OSI.wav','antiphase_HC_SIO.wav','antiphase_HC_SOI.wav'];
+var headphoneAnswers = [2,3,1,1,3,2];
+var headphoneIndex = 0;
+var headphoneSucceeded = 0;
 var responses = [];
 var play_html5_audio = false;
 
@@ -9,6 +13,9 @@ $(document).ready(function() {
 	$('#buttons').hide();
 	$('#begintask2').hide();
 	$('#finished').hide();
+	$('#headphonecheck').hide();
+	$('#headphonefailed').hide();
+	$('#ambientcheck').hide();
 	$("#tutorial").html($("#tutorial_original").html());
 	$("#tutorial").dialog({height:400,
 		width:700,
@@ -80,9 +87,39 @@ function tutorial_close() {
 
 function begin_exp(){
 	$('#begintask2').hide();
-	$('#buttons').show();
-	listen();
+	$('#headphone1').hide();
+	$('#headphone2').hide();
+	$('#headphone3').hide();
+	$('#headphonecheck').show();
+	
 };
+
+function headphones(){
+	play_sound('resources/'+headphoneFiles[headphoneIndex]);
+	$('#headphone1').show();
+	$('#headphone2').show();
+	$('#headphone3').show();
+};
+
+function headphonesresult(result){
+	$('#headphone1').hide();
+	$('#headphone2').hide();
+	$('#headphone3').hide();
+	if(result==headphoneAnswers[headphoneIndex++]){
+		headphoneSucceeded++;
+	}	
+	if(headphoneIndex>=5){
+		if(headphoneSucceeded>=4){
+			$('#headphonecheck').hide();		
+			$('#buttons').show();
+			listen();		
+		}
+		else{
+			$('#headphonefailed').show();
+		}
+	}
+};
+
 
 function listen(){
 	$('#userWord').autocomplete("close");

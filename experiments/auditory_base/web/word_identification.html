@@ -17,6 +17,17 @@
 		<div id="startbuttons" align="center" style="position:relative; top:20px;">
 			<input  class="btn" id="begintask2" type="button" value="Begin Experiment" onclick="begin_exp();">
 		</div>
+		<div id="headphonecheck" align="center" style="position:relative; top:100px; z-index:3">
+			Click here to begin headphone test: <br>
+			<input class="btn" type="button" id="startheadphone" onClick="headphones()" value="Begin Test"> <br>
+			Which noise had separate tones? <br>
+			<input class="btn" type="button" id="headphone1" onClick="headphonesresult(1)" value="1">
+			<input class="btn" type="button" id="headphone2" onClick="headphonesresult(2)" value="2">
+			<input class="btn" type="button" id="headphone3" onClick="headphonesresult(3)" value="3"><br>
+			<div id="headphonefailed">
+				Sorry, but you did not succeed the headphone check.
+			</div>
+		</div>
 		<div align="center" id="buttons" name="buttons" style="position:relative; top:100px; z-index:3;">
 			<img id="playingImg" src="resources/test.png" width=200 height =200><br><br>
 			<div id="userResponse">
